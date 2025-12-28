@@ -1,0 +1,36 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Document base - centered in adaptive icon safe zone -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M33,24h30l12,12v48c0,2.2 -1.8,4 -4,4H33c-2.2,0 -4,-1.8 -4,-4V28c0,-2.2 1.8,-4 4,-4z"/>
+    
+    <!-- Folded corner -->
+    <path
+        android:fillColor="#FFE0E0E0"
+        android:pathData="M63,24l12,12H67c-2.2,0 -4,-1.8 -4,-4V24z"/>
+    
+    <!-- Scan lines representing text -->
+    <path
+        android:fillColor="#FF6750A4"
+        android:pathData="M37,44h30v3H37V44z"/>
+    <path
+        android:fillColor="#FF6750A4"
+        android:pathData="M37,52h24v3H37V52z"/>
+    <path
+        android:fillColor="#FF6750A4"
+        android:pathData="M37,60h18v3H37V60z"/>
+    <path
+        android:fillColor="#FF6750A4"
+        android:pathData="M37,68h26v3H37V68z"/>
+        
+    <!-- Scanning beam effect -->
+    <path
+        android:fillColor="#FF6750A4"
+        android:alpha="0.3"
+        android:pathData="M29,50h50v8H29V50z"/>
+</vector>

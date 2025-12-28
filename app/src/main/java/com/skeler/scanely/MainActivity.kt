@@ -34,7 +34,8 @@ class MainActivity : ComponentActivity() {
             }
             
             val initialLangs = remember {
-                prefs.getStringSet("ocr_langs", setOf("eng", "ara")) ?: setOf("eng", "ara")
+                prefs.getStringSet("ocr_langs", com.skeler.scanely.ocr.OcrHelper.SUPPORTED_LANGUAGES_MAP.keys) 
+                    ?: com.skeler.scanely.ocr.OcrHelper.SUPPORTED_LANGUAGES_MAP.keys
             }
             var ocrLanguages by remember { mutableStateOf(initialLangs) }
             

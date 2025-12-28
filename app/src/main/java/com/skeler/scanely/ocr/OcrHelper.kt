@@ -43,6 +43,21 @@ enum class OcrMode(val label: String, val languages: List<String>) {
  */
 class OcrHelper(private val context: Context) {
     
+    companion object {
+        val SUPPORTED_LANGUAGES_MAP = mapOf(
+            "eng" to "English",
+            "ara" to "Arabic",
+            "fra" to "French",
+            "spa" to "Spanish",
+            "deu" to "German",
+            "ita" to "Italian",
+            "por" to "Portuguese",
+            "rus" to "Russian",
+            "jpn" to "Japanese",
+            "chi_sim" to "Chinese (Simplified)"
+        )
+    }
+    
     private val mutex = Mutex()
     private var tessApi: TessBaseAPI? = null
     private var currentLanguages: List<String> = emptyList()

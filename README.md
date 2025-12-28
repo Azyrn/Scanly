@@ -1,7 +1,6 @@
 This app was built with fully optimized coding practices using Google Antigravity.
 AI assistance was provided using Claude Opus 4.5 and Gemini 3 Pro.
-Custom high-quality prompts were used to enhance AI results and streamline development.
-
+AI results improved using the King Prompt from here.
 Scanly
 
 Scanly is a fast, privacy-focused document scanner for Android. It turns your phone into a powerful text extractor and barcode scanner—completely offline.

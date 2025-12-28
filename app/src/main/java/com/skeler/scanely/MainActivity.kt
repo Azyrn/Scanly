@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import com.skeler.scanely.navigation.ScanelyNavigation
 import com.skeler.scanely.ui.theme.ScanelyTheme
 import com.skeler.scanely.ui.theme.ThemeMode
+import androidx.core.content.edit
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -22,7 +23,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             // Load preferences directly (no remember needed for the reference itself, but needed for the state)
-            val prefs = getPreferences(Context.MODE_PRIVATE)
+            val prefs = getPreferences(MODE_PRIVATE)
             
             // Load initial state immediately
             // We use mutableStateOf with the loaded value directly to ensure it initializes correctly.
@@ -44,13 +45,13 @@ class MainActivity : ComponentActivity() {
                         onThemeChanged = { newMode ->
                             themeMode = newMode
                             // Commit immediately to ensure persistence
-                            prefs.edit().putString("theme_mode", newMode.name).commit() 
+                            prefs.edit(commit = true) { putString("theme_mode", newMode.name) }
                         },
                         ocrLanguages = ocrLanguages,
                         onOcrLanguagesChanged = { newLangs ->
                             ocrLanguages = newLangs
                              // Commit immediately
-                            prefs.edit().putStringSet("ocr_langs", newLangs).commit()
+                            prefs.edit(commit = true) { putStringSet("ocr_langs", newLangs) }
                         }
                     )
                 }

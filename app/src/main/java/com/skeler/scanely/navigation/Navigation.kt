@@ -39,6 +39,7 @@ object Routes {
     const val CAMERA = "camera"
     const val RESULTS = "results"
     const val BARCODE_SCANNER = "barcode_scanner"
+    const val HISTORY = "history"
 }
 
 
@@ -213,13 +214,11 @@ fun ScanelyNavigation(
                     onThemeChanged = onThemeChanged,
                     ocrLanguages = ocrLanguages,
                     onOcrLanguagesChanged = onOcrLanguagesChanged,
-                    onCaptureClick = { navController.navigate(Routes.CAMERA) },
                     onGalleryClick = { launchGalleryPicker() },
                     onPdfClick = {
                         pdfLauncher.launch(arrayOf("application/pdf"))
                     },
-                    onBarcodeClick = { navController.navigate(Routes.BARCODE_SCANNER) },
-                    onHistoryClick = { navController.navigate("history") }
+
                 )
             }
 

@@ -13,6 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.skeler.scanely.navigation.ScanelyNavigation
+import com.skeler.scanely.ocr.OcrQuality
 import com.skeler.scanely.ui.theme.ScanelyTheme
 import com.skeler.scanely.ui.theme.ThemeMode
 import androidx.core.content.edit
@@ -33,6 +34,13 @@ class MainActivity : ComponentActivity() {
                 mutableStateOf(mode) 
             }
             
+            // Load OCR quality preference
+            var ocrQuality by remember {
+                val name = prefs.getString("ocr_quality", OcrQuality.FAST.name) ?: OcrQuality.FAST.name
+                val quality = try { OcrQuality.valueOf(name) } catch (e: Exception) { OcrQuality.FAST }
+                mutableStateOf(quality)
+            }
+            
             val initialLangs = remember {
                 prefs.getStringSet("ocr_langs", com.skeler.scanely.ocr.OcrHelper.SUPPORTED_LANGUAGES_MAP.keys) 
                     ?: com.skeler.scanely.ocr.OcrHelper.SUPPORTED_LANGUAGES_MAP.keys
@@ -47,6 +55,12 @@ class MainActivity : ComponentActivity() {
                             themeMode = newMode
                             // Commit immediately to ensure persistence
                             prefs.edit(commit = true) { putString("theme_mode", newMode.name) }
+                        },
+                        ocrQuality = ocrQuality,
+                        onOcrQualityChanged = { newQuality ->
+                            ocrQuality = newQuality
+                            // Commit immediately to ensure persistence
+                            prefs.edit(commit = true) { putString("ocr_quality", newQuality.name) }
                         },
                         ocrLanguages = ocrLanguages,
                         onOcrLanguagesChanged = { newLangs ->

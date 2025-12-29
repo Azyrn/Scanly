@@ -17,7 +17,9 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.skeler.scanely.ocr.OcrEngine
 import com.skeler.scanely.ocr.OcrHelper
+import com.skeler.scanely.ocr.OcrQuality
 import com.skeler.scanely.ocr.OcrResult
 import com.skeler.scanely.ui.components.GalleryPicker
 import com.skeler.scanely.ui.screens.CameraScreen
@@ -43,6 +45,8 @@ fun ScanelyNavigation(
     navController: NavHostController = rememberNavController(),
     currentTheme: ThemeMode = ThemeMode.System,
     onThemeChanged: (ThemeMode) -> Unit = {},
+    ocrQuality: OcrQuality = OcrQuality.FAST,
+    onOcrQualityChanged: (OcrQuality) -> Unit = {},
     ocrLanguages: Set<String> = setOf("eng", "ara"),
     onOcrLanguagesChanged: (Set<String>) -> Unit = {}
 ) {
@@ -56,14 +60,14 @@ fun ScanelyNavigation(
     // Flag to control if OCR should run automatically when selectedImageUri changes
     var shouldAutoScan by remember { mutableStateOf(true) }
     
-    val ocrHelper = remember { OcrHelper(context) }
+    val ocrEngine = remember { OcrEngine(context) }
     val historyManager = remember { com.skeler.scanely.data.HistoryManager(context) }
     
-    // Auto-initialize on Language change
-    LaunchedEffect(ocrLanguages) {
+    // Auto-initialize on Quality or Language change
+    LaunchedEffect(ocrQuality, ocrLanguages) {
         if (ocrLanguages.isNotEmpty()) {
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                ocrHelper.reinitialize(ocrLanguages.toList())
+                ocrEngine.reinitialize(ocrQuality, ocrLanguages.toList())
             }
         }
     }
@@ -87,10 +91,13 @@ fun ScanelyNavigation(
                 
                 kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
                     try {
-                        // Ensure OCR is initialized
-                        if (!ocrHelper.isReady()) {
+                        // Get Tesseract helper for PDF processing (always use Tesseract for multi-language PDFs)
+                        val tesseractHelper = ocrEngine.getTesseractHelper()
+                        
+                        // Ensure Tesseract is initialized
+                        if (!tesseractHelper.isReady()) {
                             progressMessage = "Initializing OCR..."
-                            val initSuccess = ocrHelper.initialize(ocrLanguages.toList())
+                            val initSuccess = tesseractHelper.initialize(ocrLanguages.toList())
                             if (!initSuccess) {
                                 isProcessing = false
                                 isPdfProcessing = false
@@ -103,7 +110,7 @@ fun ScanelyNavigation(
                         val pdfResult = com.skeler.scanely.ocr.PdfProcessor.extractTextFromPdf(
                             context = context,
                             pdfUri = uri,
-                            ocrHelper = ocrHelper,
+                            ocrHelper = tesseractHelper,
                             enabledLanguages = ocrLanguages.toList(),
                             onProgress = { update ->
                                 progressMessage = if (update.statusMessage.isNotEmpty()) {
@@ -154,7 +161,7 @@ fun ScanelyNavigation(
     }
     
     // Process image when selected (skip if PDF is being processed OR if shouldAutoScan is false)
-    LaunchedEffect(selectedImageUri, isPdfProcessing, shouldAutoScan) {
+    LaunchedEffect(selectedImageUri, isPdfProcessing, shouldAutoScan, ocrQuality) {
         if (isPdfProcessing) return@LaunchedEffect
         
         // Only run if we have a URI and auto-scan is enabled
@@ -167,9 +174,9 @@ fun ScanelyNavigation(
                 isProcessing = true
                 ocrResult = null
                 
-                val initialized = ocrHelper.initialize(ocrLanguages.toList())
+                val initialized = ocrEngine.initialize(ocrQuality, ocrLanguages.toList())
                 if (initialized) {
-                    val result = ocrHelper.recognizeText(uri)
+                    val result = ocrEngine.recognizeText(uri)
                     if (result != null) {
                         ocrResult = result
                         // Save to history automatically if successful
@@ -232,6 +239,8 @@ fun ScanelyNavigation(
             SettingsScreen(
                 currentTheme = currentTheme,
                 onThemeChange = onThemeChanged,
+                ocrQuality = ocrQuality,
+                onOcrQualityChanged = onOcrQualityChanged,
                 ocrLanguages = ocrLanguages,
                 onOcrLanguagesChanged = onOcrLanguagesChanged,
                 onNavigateBack = { navController.popBackStack() }

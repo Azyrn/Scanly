@@ -1,9 +1,13 @@
+@file:OptIn(ExperimentalMaterial3ExpressiveApi::class)
+
 package com.skeler.scanely.ui.theme
 
 import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
@@ -70,47 +74,47 @@ private val LightColorScheme = lightColorScheme(
     scrim = md_theme_light_scrim
 )
 
-    // Custom Dark Background
-    val CustomDarkBackground = Color(0xFF141218)
+// Custom Dark Background
+val CustomDarkBackground = Color(0xFF141218)
 
-    // Standard Dark Scheme (Distinct Dark Grey/Purple)
-    private val DarkColorScheme = darkColorScheme(
-        primary = md_theme_dark_primary,
-        onPrimary = md_theme_dark_onPrimary,
-        primaryContainer = md_theme_dark_primaryContainer,
-        onPrimaryContainer = md_theme_dark_onPrimaryContainer,
-        secondary = md_theme_dark_secondary,
-        onSecondary = md_theme_dark_onSecondary,
-        secondaryContainer = md_theme_dark_secondaryContainer,
-        onSecondaryContainer = md_theme_dark_onSecondaryContainer,
-        tertiary = md_theme_dark_tertiary,
-        onTertiary = md_theme_dark_onTertiary,
-        tertiaryContainer = md_theme_dark_tertiaryContainer,
-        onTertiaryContainer = md_theme_dark_onTertiaryContainer,
-        error = md_theme_dark_error,
-        onError = md_theme_dark_onError,
-        errorContainer = md_theme_dark_errorContainer,
-        onErrorContainer = md_theme_dark_onErrorContainer,
-        background = CustomDarkBackground, 
-        onBackground = md_theme_dark_onBackground,
-        surface = CustomDarkBackground,
-        onSurface = md_theme_dark_onSurface,
-        surfaceVariant = md_theme_dark_surfaceVariant,
-        onSurfaceVariant = md_theme_dark_onSurfaceVariant,
-        outline = md_theme_dark_outline,
-        outlineVariant = md_theme_dark_outlineVariant,
-        inverseSurface = md_theme_dark_inverseSurface,
-        inverseOnSurface = md_theme_dark_inverseOnSurface,
-        inversePrimary = md_theme_dark_inversePrimary,
-        scrim = md_theme_dark_scrim
-    )
+// Standard Dark Scheme (Distinct Dark Grey/Purple)
+private val DarkColorScheme = darkColorScheme(
+    primary = md_theme_dark_primary,
+    onPrimary = md_theme_dark_onPrimary,
+    primaryContainer = md_theme_dark_primaryContainer,
+    onPrimaryContainer = md_theme_dark_onPrimaryContainer,
+    secondary = md_theme_dark_secondary,
+    onSecondary = md_theme_dark_onSecondary,
+    secondaryContainer = md_theme_dark_secondaryContainer,
+    onSecondaryContainer = md_theme_dark_onSecondaryContainer,
+    tertiary = md_theme_dark_tertiary,
+    onTertiary = md_theme_dark_onTertiary,
+    tertiaryContainer = md_theme_dark_tertiaryContainer,
+    onTertiaryContainer = md_theme_dark_onTertiaryContainer,
+    error = md_theme_dark_error,
+    onError = md_theme_dark_onError,
+    errorContainer = md_theme_dark_errorContainer,
+    onErrorContainer = md_theme_dark_onErrorContainer,
+    background = CustomDarkBackground,
+    onBackground = md_theme_dark_onBackground,
+    surface = CustomDarkBackground,
+    onSurface = md_theme_dark_onSurface,
+    surfaceVariant = md_theme_dark_surfaceVariant,
+    onSurfaceVariant = md_theme_dark_onSurfaceVariant,
+    outline = md_theme_dark_outline,
+    outlineVariant = md_theme_dark_outlineVariant,
+    inverseSurface = md_theme_dark_inverseSurface,
+    inverseOnSurface = md_theme_dark_inverseOnSurface,
+    inversePrimary = md_theme_dark_inversePrimary,
+    scrim = md_theme_dark_scrim
+)
 
-    // OLED Dark Scheme (True Black)
-    private val OledColorScheme = DarkColorScheme.copy(
-        background = BlackBackground,
-        surface = BlackSurface,
-        surfaceVariant = BlackSurfaceVariant
-    )
+// OLED Dark Scheme (True Black)
+private val OledColorScheme = DarkColorScheme.copy(
+    background = BlackBackground,
+    surface = BlackSurface,
+    surfaceVariant = BlackSurfaceVariant
+)
 
 // =============================================================================
 // SHAPES
@@ -124,33 +128,34 @@ val ScanelyShapes = Shapes(
     extraLarge = RoundedCornerShape(28.dp)
 )
 
-    @Composable
-    fun ScanelyTheme(
-        themeMode: ThemeMode = ThemeMode.System,
-        dynamicColor: Boolean = true,
-        content: @Composable () -> Unit
-    ) {
-        val systemDark = isSystemInDarkTheme()
-        
-        val useDarkTheme = when (themeMode) {
-            ThemeMode.System -> systemDark
-            ThemeMode.Light -> false
-            ThemeMode.Dark, ThemeMode.Oled -> true
+@Composable
+fun ScanelyTheme(
+    themeMode: ThemeMode = ThemeMode.System,
+    dynamicColor: Boolean = true,
+    content: @Composable () -> Unit
+) {
+    val systemDark = isSystemInDarkTheme()
+
+    val useDarkTheme = when (themeMode) {
+        ThemeMode.System -> systemDark
+        ThemeMode.Light -> false
+        ThemeMode.Dark, ThemeMode.Oled -> true
+    }
+
+    val colorScheme = when {
+        // ONLY use dynamic color if system default is selected.
+        // If user explicitly chose Dark/Light/OLED, we want OUR colors.
+        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && themeMode == ThemeMode.System -> {
+            val context = LocalContext.current
+            if (systemDark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
-        
-        val colorScheme = when {
-            // ONLY use dynamic color if system default is selected.
-            // If user explicitly chose Dark/Light/OLED, we want OUR colors.
-            dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && themeMode == ThemeMode.System -> {
-                val context = LocalContext.current
-                if (systemDark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-            }
-            themeMode == ThemeMode.Oled -> OledColorScheme
-            themeMode == ThemeMode.Dark -> DarkColorScheme // Forces #141218
-            useDarkTheme -> DarkColorScheme
-            else -> LightColorScheme
-        }
-    
+
+        themeMode == ThemeMode.Oled -> OledColorScheme
+        themeMode == ThemeMode.Dark -> DarkColorScheme // Forces #141218
+        useDarkTheme -> DarkColorScheme
+        else -> LightColorScheme
+    }
+
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
@@ -163,8 +168,8 @@ val ScanelyShapes = Shapes(
             }
         }
     }
-    
-    MaterialTheme(
+
+    MaterialExpressiveTheme(
         colorScheme = colorScheme,
         typography = Typography,
         shapes = ScanelyShapes,

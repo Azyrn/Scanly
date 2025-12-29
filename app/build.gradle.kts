@@ -79,6 +79,9 @@ dependencies {
     // ML Kit Barcode Scanning
     implementation(libs.mlkit.barcode)
     
+    // ML Kit Text Recognition (High Quality OCR)
+    implementation(libs.mlkit.text.recognition)
+    
     // Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

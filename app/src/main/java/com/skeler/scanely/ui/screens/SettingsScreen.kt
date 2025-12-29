@@ -37,6 +37,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.skeler.scanely.R
+import com.skeler.scanely.ocr.OcrQuality
 import com.skeler.scanely.ui.theme.ThemeMode
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -44,6 +45,8 @@ import com.skeler.scanely.ui.theme.ThemeMode
 fun SettingsScreen(
     currentTheme: ThemeMode,
     onThemeChange: (ThemeMode) -> Unit,
+    ocrQuality: OcrQuality,
+    onOcrQualityChanged: (OcrQuality) -> Unit,
     ocrLanguages: Set<String>,
     onOcrLanguagesChanged: (Set<String>) -> Unit,
     onNavigateBack: () -> Unit
@@ -101,6 +104,44 @@ fun SettingsScreen(
             ThemeOptionRow("Light Mode", ThemeMode.Light, currentTheme, onThemeChange)
             ThemeOptionRow("Dark Mode", ThemeMode.Dark, currentTheme, onThemeChange)
             ThemeOptionRow("OLED Black", ThemeMode.Oled, currentTheme, onThemeChange)
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            HorizontalDivider()
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // OCR Quality Section
+            Text(
+                text = "OCR Quality",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Choose between speed and accuracy",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            OcrQuality.entries.forEach { quality ->
+                val label = when (quality) {
+                    OcrQuality.FAST -> "Fast (Tesseract)"
+                    OcrQuality.BEST -> "Best (ML Kit)"
+                }
+                val description = when (quality) {
+                    OcrQuality.FAST -> "Faster, supports more languages including Arabic"
+                    OcrQuality.BEST -> "Higher accuracy for Latin text"
+                }
+
+                OcrQualityOptionRow(
+                    label = label,
+                    description = description,
+                    quality = quality,
+                    currentQuality = ocrQuality,
+                    onSelect = onOcrQualityChanged
+                )
+            }
             
             Spacer(modifier = Modifier.height(24.dp))
             HorizontalDivider()
@@ -283,5 +324,41 @@ private fun ThemeOptionRow(
             modifier = Modifier.padding(start = 8.dp),
             color = MaterialTheme.colorScheme.onSurface
         )
+    }
+}
+
+@Composable
+private fun OcrQualityOptionRow(
+    label: String,
+    description: String,
+    quality: OcrQuality,
+    currentQuality: OcrQuality,
+    onSelect: (OcrQuality) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onSelect(quality) }
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        RadioButton(
+            selected = (quality == currentQuality),
+            onClick = { onSelect(quality) }
+        )
+        Column(
+            modifier = Modifier.padding(start = 8.dp)
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }

@@ -1,39 +1,62 @@
+@file:OptIn(ExperimentalMaterial3ExpressiveApi::class)
+
 package com.skeler.scanely.ui.screens
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.lerp
+import androidx.compose.ui.unit.sp
+import com.skeler.scanely.core.presentation.components.svg.DynamicColorImageVectors
+import com.skeler.scanely.core.presentation.components.svg.vectors.noSearchResult
 import com.skeler.scanely.data.HistoryItem
 import com.skeler.scanely.data.HistoryManager
-import com.skeler.scanely.navigation.LocalNavController
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -45,8 +68,20 @@ fun HistoryScreen(
     onItemClick: (HistoryItem) -> Unit
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val historyManager = remember { HistoryManager(context) }
     var historyItems by remember { mutableStateOf<List<HistoryItem>>(emptyList()) }
+    val topBarScrollBehavior =
+        TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
+    val listState = rememberLazyListState()
+    var lastScrollOffset by remember { mutableIntStateOf(0) }
+    val isFabExpanded by remember {
+        derivedStateOf {
+            listState.shouldFabExpand(lastScrollOffset) {
+                lastScrollOffset = it
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
         historyItems = historyManager.getHistory()
@@ -54,8 +89,23 @@ fun HistoryScreen(
 
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text("History") },
+            LargeTopAppBar(
+                scrollBehavior = topBarScrollBehavior,
+                title = {
+                    val collapsedFraction = topBarScrollBehavior.state.collapsedFraction
+                    val expandedFontSize = 33.sp
+                    val collapsedFontSize = 20.sp
+
+                    val fontSize = lerp(expandedFontSize, collapsedFontSize, collapsedFraction)
+                    Text(
+                        modifier = Modifier.basicMarquee(),
+                        text = "History",
+                        maxLines = 1,
+                        fontSize = fontSize,
+                        fontFamily = FontFamily.SansSerif,
+                        letterSpacing = 0.05.em
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
@@ -63,47 +113,64 @@ fun HistoryScreen(
                             contentDescription = "Back"
                         )
                     }
-                },
-                actions = {
-                    if (historyItems.isNotEmpty()) {
-                        IconButton(onClick = {
-                            historyManager.clearHistory()
-                            historyItems = emptyList()
-                        }) {
-                            Icon(Icons.Default.Delete, "Clear History")
-                        }
-                    }
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
-                )
+                }
             )
+        },
+        floatingActionButton = {
+            if (historyItems.isNotEmpty()) {
+                ExtendedFloatingActionButton(
+                    modifier = Modifier.padding(bottom = 10.dp),
+                    expanded = isFabExpanded,
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Default.ContentCopy,
+                            contentDescription = "Delete"
+                        )
+                    },
+                    text = {
+                        Text("Delete")
+                    },
+                    onClick = {
+                        historyManager.clearHistory()
+                        historyItems = emptyList()
+                    }
+                )
+            }
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
         if (historyItems.isEmpty()) {
-            Column(
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
-                    .padding(24.dp)
+                    .padding(40.dp)
             ) {
-                Text(
-                    text = "No history yet",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                NoHistoryUi(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 65.dp)
+                        .align(Alignment.Center)
                 )
             }
         } else {
             LazyColumn(
+                state = listState,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(innerPadding),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp)
+                    .padding(innerPadding)
+                    .nestedScroll(topBarScrollBehavior.nestedScrollConnection),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(16.dp)
             ) {
                 items(historyItems) { item ->
-                    HistoryItemCard(item = item, onClick = { onItemClick(item) })
-                    Spacer(modifier = Modifier.height(8.dp))
+                    HistoryItemCard(
+                        item = item,
+                        onClick = { onItemClick(item) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .animateItem()
+                    )
                 }
             }
         }
@@ -113,12 +180,13 @@ fun HistoryScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun HistoryItemCard(
+    modifier: Modifier = Modifier,
     item: HistoryItem,
     onClick: () -> Unit
 ) {
     Card(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
         ),
@@ -147,5 +215,55 @@ private fun HistoryItemCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+    }
+}
+
+@Composable
+private fun NoHistoryUi(modifier: Modifier = Modifier) {
+    Column(modifier = modifier) {
+        Image(
+            imageVector = DynamicColorImageVectors.noSearchResult(),
+            contentDescription = null,
+        )
+
+        Text(
+            text = "No history yet",
+            style = MaterialTheme.typography.bodyMediumEmphasized,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 20.dp)
+        )
+    }
+}
+
+private fun LazyListState.shouldFabExpand(
+    lastScrollOffset: Int,
+    onScrollOffsetChanged: (Int) -> Unit
+): Boolean {
+    val currentOffset = firstVisibleItemIndex * 1000 + firstVisibleItemScrollOffset
+    val isScrollingUp = currentOffset < lastScrollOffset
+    val isScrollingDown = currentOffset > lastScrollOffset
+    onScrollOffsetChanged(currentOffset)
+
+    val atTop = firstVisibleItemIndex == 0 && firstVisibleItemScrollOffset == 0
+    val info = layoutInfo
+    val visible = info.visibleItemsInfo
+    val lastVisible = visible.lastOrNull()
+
+    val fitsOnScreen = if (info.totalItemsCount == 0 || lastVisible == null) {
+        true
+    } else {
+        val allItemsVisible = info.totalItemsCount == visible.size
+        val lastBottom = lastVisible.offset + lastVisible.size
+        allItemsVisible && lastBottom <= info.viewportEndOffset
+    }
+
+    return when {
+        atTop -> true
+        fitsOnScreen -> true
+        isScrollingUp -> true
+        isScrollingDown -> false
+        else -> false
     }
 }

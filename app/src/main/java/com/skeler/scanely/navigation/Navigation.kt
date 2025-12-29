@@ -161,7 +161,8 @@ fun ScanelyNavigation(
     }
     
     // Process image when selected (skip if PDF is being processed OR if shouldAutoScan is false)
-    LaunchedEffect(selectedImageUri, isPdfProcessing, shouldAutoScan, ocrQuality) {
+    // Note: ocrQuality is intentionally NOT in dependencies - quality changes only affect new scans
+    LaunchedEffect(selectedImageUri, isPdfProcessing, shouldAutoScan) {
         if (isPdfProcessing) return@LaunchedEffect
         
         // Only run if we have a URI and auto-scan is enabled

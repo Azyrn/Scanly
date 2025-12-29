@@ -6,6 +6,7 @@ import android.net.Uri
 import android.util.Log
 
 private const val TAG = "OcrEngine"
+private const val LANG_ARABIC = "ara"
 
 /**
  * Unified OCR engine that can switch between different OCR backends.
@@ -106,7 +107,7 @@ class OcrEngine(private val context: Context) {
      * Check if current mode has Arabic support.
      */
     fun hasArabic(): Boolean {
-        return currentQuality == OcrQuality.FAST && currentLanguages.contains("ara")
+        return currentQuality == OcrQuality.FAST && currentLanguages.contains(LANG_ARABIC)
     }
     
     /**

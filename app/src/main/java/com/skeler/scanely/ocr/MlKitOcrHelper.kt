@@ -76,21 +76,20 @@ class MlKitOcrHelper(private val context: Context) {
     
     /**
      * Recognize text from a bitmap.
+     * Note: ML Kit handles thread safety internally, so no mutex is needed.
      */
     suspend fun recognizeText(bitmap: Bitmap): OcrResult? = withContext(Dispatchers.IO) {
-        mutex.withLock {
-            if (!isInitialized || recognizer == null) {
-                Log.e(TAG, "MlKitOcrHelper not initialized")
-                return@withLock null
-            }
-            
-            try {
-                val inputImage = InputImage.fromBitmap(bitmap, 0)
-                recognizeFromInputImage(inputImage)
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to create InputImage from Bitmap", e)
-                null
-            }
+        if (!isInitialized || recognizer == null) {
+            Log.e(TAG, "MlKitOcrHelper not initialized")
+            return@withContext null
+        }
+        
+        try {
+            val inputImage = InputImage.fromBitmap(bitmap, 0)
+            recognizeFromInputImage(inputImage)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to create InputImage from Bitmap", e)
+            null
         }
     }
     

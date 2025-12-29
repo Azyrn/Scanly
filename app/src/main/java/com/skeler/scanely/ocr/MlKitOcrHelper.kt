@@ -4,10 +4,11 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
 import android.util.Log
+import com.google.mlkit.vision.barcode.BarcodeScanner
+import com.google.mlkit.vision.barcode.BarcodeScannerOptions
+import com.google.mlkit.vision.barcode.BarcodeScanning
+import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
-import com.google.mlkit.vision.text.TextRecognition
-import com.google.mlkit.vision.text.TextRecognizer
-import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
@@ -18,153 +19,125 @@ import kotlin.coroutines.resume
 private const val TAG = "MlKitOcrHelper"
 
 /**
- * ML Kit Text Recognition OCR helper.
- * Provides high-quality text recognition for Latin script.
+ * ML Kit Helper optimized for Barcode/QR Scanning.
  * 
- * Uses Google's ML Kit which runs on-device for privacy.
+ * Text recognition has been moved to Tesseract.
  */
 class MlKitOcrHelper(private val context: Context) {
     
     private val mutex = Mutex()
-    private var recognizer: TextRecognizer? = null
+    private var barcodeScanner: BarcodeScanner? = null
     private var isInitialized = false
     
     /**
-     * Initialize ML Kit Text Recognizer.
-     * ML Kit automatically handles model downloading and initialization.
-     * 
-     * @param languages Ignored for ML Kit (uses Latin recognizer)
-     * @return true if initialization succeeded
+     * Initialize ML Kit Barcode Scanner.
      */
     suspend fun initialize(languages: List<String> = emptyList()): Boolean = withContext(Dispatchers.IO) {
         mutex.withLock {
             try {
-                if (isInitialized && recognizer != null) {
+                if (isInitialized && barcodeScanner != null) {
                     return@withContext true
                 }
                 
-                // Create text recognizer with Latin script options
-                recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+                // Configure for all barcode formats
+                val options = BarcodeScannerOptions.Builder()
+                    .setBarcodeFormats(Barcode.FORMAT_ALL_FORMATS)
+                    .build()
+                    
+                barcodeScanner = BarcodeScanning.getClient(options)
                 isInitialized = true
                 
-                Log.d(TAG, "ML Kit Text Recognizer initialized successfully")
+                Log.d(TAG, "ML Kit Barcode Scanner initialized")
                 true
             } catch (e: Exception) {
-                Log.e(TAG, "ML Kit initialization failed", e)
+                Log.e(TAG, "ML Kit Barcode init failed", e)
                 false
             }
         }
     }
     
     /**
-     * Recognize text from an image URI.
+     * Scan Barcodes from URI.
      */
-    suspend fun recognizeText(imageUri: Uri): OcrResult? = withContext(Dispatchers.IO) {
-        if (!isInitialized || recognizer == null) {
-            Log.e(TAG, "MlKitOcrHelper not initialized")
-            return@withContext null
-        }
-        
-        try {
-            val inputImage = InputImage.fromFilePath(context, imageUri)
-            recognizeFromInputImage(inputImage)
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to create InputImage from URI", e)
-            null
-        }
+    suspend fun scanBarcode(imageUri: Uri): OcrResult? = withContext(Dispatchers.IO) {
+         if (!isInitialized) initialize()
+         
+         try {
+             val inputImage = InputImage.fromFilePath(context, imageUri)
+             scanFromInputImage(inputImage)
+         } catch(e: Exception) {
+             Log.e(TAG, "Failed to load image for barcode", e)
+             null
+         }
     }
-    
+
     /**
-     * Recognize text from a bitmap.
-     * Note: ML Kit handles thread safety internally, so no mutex is needed.
+     * Scan Barcodes from Bitmap.
      */
-    suspend fun recognizeText(bitmap: Bitmap): OcrResult? = withContext(Dispatchers.IO) {
-        if (!isInitialized || recognizer == null) {
-            Log.e(TAG, "MlKitOcrHelper not initialized")
-            return@withContext null
-        }
+    suspend fun scanBarcode(bitmap: Bitmap): OcrResult? = withContext(Dispatchers.IO) {
+        if (!isInitialized) initialize()
         
         try {
             val inputImage = InputImage.fromBitmap(bitmap, 0)
-            recognizeFromInputImage(inputImage)
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to create InputImage from Bitmap", e)
-            null
+            scanFromInputImage(inputImage)
+        } catch(e: Exception) {
+             Log.e(TAG, "Failed to load bitmap for barcode", e)
+             null
         }
     }
     
     /**
-     * Perform text recognition from InputImage.
-     * Uses mutex to ensure thread-safety since TextRecognizer is not thread-safe.
+     * Internal generic scan function.
      */
-    private suspend fun recognizeFromInputImage(inputImage: InputImage): OcrResult? {
+    private suspend fun scanFromInputImage(inputImage: InputImage): OcrResult? {
         return mutex.withLock {
-            suspendCancellableCoroutine { continuation ->
-                val startTime = System.currentTimeMillis()
-                
-                recognizer?.process(inputImage)
-                    ?.addOnSuccessListener { visionText ->
+             suspendCancellableCoroutine { continuation ->
+                 val startTime = System.currentTimeMillis()
+                 
+                 barcodeScanner?.process(inputImage)
+                    ?.addOnSuccessListener { barcodes ->
                         val processingTime = System.currentTimeMillis() - startTime
                         
-                        val text = visionText.text
-                        
-                        // Calculate confidence from element-level confidence scores
-                        val confidences = visionText.textBlocks.flatMap { block ->
-                            block.lines.flatMap { line ->
-                                line.elements.mapNotNull { it.confidence }
-                            }
-                        }
-                        
-                        val avgConfidence = if (confidences.isNotEmpty()) {
-                            (confidences.average() * 100).toInt()
-                        } else {
-                            0
-                        }
-                        
-                        Log.d(TAG, "OCR completed in ${processingTime}ms, confidence: $avgConfidence%")
-                        
-                        continuation.resume(
-                            OcrResult(
-                                text = text,
-                                confidence = avgConfidence,
-                                languages = listOf("eng"), // ML Kit Latin
-                                processingTimeMs = processingTime
+                        if (barcodes.isNotEmpty()) {
+                            val barcode = barcodes.first() // Take the first one for now
+                            val rawValue = barcode.rawValue ?: ""
+                            val format = barcode.format
+                            
+                            Log.d(TAG, "Barcode scanned: $rawValue (Format: $format)")
+                            
+                            continuation.resume(
+                                OcrResult(
+                                    text = rawValue,
+                                    confidence = 100, // Explicit confidence isn't standard in Barcode API
+                                    languages = listOf("Barcode"),
+                                    processingTimeMs = processingTime
+                                )
                             )
-                        )
+                        } else {
+                            continuation.resume(null)
+                        }
                     }
                     ?.addOnFailureListener { e ->
-                        Log.e(TAG, "ML Kit text recognition failed", e)
+                        Log.e(TAG, "Barcode scan failed", e)
                         continuation.resume(null)
                     }
                     ?: continuation.resume(null)
-            }
+             }
         }
     }
     
-    /**
-     * Check if the helper is ready.
-     */
-    fun isReady(): Boolean = isInitialized && recognizer != null
+    // Legacy support for OcrEngine text calls - now essentially no-ops or redirected
+    // We remove recognizeText entirely from here as per plan to enforce Tesseract
     
-    /**
-     * Release ML Kit resources.
-     */
+    fun isReady(): Boolean = isInitialized && barcodeScanner != null
+    
     fun release() {
         try {
-            recognizer?.close()
-            recognizer = null
+            barcodeScanner?.close()
+            barcodeScanner = null
             isInitialized = false
-            Log.d(TAG, "ML Kit resources released")
         } catch (e: Exception) {
-            Log.e(TAG, "Error releasing ML Kit", e)
+            Log.e(TAG, "Error closing barcode scanner", e)
         }
-    }
-    
-    /**
-     * Reinitialize (for compatibility with OcrHelper interface).
-     */
-    suspend fun reinitialize(languages: List<String>): Boolean {
-        release()
-        return initialize(languages)
     }
 }

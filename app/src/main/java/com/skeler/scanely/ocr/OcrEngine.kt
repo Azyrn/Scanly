@@ -9,97 +9,84 @@ private const val TAG = "OcrEngine"
 private const val LANG_ARABIC = "ara"
 
 /**
- * Unified OCR engine that can switch between different OCR backends.
+ * Unified OCR engine.
  * 
- * - FAST mode: Uses Tesseract OCR (supports more languages including Arabic)
- * - BEST mode: Uses ML Kit Text Recognition (higher accuracy for Latin text)
- * 
- * Usage:
- * ```
- * val engine = OcrEngine(context)
- * engine.initialize(OcrQuality.BEST, listOf("eng"))
- * val result = engine.recognizeText(bitmap)
- * engine.release()
- * ```
+ * - TEXT OCR: Always uses Tesseract (supports multi-language + offline)
+ * - BARCODE: Always uses ML Kit
  */
 class OcrEngine(private val context: Context) {
     
     private val tesseractHelper: OcrHelper = OcrHelper(context)
     private val mlKitHelper: MlKitOcrHelper = MlKitOcrHelper(context)
     
-    private var currentQuality: OcrQuality = OcrQuality.FAST
+    // Tesseract state
     private var currentLanguages: List<String> = emptyList()
     private var isInitialized = false
     
     /**
-     * Initialize the OCR engine with specified quality and languages.
-     * 
-     * @param quality OCR quality mode (FAST or BEST)
-     * @param languages Language codes for Tesseract (ignored for ML Kit)
-     * @return true if initialization succeeded
+     * Initialize the Tesseract engine with specified languages.
+     * ML Kit is initialized lazily or separately.
      */
-    suspend fun initialize(quality: OcrQuality, languages: List<String>): Boolean {
-        Log.d(TAG, "Initializing OCR engine with quality=$quality, languages=$languages")
+    suspend fun initialize(languages: List<String>): Boolean {
+        Log.d(TAG, "Initializing OCR engine with languages=$languages")
         
-        currentQuality = quality
         currentLanguages = languages
         
-        val success = when (quality) {
-            OcrQuality.FAST -> tesseractHelper.initialize(languages)
-            OcrQuality.BEST -> mlKitHelper.initialize(languages)
-        }
+        // Always initialize Tesseract for text
+        val success = tesseractHelper.initialize(languages)
+        
+        // Initialize ML Kit for Barcode scanning (if needed upfront, though it is usually lazy)
+        mlKitHelper.initialize()
         
         isInitialized = success
         return success
     }
     
     /**
-     * Recognize text from an image URI.
+     * Recognize text from an image URI (Uses Tesseract).
      */
     suspend fun recognizeText(imageUri: Uri): OcrResult? {
         if (!isInitialized) {
-            Log.e(TAG, "OcrEngine not initialized")
+            Log.e(TAG, "OcrEngine not initialized for text recognition")
             return null
         }
-        
-        return when (currentQuality) {
-            OcrQuality.FAST -> tesseractHelper.recognizeText(imageUri)
-            OcrQuality.BEST -> mlKitHelper.recognizeText(imageUri)
-        }
+        return tesseractHelper.recognizeText(imageUri)
     }
     
     /**
-     * Recognize text from a bitmap.
+     * Recognize text from a bitmap (Uses Tesseract).
      */
     suspend fun recognizeText(bitmap: Bitmap): OcrResult? {
-        if (!isInitialized) {
-            Log.e(TAG, "OcrEngine not initialized")
+         if (!isInitialized) {
+            Log.e(TAG, "OcrEngine not initialized for text recognition")
             return null
         }
-        
-        return when (currentQuality) {
-            OcrQuality.FAST -> tesseractHelper.recognizeText(bitmap)
-            OcrQuality.BEST -> mlKitHelper.recognizeText(bitmap)
-        }
+        return tesseractHelper.recognizeText(bitmap)
+    }
+
+    /**
+     * Scan Barcode/QR from an Image URI (Uses ML Kit).
+     */
+    suspend fun scanBarcode(imageUri: Uri): OcrResult? {
+        return mlKitHelper.scanBarcode(imageUri)
+    }
+
+    /**
+     * Scan Barcode/QR from a Bitmap (Uses ML Kit).
+     */
+    suspend fun scanBarcode(bitmap: Bitmap): OcrResult? {
+        return mlKitHelper.scanBarcode(bitmap)
     }
     
     /**
      * Check if the engine is ready for OCR.
      */
     fun isReady(): Boolean {
-        return when (currentQuality) {
-            OcrQuality.FAST -> tesseractHelper.isReady()
-            OcrQuality.BEST -> mlKitHelper.isReady()
-        }
+        return tesseractHelper.isReady()
     }
     
     /**
-     * Get the current quality mode.
-     */
-    fun getCurrentQuality(): OcrQuality = currentQuality
-    
-    /**
-     * Get the current languages (for Tesseract).
+     * Get the current languages.
      */
     fun getCurrentLanguages(): List<String> = currentLanguages
     
@@ -107,15 +94,15 @@ class OcrEngine(private val context: Context) {
      * Check if current mode has Arabic support.
      */
     fun hasArabic(): Boolean {
-        return currentQuality == OcrQuality.FAST && currentLanguages.contains(LANG_ARABIC)
+        return currentLanguages.contains(LANG_ARABIC)
     }
     
     /**
-     * Reinitialize with new quality/languages.
+     * Reinitialize with new languages.
      */
-    suspend fun reinitialize(quality: OcrQuality, languages: List<String>): Boolean {
+    suspend fun reinitialize(languages: List<String>): Boolean {
         release()
-        return initialize(quality, languages)
+        return initialize(languages)
     }
     
     /**
@@ -130,7 +117,6 @@ class OcrEngine(private val context: Context) {
     
     /**
      * Get the underlying Tesseract helper for PDF processing.
-     * PDF processing uses Tesseract directly for multi-language support.
      */
     fun getTesseractHelper(): OcrHelper = tesseractHelper
 }

@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.0] - 2025-12-29
+
+### Added
+- **OCR Accuracy**: Integrated adaptive thresholding, quality detection, and noise reduction for superior text extraction.
+- **Visual Settings**: Added tappable theme cards (Light, Dark, OLED) with mini-previews.
+- **Language Search**: Added search bar and "Pin Selected" sorting to the Language settings.
+- **PDF Reliability**: Implemented sequential page processing and memory tracking for multi-page documents.
+
+### Changed
+- **Results UI**: Optimized screen layout to prioritize text visibility; added tap-to-expand for source images.
+- **Engine Architecture**: Enforced strict separation where ML Kit handles ONLY barcodes and Tesseract handles ONLY text.
+- **Arabic Handling**: Improved Right-to-Left (RTL) text rendering and line spacing.
+
+### Fixed
+- **Data Corruption**: Fixed a critical issue where "0" was incorrectly post-processed as "O".
+- **Memory Leaks**: Added proper resource cleanup and job cancellation in `ScanViewModel`.
+
 ## [1.2.0] - 2025-12-28
 
 ### Changed

@@ -12,11 +12,12 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -30,6 +31,7 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -37,11 +39,13 @@ import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
@@ -58,6 +62,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
@@ -73,6 +78,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.skeler.scanely.ocr.OcrResult
@@ -82,7 +89,8 @@ import kotlinx.coroutines.launch
 /**
  * Material 3 Results Screen
  * - Selectable Text Container
- * - Copy Button only (Share removed)
+ * - Copied to Clipboard toast
+ * - Source image quick view + full screen expand
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -100,6 +108,8 @@ fun ResultsScreen(
     val context = LocalContext.current
 
     var showContent by remember { mutableStateOf(false) }
+    var showFullImage by remember { mutableStateOf(false) }
+    
     val topBarScrollBehavior =
         TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
     val listState = rememberLazyListState()
@@ -115,6 +125,14 @@ fun ResultsScreen(
     LaunchedEffect(Unit) {
         delay(100)
         showContent = true
+    }
+
+    if (showFullImage) {
+        FullImageDialog(
+            imageUri = imageUri,
+            pdfThumbnail = pdfThumbnail,
+            onDismiss = { showFullImage = false }
+        )
     }
 
     Scaffold(
@@ -183,32 +201,34 @@ fun ResultsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(16.dp)
+                .padding(horizontal = 16.dp)
                 .nestedScroll(topBarScrollBehavior.nestedScrollConnection),
-            state = listState
-
+            state = listState,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Image Preview Card
+            
+            // Spacer to avoid top bar overlap content if initially hidden
+            item { Spacer(modifier = Modifier.height(8.dp)) }
+
+            // Image Preview Card (Top, smaller, tappable)
             item {
                 AnimatedVisibility(
                     visible = showContent && (imageUri != null || pdfThumbnail != null),
-                    enter = fadeIn(tween(300)) + slideInVertically(
-                        initialOffsetY = { it / 4 }
-                    )
+                    enter = fadeIn(tween(300)) + slideInVertically(initialOffsetY = { -it / 4 })
                 ) {
-                    ImagePreviewCard(imageUri = imageUri, pdfThumbnail = pdfThumbnail)
+                    ImagePreviewCard(
+                        imageUri = imageUri, 
+                        pdfThumbnail = pdfThumbnail,
+                        onClick = { showFullImage = true }
+                    )
                 }
             }
-
-            item { Spacer(modifier = Modifier.height(16.dp)) }
 
             // Results Card
             item {
                 AnimatedVisibility(
                     visible = showContent,
-                    enter = fadeIn(tween(400, delayMillis = 150)) + slideInVertically(
-                        initialOffsetY = { it / 4 }
-                    )
+                    enter = fadeIn(tween(400, delayMillis = 150)) + slideInVertically(initialOffsetY = { it / 4 })
                 ) {
                     ResultsCard(
                         ocrResult = ocrResult,
@@ -218,47 +238,136 @@ fun ResultsScreen(
                 }
             }
 
-            item { Spacer(modifier = Modifier.height(75.dp)) }
+            item { Spacer(modifier = Modifier.height(80.dp)) }
         }
     }
 }
 
 @Composable
-private fun ImagePreviewCard(imageUri: Uri?, pdfThumbnail: Bitmap? = null) {
+private fun ImagePreviewCard(
+    imageUri: Uri?, 
+    pdfThumbnail: Bitmap? = null,
+    onClick: () -> Unit
+) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(200.dp) // Fixed height to save space (~30-40% reduction)
+            .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
         ),
-        shape = MaterialTheme.shapes.large
+        shape = MaterialTheme.shapes.large,
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        when {
-            // Show PDF thumbnail if available
-            pdfThumbnail != null -> {
-                Image(
-                    bitmap = pdfThumbnail.asImageBitmap(),
-                    contentDescription = "PDF preview",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(4f / 3f)
-                        .clip(MaterialTheme.shapes.large),
-                    contentScale = ContentScale.Crop
+        Box(modifier = Modifier.fillMaxSize()) {
+            when {
+                // Show PDF thumbnail if available
+                pdfThumbnail != null -> {
+                    Image(
+                        bitmap = pdfThumbnail.asImageBitmap(),
+                        contentDescription = "PDF preview",
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(MaterialTheme.shapes.large),
+                        contentScale = ContentScale.Crop, // Fill the card area
+                        alpha = 0.9f
+                    )
+                }
+                // Show image via Coil
+                imageUri != null -> {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(imageUri)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = "Captured image",
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(MaterialTheme.shapes.large),
+                        contentScale = ContentScale.Crop, // Fill the card area
+                        alpha = 0.9f
+                    )
+                }
+            }
+            
+            // "Tap to expand" hint overlay
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(8.dp),
+                shape = MaterialTheme.shapes.small,
+                color = Color.Black.copy(alpha = 0.6f),
+                contentColor = Color.White
+            ) {
+                Text(
+                    text = "Tap to expand",
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                 )
             }
-            // Show image via Coil
-            imageUri != null -> {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(imageUri)
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = "Captured image",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(4f / 3f)
-                        .clip(MaterialTheme.shapes.large),
-                    contentScale = ContentScale.Crop
+        }
+    }
+}
+
+@Composable
+private fun FullImageDialog(
+    imageUri: Uri?,
+    pdfThumbnail: Bitmap?,
+    onDismiss: () -> Unit
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnBackPress = true
+        )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clickable { onDismiss() } // Tap anywhere to dismiss
+        ) {
+            // Close button
+            FilledIconButton(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Close"
                 )
+            }
+            
+            // Full image
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(vertical = 64.dp, horizontal = 16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                 when {
+                    pdfThumbnail != null -> {
+                        Image(
+                            bitmap = pdfThumbnail.asImageBitmap(),
+                            contentDescription = "Full PDF preview",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Fit
+                        )
+                    }
+                    imageUri != null -> {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(imageUri)
+                                .build(),
+                            contentDescription = "Full captured image",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Fit
+                        )
+                    }
+                }
             }
         }
     }
@@ -280,7 +389,7 @@ private fun ResultsCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(20.dp)
+                .padding(24.dp) // Generous padding for readability
         ) {
             if (!isProcessing) {
                 Text(

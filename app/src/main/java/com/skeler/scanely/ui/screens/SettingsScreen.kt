@@ -372,7 +372,7 @@ private fun AboutSection() {
             horizontalArrangement = Arrangement.Center
         ) {
             Icon(
-                painter = painterResource(id = R.drawable.ic_scanly),
+                painter = painterResource(id = R.drawable.ic_document_scanner),
                 contentDescription = "Scanly",
                 modifier = Modifier.size(28.dp),
                 tint = MaterialTheme.colorScheme.primary

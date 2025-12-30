@@ -89,6 +89,24 @@ fun CameraScreen(onImageCaptured: (Uri) -> Unit = {}) {
         else -> null
     }
 
+    val cycleFlashModes: () -> Unit = {
+        when (flashMode) {
+            FLASH_OFF -> {
+                flashMode = FLASH_ON
+            }
+
+            FLASH_ON -> {
+                flashMode = FLASH_AUTO
+            }
+
+            FLASH_AUTO -> {
+                flashMode = FLASH_OFF
+            }
+
+            else -> {}
+        }
+    }
+
     LaunchedEffect(Unit) {
         if (!cameraPermissionState.status.isGranted) {
             cameraPermissionState.launchPermissionRequest()
@@ -184,23 +202,7 @@ fun CameraScreen(onImageCaptured: (Uri) -> Unit = {}) {
                 ) {
                     flashIcon?.let { icon ->
                         IconButton(
-                            onClick = {
-                                when (flashMode) {
-                                    FLASH_OFF -> {
-                                        flashMode = FLASH_ON
-                                    }
-
-                                    FLASH_ON -> {
-                                        flashMode = FLASH_AUTO
-                                    }
-
-                                    FLASH_AUTO -> {
-                                        flashMode = FLASH_OFF
-                                    }
-
-                                    else -> {}
-                                }
-                            },
+                            onClick = cycleFlashModes,
                             modifier = Modifier.size(48.dp),
                             colors = IconButtonDefaults.iconButtonColors(
                                 containerColor = Color.Black.copy(
@@ -210,6 +212,7 @@ fun CameraScreen(onImageCaptured: (Uri) -> Unit = {}) {
                         ) {
                             Icon(
                                 painter = icon,
+                                tint = Color.White,
                                 contentDescription = "camera flash",
                                 modifier = Modifier.size(32.dp)
                             )

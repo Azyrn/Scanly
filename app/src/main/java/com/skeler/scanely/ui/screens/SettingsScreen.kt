@@ -2,7 +2,6 @@
 
 package com.skeler.scanely.ui.screens
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
@@ -19,7 +18,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.toggleable
@@ -40,7 +38,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -53,9 +50,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -74,7 +69,7 @@ fun SettingsScreen(
     onNavigateBack: () -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
-    
+
     // Sort and filter languages: Selected first, then alphabetical. Filter by query.
     val languageList by remember(ocrLanguages, searchQuery) {
         derivedStateOf {
@@ -105,7 +100,7 @@ fun SettingsScreen(
                         )
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
                     scrolledContainerColor = MaterialTheme.colorScheme.background
                 )
@@ -119,7 +114,7 @@ fun SettingsScreen(
                 .padding(innerPadding),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 32.dp)
         ) {
-            
+
             // --- Appearance Section ---
             item {
                 Column(modifier = Modifier.padding(horizontal = 24.dp)) {
@@ -131,7 +126,7 @@ fun SettingsScreen(
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(16.dp))
-                    
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -155,13 +150,18 @@ fun SettingsScreen(
                             modifier = Modifier.weight(1f)
                         )
                     }
-                    
+
                     Spacer(modifier = Modifier.height(24.dp))
                 }
             }
-            
-            item { HorizontalDivider(modifier = Modifier.padding(horizontal = 24.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)) }
-            
+
+            item {
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 24.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                )
+            }
+
             // --- Languages Section ---
             item {
                 Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 24.dp)) {
@@ -172,7 +172,7 @@ fun SettingsScreen(
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(16.dp))
-                    
+
                     OutlinedTextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
@@ -188,7 +188,7 @@ fun SettingsScreen(
                     )
                 }
             }
-            
+
             items(languageList, key = { it.key }) { (code, name) ->
                 LanguageCheckboxRow(
                     label = name,
@@ -206,7 +206,7 @@ fun SettingsScreen(
                     }
                 )
             }
-            
+
             if (languageList.isEmpty()) {
                 item {
                     Text(
@@ -222,8 +222,13 @@ fun SettingsScreen(
             }
 
             item { Spacer(modifier = Modifier.height(24.dp)) }
-            item { HorizontalDivider(modifier = Modifier.padding(horizontal = 24.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)) }
-            
+            item {
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 24.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                )
+            }
+
             // --- About Section ---
             item {
                 AboutSection()
@@ -275,13 +280,13 @@ private fun ThemeSelectionCard(
                     ThemeMode.Oled -> Color.Black
                     ThemeMode.System -> MaterialTheme.colorScheme.surface
                 }
-                
+
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(previewColor)
                 )
-                
+
                 // Add Checkmark if selected
                 androidx.compose.animation.AnimatedVisibility(
                     visible = isSelected,
@@ -302,11 +307,11 @@ private fun ThemeSelectionCard(
                 }
             }
         }
-        
+
         Spacer(modifier = Modifier.height(8.dp))
-        
+
         Text(
-            text = when(mode) {
+            text = when (mode) {
                 ThemeMode.Light -> "Light"
                 ThemeMode.Dark -> "Dark"
                 ThemeMode.Oled -> "OLED"
@@ -354,7 +359,7 @@ private fun LanguageCheckboxRow(
 @Composable
 private fun AboutSection() {
     val uriHandler = LocalUriHandler.current
-    
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -387,23 +392,23 @@ private fun AboutSection() {
                 )
             }
         }
-        
+
         Spacer(modifier = Modifier.height(12.dp))
-        
+
         // Developer Info
         Text(
             text = "Developed by Azyrn Skeler",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        
+
         Spacer(modifier = Modifier.height(8.dp))
-        
+
         // GitHub Link Row
         Row(
             modifier = Modifier
                 .clip(MaterialTheme.shapes.small)
-                .clickable { 
+                .clickable {
                     uriHandler.openUri("https://github.com/Azyrn/Scanly")
                 }
                 .padding(horizontal = 12.dp, vertical = 6.dp),

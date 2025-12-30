@@ -30,8 +30,7 @@ import androidx.core.view.WindowCompat
 enum class ThemeMode {
     System,
     Light,
-    Dark,
-    Oled
+    Dark
 }
 
 // =============================================================================
@@ -139,7 +138,7 @@ fun ScanelyTheme(
     val useDarkTheme = when (themeMode) {
         ThemeMode.System -> systemDark
         ThemeMode.Light -> false
-        ThemeMode.Dark, ThemeMode.Oled -> true
+        ThemeMode.Dark -> true
     }
 
     val colorScheme = when {
@@ -150,7 +149,6 @@ fun ScanelyTheme(
             if (systemDark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
 
-        themeMode == ThemeMode.Oled -> OledColorScheme
         themeMode == ThemeMode.Dark -> DarkColorScheme // Forces #141218
         useDarkTheme -> DarkColorScheme
         else -> LightColorScheme

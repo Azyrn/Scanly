@@ -55,4 +55,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         _uiState.update { it.copy(ocrLanguages = languages) }
         prefs.edit().putStringSet("ocr_langs", languages).apply()
     }
+
+    fun setOledThemeEnabled(enabled: Boolean) {
+        _uiState.update { it.copy(oledThemeEnabled = enabled) }
+        prefs.edit().putBoolean("oled_theme_enabled", enabled).apply()
+    }
+
 }

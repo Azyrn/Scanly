@@ -1,15 +1,24 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 
 package com.skeler.scanely.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -22,6 +31,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
@@ -31,6 +41,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -38,6 +49,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -49,7 +61,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
@@ -63,7 +74,6 @@ import com.skeler.scanely.ui.theme.ThemeMode
 fun SettingsScreen(
     currentTheme: ThemeMode,
     onThemeChange: (ThemeMode) -> Unit,
-
     ocrLanguages: Set<String>,
     onOcrLanguagesChanged: (Set<String>) -> Unit,
     onNavigateBack: () -> Unit
@@ -112,7 +122,7 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 32.dp)
+            contentPadding = PaddingValues(bottom = 32.dp)
         ) {
 
             // --- Appearance Section ---
@@ -144,7 +154,7 @@ fun SettingsScreen(
                             modifier = Modifier.weight(1f)
                         )
                         ThemeSelectionCard(
-                            mode = ThemeMode.Oled,
+                            mode = ThemeMode.System,
                             currentTheme = currentTheme,
                             onSelect = onThemeChange,
                             modifier = Modifier.weight(1f)
@@ -152,6 +162,35 @@ fun SettingsScreen(
                     }
 
                     Spacer(modifier = Modifier.height(24.dp))
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(
+                                enabled = true,
+                                onClick = {})
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth()
+                                .padding(horizontal = 15.dp, vertical = 10.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = "High Contrast Dark Theme",
+                                style = MaterialTheme.typography.titleMediumEmphasized,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Pure black dark theme for OLED devices",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.9f)
+                            )
+                        }
+
+                        Switch(checked = )
+                    }
                 }
             }
 
@@ -258,54 +297,21 @@ private fun ThemeSelectionCard(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Card(
-            modifier = Modifier
-                .aspectRatio(1f)
-                .scale(scale)
-                .clickable { onSelect(mode) },
-            shape = MaterialTheme.shapes.large,
-            border = BorderStroke(2.dp, borderColor),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainer
-            ),
-            elevation = CardDefaults.cardElevation(
-                defaultElevation = if (isSelected) 4.dp else 0.dp
+        when (mode) {
+            ThemeMode.Light -> LightModeMockup(
+                onSelect = onSelect,
+                isSelected = isSelected
             )
-        ) {
-            Box(modifier = Modifier.fillMaxSize()) {
-                // Mini-Preview Background
-                val previewColor = when (mode) {
-                    ThemeMode.Light -> Color(0xFFF9F9F9)
-                    ThemeMode.Dark -> Color(0xFF1C1B1F)
-                    ThemeMode.Oled -> Color.Black
-                    ThemeMode.System -> MaterialTheme.colorScheme.surface
-                }
 
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(previewColor)
-                )
+            ThemeMode.Dark -> DarkModeMockup(
+                onSelect = onSelect,
+                isSelected = isSelected
+            )
 
-                // Add Checkmark if selected
-                androidx.compose.animation.AnimatedVisibility(
-                    visible = isSelected,
-                    modifier = Modifier.align(Alignment.Center)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = "Selected",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier
-                            .size(24.dp)
-                            .background(
-                                MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
-                                CircleShape
-                            )
-                            .padding(4.dp)
-                    )
-                }
-            }
+            ThemeMode.System -> SystemMockup(
+                onSelect = onSelect,
+                isSelected = isSelected
+            )
         }
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -314,7 +320,6 @@ private fun ThemeSelectionCard(
             text = when (mode) {
                 ThemeMode.Light -> "Light"
                 ThemeMode.Dark -> "Dark"
-                ThemeMode.Oled -> "OLED"
                 ThemeMode.System -> "System"
             },
             style = MaterialTheme.typography.labelMedium,
@@ -427,5 +432,263 @@ private fun AboutSection() {
                 color = MaterialTheme.colorScheme.primary
             )
         }
+    }
+}
+
+@Composable
+private fun LightModeMockup(
+    modifier: Modifier = Modifier,
+    isSelected: Boolean,
+    onSelect: (ThemeMode) -> Unit
+) {
+    Card(
+        modifier = modifier
+            .aspectRatio(1f)
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() }
+            ) {
+                onSelect(ThemeMode.Light)
+            },
+        shape = RoundedCornerShape(16.dp),
+        border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 10.dp, vertical = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(5.dp)
+            ) {
+                TextMockup(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(end = 10.dp)
+                )
+
+                TextMockup(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(end = 20.dp)
+                )
+                TextMockup(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(end = 15.dp)
+                )
+            }
+
+            CheckIcon(
+                isSelected = isSelected,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 20.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun DarkModeMockup(
+    modifier: Modifier = Modifier,
+    isSelected: Boolean,
+    onSelect: (ThemeMode) -> Unit
+) {
+    Card(
+        modifier = modifier
+            .aspectRatio(1f)
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(
+                enabled = true,
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() },
+                onClick = { onSelect(ThemeMode.Dark) }),
+        border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Black.copy(alpha = 0.95f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 10.dp, vertical = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(5.dp)
+            ) {
+                TextMockup(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(end = 10.dp),
+                    color = Color.White
+                )
+
+                TextMockup(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(end = 20.dp),
+                    color = Color.White
+                )
+                TextMockup(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(end = 15.dp),
+                    color = Color.White
+                )
+            }
+
+            CheckIcon(
+                isSelected = isSelected,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 20.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun SystemMockup(
+    modifier: Modifier = Modifier,
+    isSelected: Boolean,
+    onSelect: (ThemeMode) -> Unit
+) {
+    Card(
+        modifier = modifier
+            .aspectRatio(1f)
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(
+                enabled = true,
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() },
+                onClick = { onSelect(ThemeMode.System) }),
+        border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Row(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxSize()
+                        .background(Color.White)
+                        .padding(start = 10.dp, top = 20.dp, bottom = 20.dp),
+                    verticalArrangement = Arrangement.spacedBy(5.dp)
+                ) {
+                    TextMockup(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = Color.Black,
+                        cornerShape = RoundedCornerShape(topStart = 5.dp, bottomStart = 5.dp)
+                    )
+
+                    TextMockup(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = Color.Black,
+                        cornerShape = RoundedCornerShape(topStart = 5.dp, bottomStart = 5.dp)
+
+                    )
+
+                    TextMockup(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = Color.Black,
+                        cornerShape = RoundedCornerShape(topStart = 5.dp, bottomStart = 5.dp)
+                    )
+                }
+
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxSize()
+                        .background(Color.Black)
+                        .padding(end = 10.dp, top = 20.dp, bottom = 20.dp),
+                    verticalArrangement = Arrangement.spacedBy(5.dp)
+                ) {
+                    TextMockup(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = Color.White,
+                        cornerShape = RoundedCornerShape(topEnd = 5.dp, bottomEnd = 5.dp)
+                    )
+
+                    TextMockup(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = Color.White,
+                        cornerShape = RoundedCornerShape(topEnd = 5.dp, bottomEnd = 5.dp)
+                    )
+
+                    TextMockup(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = Color.White,
+                        cornerShape = RoundedCornerShape(topEnd = 5.dp, bottomEnd = 5.dp)
+                    )
+                }
+            }
+
+            CheckIcon(
+                isSelected = isSelected,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 20.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun TextMockup(
+    modifier: Modifier = Modifier,
+    color: Color = Color.Black,
+    cornerShape: RoundedCornerShape = RoundedCornerShape(5.dp)
+) {
+    Box(
+        modifier = modifier
+            .height(10.dp)
+            .clip(cornerShape)
+            .background(color)
+    )
+}
+
+@Composable
+private fun CheckIcon(
+    modifier: Modifier = Modifier,
+    isSelected: Boolean
+) {
+    AnimatedVisibility(
+        visible = isSelected,
+        modifier = modifier,
+        enter = scaleIn(
+            initialScale = 0.6f, animationSpec = tween<Float>(
+                durationMillis = 180,
+                easing = FastOutSlowInEasing
+            )
+        ) + fadeIn(
+            animationSpec = tween(120)
+        ),
+        exit = scaleOut(
+            targetScale = 0.6f,
+            animationSpec = tween(
+                durationMillis = 150,
+                easing = FastOutSlowInEasing
+            )
+        ) + fadeOut(
+            animationSpec = tween(100)
+        )
+    ) {
+        Icon(
+            imageVector = Icons.Default.Check,
+            contentDescription = "Selected",
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier
+                .size(24.dp)
+                .background(
+                    MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
+                    CircleShape
+                )
+                .padding(4.dp)
+        )
     }
 }

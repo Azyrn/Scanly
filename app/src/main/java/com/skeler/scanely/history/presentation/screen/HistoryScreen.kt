@@ -1,7 +1,8 @@
 @file:OptIn(ExperimentalMaterial3ExpressiveApi::class)
 
-package com.skeler.scanely.ui.screens
+package com.skeler.scanely.history.presentation.screen
 
+import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.Arrangement
@@ -53,10 +54,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.skeler.scanely.core.presentation.components.svg.DynamicColorImageVectors
 import com.skeler.scanely.core.presentation.components.svg.vectors.noSearchResult
-import com.skeler.scanely.data.HistoryItem
-import com.skeler.scanely.data.HistoryManager
+import com.skeler.scanely.history.data.HistoryItem
+import com.skeler.scanely.history.data.HistoryManager
+import com.skeler.scanely.navigation.LocalNavController
+import com.skeler.scanely.navigation.Routes
+import com.skeler.scanely.ui.ScanViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -64,10 +69,10 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(
-    onNavigateBack: () -> Unit,
-    onItemClick: (HistoryItem) -> Unit
+    scanViewModel: ScanViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
+    val navController = LocalNavController.current
     val scope = rememberCoroutineScope()
     val historyManager = remember { HistoryManager(context) }
     var historyItems by remember { mutableStateOf<List<HistoryItem>>(emptyList()) }
@@ -107,7 +112,7 @@ fun HistoryScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"
@@ -166,7 +171,10 @@ fun HistoryScreen(
                 items(historyItems) { item ->
                     HistoryItemCard(
                         item = item,
-                        onClick = { onItemClick(item) },
+                        onClick = {
+                            scanViewModel.onImageSelected(Uri.parse(item.imageUri))
+                            navController.navigate(Routes.RESULTS)
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .animateItem()

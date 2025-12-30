@@ -1,6 +1,14 @@
 package com.skeler.scanely.ui.screens
 
-import androidx.compose.foundation.clickable
+/**
+ * Clean & Simple HomeScreen
+ * - Center: 3 Main Actions (Camera, Gallery, PDF)
+ * - Top: App Bar with Settings
+ * - Bottom: History Link
+ * - Settings: Theme Selection + Developer Info
+ */
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,76 +18,64 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.PictureAsPdf
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.skeler.scanely.R
-import com.skeler.scanely.ui.theme.ThemeMode
-
-/**
- * Clean & Simple HomeScreen
- * - Center: 3 Main Actions (Camera, Gallery, PDF)
- * - Top: App Bar with Settings
- * - Bottom: History Link
- * - Settings: Theme Selection + Developer Info
- */
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.selection.toggleable
-import androidx.compose.material3.Checkbox
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.skeler.scanely.navigation.LocalNavController
+import com.skeler.scanely.navigation.Routes
+import com.skeler.scanely.ui.ScanViewModel
+import com.skeler.scanely.ui.components.GalleryPicker
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    currentTheme: ThemeMode,
-    onThemeChanged: (ThemeMode) -> Unit,
-    ocrLanguages: Set<String>,
-    onOcrLanguagesChanged: (Set<String>) -> Unit,
-    onCaptureClick: () -> Unit = {},
-    onGalleryClick: () -> Unit = {},
-    onPdfClick: () -> Unit = {},
-    onBarcodeClick: () -> Unit = {},
-    onSettingsClick: () -> Unit = {},
-    onHistoryClick: () -> Unit = {}
+    scanViewModel: ScanViewModel = hiltViewModel()
 ) {
+    val navController = LocalNavController.current
+
+    val launchGalleryPicker = GalleryPicker { uri ->
+        if (uri != null) {
+            scanViewModel.onImageSelected(uri)
+            navController.navigate(Routes.RESULTS)
+        }
+    }
+
+    // PDF Picker
+    val pdfLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument(),
+        onResult = { uri ->
+            if (uri != null) {
+                scanViewModel.onPdfSelected(uri)
+                navController.navigate(Routes.RESULTS)
+            }
+        }
+    )
+
     Scaffold(
         topBar = {
-// ... (rest of TopBar same as before) ...
             CenterAlignedTopAppBar(
                 title = {
                     Text(
@@ -89,14 +85,14 @@ fun HomeScreen(
                     )
                 },
                 actions = {
-                    IconButton(onClick = onSettingsClick) {
+                    IconButton(onClick = { navController.navigate(Routes.SETTINGS) }) {
                         Icon(
                             imageVector = Icons.Default.Settings,
                             contentDescription = "Settings"
                         )
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
                     scrolledContainerColor = MaterialTheme.colorScheme.background
                 )
@@ -119,48 +115,48 @@ fun HomeScreen(
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onBackground
             )
-            
+
             Spacer(modifier = Modifier.height(48.dp))
-            
+
             MainActionButton(
                 icon = Icons.Outlined.CameraAlt,
                 title = "Capture Photo",
                 subtitle = "Scan text using camera",
-                onClick = onCaptureClick
+                onClick = { navController.navigate(Routes.CAMERA) }
             )
-            
+
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             MainActionButton(
                 icon = Icons.Outlined.PhotoLibrary,
                 title = "From Gallery",
                 subtitle = "Import image file",
-                onClick = onGalleryClick
+                onClick = { launchGalleryPicker() }
             )
-            
+
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             MainActionButton(
                 icon = Icons.Outlined.PictureAsPdf,
                 title = "Extract PDF",
                 subtitle = "Import PDF document",
-                onClick = onPdfClick
+                onClick = { pdfLauncher.launch(arrayOf("application/pdf")) }
             )
-            
+
             Spacer(modifier = Modifier.height(16.dp))
 
             MainActionButton(
                 icon = Icons.Default.QrCodeScanner,
                 title = "Scan Barcode/QR",
                 subtitle = "Scan QR, Barcodes & More",
-                onClick = onBarcodeClick
+                onClick = { navController.navigate(Routes.BARCODE_SCANNER) }
             )
-            
+
             Spacer(modifier = Modifier.height(48.dp))
-            
+
             // History Link
             FilledTonalButton(
-                onClick = onHistoryClick,
+                onClick = { navController.navigate(Routes.HISTORY) },
                 shape = MaterialTheme.shapes.medium
             ) {
                 Icon(

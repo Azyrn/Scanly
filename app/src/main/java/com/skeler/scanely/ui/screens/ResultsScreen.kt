@@ -6,6 +6,7 @@ import android.content.ClipData
 import android.graphics.Bitmap
 import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -52,6 +53,7 @@ import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -80,9 +82,13 @@ import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.skeler.scanely.navigation.LocalNavController
+import com.skeler.scanely.navigation.Routes
 import com.skeler.scanely.ocr.OcrResult
+import com.skeler.scanely.ui.ScanViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -95,25 +101,28 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ResultsScreen(
-    imageUri: Uri?,
-    ocrResult: OcrResult?,
-    isProcessing: Boolean,
-    progressMessage: String = "",
-    pdfThumbnail: Bitmap? = null,
-    onNavigateBack: () -> Unit = {},
-    onCopyText: (String) -> Unit = {}
+    scanViewModel: ScanViewModel = hiltViewModel()
 ) {
+    val navController = LocalNavController.current
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
+    val scanState by scanViewModel.uiState.collectAsState()
+    val imageUri = scanState.selectedImageUri
+    val ocrResult = scanState.ocrResult
+    val isProcessing = scanState.isProcessing
+    val pdfThumbnail = scanState.pdfThumbnail
+    val progressMessage = scanState.progressMessage
+
     var showContent by remember { mutableStateOf(false) }
     var showFullImage by remember { mutableStateOf(false) }
-    
+
     val topBarScrollBehavior =
         TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
     val listState = rememberLazyListState()
     var lastScrollOffset by remember { mutableIntStateOf(0) }
+
     val isFabExpanded by remember {
         derivedStateOf {
             listState.shouldFabExpand(lastScrollOffset) {
@@ -122,10 +131,20 @@ fun ResultsScreen(
         }
     }
 
+    val onBack: () -> Unit = {
+        navController.popBackStack(
+            Routes.HOME,
+            inclusive = false
+        )
+        scanViewModel.clearState()
+    }
+
     LaunchedEffect(Unit) {
         delay(100)
         showContent = true
     }
+
+    BackHandler { onBack() }
 
     if (showFullImage) {
         FullImageDialog(
@@ -155,7 +174,7 @@ fun ResultsScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"
@@ -191,7 +210,6 @@ fun ResultsScreen(
                             Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT)
                                 .show()
                         }
-                        onCopyText(ocrResult.text)
                     }
                 )
             }
@@ -206,7 +224,7 @@ fun ResultsScreen(
             state = listState,
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            
+
             // Spacer to avoid top bar overlap content if initially hidden
             item { Spacer(modifier = Modifier.height(8.dp)) }
 
@@ -217,7 +235,7 @@ fun ResultsScreen(
                     enter = fadeIn(tween(300)) + slideInVertically(initialOffsetY = { -it / 4 })
                 ) {
                     ImagePreviewCard(
-                        imageUri = imageUri, 
+                        imageUri = imageUri,
                         pdfThumbnail = pdfThumbnail,
                         onClick = { showFullImage = true }
                     )
@@ -228,7 +246,12 @@ fun ResultsScreen(
             item {
                 AnimatedVisibility(
                     visible = showContent,
-                    enter = fadeIn(tween(400, delayMillis = 150)) + slideInVertically(initialOffsetY = { it / 4 })
+                    enter = fadeIn(
+                        tween(
+                            400,
+                            delayMillis = 150
+                        )
+                    ) + slideInVertically(initialOffsetY = { it / 4 })
                 ) {
                     ResultsCard(
                         ocrResult = ocrResult,
@@ -245,7 +268,7 @@ fun ResultsScreen(
 
 @Composable
 private fun ImagePreviewCard(
-    imageUri: Uri?, 
+    imageUri: Uri?,
     pdfThumbnail: Bitmap? = null,
     onClick: () -> Unit
 ) {
@@ -290,7 +313,7 @@ private fun ImagePreviewCard(
                     )
                 }
             }
-            
+
             // "Tap to expand" hint overlay
             Surface(
                 modifier = Modifier
@@ -340,7 +363,7 @@ private fun FullImageDialog(
                     contentDescription = "Close"
                 )
             }
-            
+
             // Full image
             Box(
                 modifier = Modifier
@@ -348,7 +371,7 @@ private fun FullImageDialog(
                     .padding(vertical = 64.dp, horizontal = 16.dp),
                 contentAlignment = Alignment.Center
             ) {
-                 when {
+                when {
                     pdfThumbnail != null -> {
                         Image(
                             bitmap = pdfThumbnail.asImageBitmap(),
@@ -357,6 +380,7 @@ private fun FullImageDialog(
                             contentScale = ContentScale.Fit
                         )
                     }
+
                     imageUri != null -> {
                         AsyncImage(
                             model = ImageRequest.Builder(LocalContext.current)

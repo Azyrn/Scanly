@@ -1,4 +1,4 @@
-package com.skeler.scanely.data
+package com.skeler.scanely.history.data
 
 import android.content.Context
 import org.json.JSONArray

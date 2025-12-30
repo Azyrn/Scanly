@@ -1,15 +1,17 @@
 package com.skeler.scanely.ui
 
-import android.app.Application
+import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
 import android.util.Log
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.skeler.scanely.data.HistoryManager
+import com.skeler.scanely.history.data.HistoryManager
 import com.skeler.scanely.ocr.OcrEngine
 import com.skeler.scanely.ocr.OcrResult
 import com.skeler.scanely.ocr.PdfProcessor
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,6 +19,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import javax.inject.Inject
+import javax.inject.Singleton
 
 private const val TAG = "ScanViewModel"
 
@@ -25,6 +29,7 @@ private const val TAG = "ScanViewModel"
  * Single source of truth for all OCR-related UI state.
  */
 data class ScanUiState(
+    val currentLanguages: List<String> = emptyList(),
     val isProcessing: Boolean = false,
     val progressMessage: String = "",
     val progressPercent: Float = 0f,
@@ -34,26 +39,43 @@ data class ScanUiState(
     val error: String? = null
 )
 
+@Singleton
+class ScanStateHolder @Inject constructor() {
+
+    private val _uiState = MutableStateFlow(ScanUiState())
+    val uiState: StateFlow<ScanUiState> = _uiState.asStateFlow()
+
+    fun update(transform: (ScanUiState) -> ScanUiState) {
+        _uiState.update(transform)
+    }
+
+    fun reset() {
+        _uiState.value = ScanUiState()
+    }
+}
+
 /**
  * ViewModel for OCR scanning operations.
- * 
+ *
  * Features:
  * - MVVM with StateFlow
  * - Proper resource cleanup in onCleared()
  * - Cancellable processing jobs
  * - Single source of truth for preview state
  */
-class ScanViewModel(application: Application) : AndroidViewModel(application) {
+@HiltViewModel
+class ScanViewModel @Inject constructor(
+    @param:ApplicationContext private val context: Context,
+    private val stateHolder: ScanStateHolder
+) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(ScanUiState())
-    val uiState: StateFlow<ScanUiState> = _uiState.asStateFlow()
+    val uiState: StateFlow<ScanUiState> = stateHolder.uiState
 
-    private val ocrEngine = OcrEngine(application.applicationContext)
-    private val historyManager = HistoryManager(application.applicationContext)
+    private val ocrEngine = OcrEngine(context)
+    private val historyManager = HistoryManager(context)
 
     // Current settings (can be updated from UI)
-    private var currentLanguages: List<String> = listOf("eng")
-    
+
     // Track active processing job for cancellation
     private var currentProcessingJob: Job? = null
 
@@ -62,10 +84,14 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
      */
     fun updateLanguages(languages: Set<String>) {
         if (languages.isEmpty()) return
-        
-        currentLanguages = languages.toList()
+
+        stateHolder.update {
+            it.copy(
+                currentLanguages = languages.toList()
+            )
+        }
         viewModelScope.launch(Dispatchers.IO) {
-            ocrEngine.initialize(currentLanguages)
+            ocrEngine.initialize(uiState.value.currentLanguages)
         }
     }
 
@@ -76,16 +102,16 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
     fun onImageSelected(uri: Uri) {
         // Cancel any ongoing processing
         currentProcessingJob?.cancel()
-        
+
         // Reset state completely for new image
-        _uiState.update { 
-            ScanUiState(
+        stateHolder.update {
+            it.copy(
                 selectedImageUri = uri,
                 isProcessing = true,
                 progressMessage = "Processing image..."
             )
         }
-        
+
         currentProcessingJob = processImage(uri)
     }
 
@@ -95,15 +121,15 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
     fun onPdfSelected(uri: Uri) {
         // Cancel any ongoing processing
         currentProcessingJob?.cancel()
-        
-        _uiState.update { 
-            ScanUiState(
+
+        stateHolder.update {
+            it.copy(
                 selectedImageUri = uri,
                 isProcessing = true,
                 progressMessage = "Initializing PDF Processor..."
             )
         }
-        
+
         currentProcessingJob = processPdf(uri)
     }
 
@@ -111,13 +137,13 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
      * Called when a Barcode is scanned (usually directly from Camera).
      */
     fun onBarcodeScanned(result: OcrResult) {
-        _uiState.update { 
+        stateHolder.update {
             it.copy(
                 ocrResult = result,
                 isProcessing = false
             )
         }
-        
+
         // Save barcode to history
         if (result.text.isNotEmpty()) {
             viewModelScope.launch(Dispatchers.IO) {
@@ -125,7 +151,7 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
-    
+
     /**
      * Handles processing of a single image for Text OCR.
      */
@@ -134,16 +160,16 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 // Ensure initialized
                 if (!ocrEngine.isReady()) {
-                    _uiState.update { it.copy(progressMessage = "Initializing OCR...") }
-                    ocrEngine.initialize(currentLanguages)
+                    stateHolder.update { it.copy(progressMessage = "Initializing OCR...") }
+                    ocrEngine.initialize(uiState.value.currentLanguages)
                 }
 
-                _uiState.update { it.copy(progressMessage = "Extracting text...") }
-                
+                stateHolder.update { it.copy(progressMessage = "Extracting text...") }
+
                 val result = ocrEngine.recognizeText(uri)
-                
+
                 if (result != null) {
-                    _uiState.update { 
+                    stateHolder.update {
                         it.copy(
                             isProcessing = false,
                             ocrResult = result,
@@ -151,26 +177,29 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
                             error = null
                         )
                     }
-                    
+
                     // Auto-save to history
                     if (result.text.isNotEmpty()) {
                         historyManager.saveItem(result.text, uri.toString())
                     }
-                    
-                    Log.d(TAG, "Image OCR completed: ${result.text.length} chars, ${result.confidence}% confidence")
+
+                    Log.d(
+                        TAG,
+                        "Image OCR completed: ${result.text.length} chars, ${result.confidence}% confidence"
+                    )
                 } else {
-                    _uiState.update { 
+                    stateHolder.update {
                         it.copy(
-                            isProcessing = false, 
+                            isProcessing = false,
                             error = "Failed to recognize text. Try adjusting the image."
                         )
                     }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Image processing error", e)
-                _uiState.update { 
+                stateHolder.update {
                     it.copy(
-                        isProcessing = false, 
+                        isProcessing = false,
                         error = e.message ?: "Unknown error"
                     )
                 }
@@ -185,24 +214,24 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
         return viewModelScope.launch(Dispatchers.IO) {
             try {
                 val tesseractHelper = ocrEngine.getTesseractHelper()
-                
+
                 // Ensure initialized
                 if (!tesseractHelper.isReady()) {
-                    _uiState.update { it.copy(progressMessage = "Initializing OCR...") }
-                    tesseractHelper.initialize(currentLanguages)
+                    stateHolder.update { it.copy(progressMessage = "Initializing OCR...") }
+                    tesseractHelper.initialize(uiState.value.currentLanguages)
                 }
 
                 val pdfResult = PdfProcessor.extractTextFromPdf(
-                    context = getApplication(),
+                    context = context,
                     pdfUri = uri,
                     ocrHelper = tesseractHelper,
-                    enabledLanguages = currentLanguages,
+                    enabledLanguages = uiState.value.currentLanguages,
                     onProgress = { update ->
                         val percent = if (update.totalPages > 0) {
                             update.currentPage.toFloat() / update.totalPages
                         } else 0f
-                        
-                        _uiState.update {
+
+                        stateHolder.update {
                             it.copy(
                                 progressMessage = update.statusMessage,
                                 progressPercent = percent
@@ -210,7 +239,7 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
                         }
                     }
                 )
-                
+
                 // Create OcrResult wrapper for UI
                 val finalResult = OcrResult(
                     text = pdfResult.text,
@@ -218,8 +247,8 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
                     languages = listOf(pdfResult.detectedLanguage),
                     processingTimeMs = 0
                 )
-                
-                _uiState.update {
+
+                stateHolder.update {
                     it.copy(
                         isProcessing = false,
                         pdfThumbnail = pdfResult.thumbnail,
@@ -229,39 +258,42 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
                         error = null
                     )
                 }
-                
+
                 if (pdfResult.text.isNotEmpty()) {
                     historyManager.saveItem(pdfResult.text, uri.toString())
                 }
-                
-                Log.d(TAG, "PDF OCR completed: ${pdfResult.pageCount} pages, ${pdfResult.averageConfidence}% avg confidence")
+
+                Log.d(
+                    TAG,
+                    "PDF OCR completed: ${pdfResult.pageCount} pages, ${pdfResult.averageConfidence}% avg confidence"
+                )
 
             } catch (e: Exception) {
                 Log.e(TAG, "PDF processing error", e)
-                _uiState.update { 
+                stateHolder.update {
                     it.copy(
-                        isProcessing = false, 
+                        isProcessing = false,
                         error = e.message ?: "PDF Error"
                     )
                 }
             }
         }
     }
-    
+
     /**
      * Clear state when leaving results screen or starting new scan.
      */
     fun clearState() {
         currentProcessingJob?.cancel()
-        _uiState.update { ScanUiState() }
+        stateHolder.reset()
     }
-    
+
     /**
      * Cancel any ongoing processing.
      */
     fun cancelProcessing() {
         currentProcessingJob?.cancel()
-        _uiState.update { 
+        stateHolder.update {
             it.copy(
                 isProcessing = false,
                 progressMessage = "",
@@ -269,7 +301,7 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
             )
         }
     }
-    
+
     /**
      * Clean up resources when ViewModel is destroyed.
      */

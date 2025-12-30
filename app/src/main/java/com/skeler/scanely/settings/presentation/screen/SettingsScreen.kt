@@ -1,11 +1,10 @@
 @file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 
-package com.skeler.scanely.ui.screens
+package com.skeler.scanely.settings.presentation.screen
 
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -65,31 +64,39 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.skeler.scanely.R
-import com.skeler.scanely.ui.theme.ThemeMode
+import com.skeler.scanely.core.common.LocalSettings
+import com.skeler.scanely.navigation.LocalNavController
+import com.skeler.scanely.ocr.OcrHelper
+import com.skeler.scanely.settings.data.SettingsKeys
+import com.skeler.scanely.settings.presentation.viewmodel.SettingsViewModel
 
 @Composable
 fun SettingsScreen(
-    currentTheme: ThemeMode,
-    onThemeChange: (ThemeMode) -> Unit,
-    ocrLanguages: Set<String>,
-    onOcrLanguagesChanged: (Set<String>) -> Unit,
-    onNavigateBack: () -> Unit
+    settingsViewModel: SettingsViewModel = hiltViewModel()
 ) {
+    val navController = LocalNavController.current
     var searchQuery by remember { mutableStateOf("") }
-
+    val isHighContrastDarkMode = LocalSettings.current.isHighContrastDarkMode
+    val ocrLanguages = LocalSettings.current.ocrLanguages
     // Sort and filter languages: Selected first, then alphabetical. Filter by query.
     val languageList by remember(ocrLanguages, searchQuery) {
         derivedStateOf {
-            com.skeler.scanely.ocr.OcrHelper.SUPPORTED_LANGUAGES_MAP.entries
+            OcrHelper.SUPPORTED_LANGUAGES_MAP.entries
                 .sortedWith(
                     compareByDescending<Map.Entry<String, String>> { ocrLanguages.contains(it.key) }
                         .thenBy { it.value }
                 )
                 .filter { it.value.contains(searchQuery, ignoreCase = true) }
         }
+    }
+
+    val onThemeChange: (mode: Int) -> Unit = { mode ->
+        settingsViewModel.setInt(key = SettingsKeys.THEME_MODE, value = mode)
     }
 
     Scaffold(
@@ -103,7 +110,7 @@ fun SettingsScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"
@@ -142,20 +149,17 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         ThemeSelectionCard(
-                            mode = ThemeMode.Light,
-                            currentTheme = currentTheme,
+                            mode = AppCompatDelegate.MODE_NIGHT_NO,
                             onSelect = onThemeChange,
                             modifier = Modifier.weight(1f)
                         )
                         ThemeSelectionCard(
-                            mode = ThemeMode.Dark,
-                            currentTheme = currentTheme,
+                            mode = AppCompatDelegate.MODE_NIGHT_YES,
                             onSelect = onThemeChange,
                             modifier = Modifier.weight(1f)
                         )
                         ThemeSelectionCard(
-                            mode = ThemeMode.System,
-                            currentTheme = currentTheme,
+                            mode = AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM,
                             onSelect = onThemeChange,
                             modifier = Modifier.weight(1f)
                         )
@@ -189,7 +193,14 @@ fun SettingsScreen(
                             )
                         }
 
-                        Switch(checked = )
+                        Switch(
+                            checked = isHighContrastDarkMode,
+                            onCheckedChange = {
+                                settingsViewModel.setBoolean(
+                                    SettingsKeys.HIGH_CONTRAST_DARK_MODE,
+                                    value = !isHighContrastDarkMode
+                                )
+                            })
                     }
                 }
             }
@@ -233,15 +244,7 @@ fun SettingsScreen(
                     label = name,
                     checked = ocrLanguages.contains(code),
                     onCheckedChange = { checked ->
-                        val newSet = ocrLanguages.toMutableSet()
-                        if (checked) {
-                            newSet.add(code)
-                        } else {
-                            if (newSet.size > 1) {
-                                newSet.remove(code)
-                            }
-                        }
-                        onOcrLanguagesChanged(newSet)
+                        settingsViewModel.toggleOcrLanguage(code, ocrLanguages)
                     }
                 )
             }
@@ -255,7 +258,7 @@ fun SettingsScreen(
                             .padding(24.dp),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        textAlign = TextAlign.Center
                     )
                 }
             }
@@ -278,37 +281,29 @@ fun SettingsScreen(
 
 @Composable
 private fun ThemeSelectionCard(
-    mode: ThemeMode,
-    currentTheme: ThemeMode,
-    onSelect: (ThemeMode) -> Unit,
+    mode: Int,
+    onSelect: (mode: Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val currentTheme = LocalSettings.current.themeMode
     val isSelected = mode == currentTheme
-    val borderColor by animateColorAsState(
-        targetValue = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
-        label = "border"
-    )
-    val scale by animateFloatAsState(
-        targetValue = if (isSelected) 1.05f else 1f,
-        label = "scale"
-    )
 
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         when (mode) {
-            ThemeMode.Light -> LightModeMockup(
+            AppCompatDelegate.MODE_NIGHT_NO -> LightModeMockup(
                 onSelect = onSelect,
                 isSelected = isSelected
             )
 
-            ThemeMode.Dark -> DarkModeMockup(
+            AppCompatDelegate.MODE_NIGHT_YES -> DarkModeMockup(
                 onSelect = onSelect,
                 isSelected = isSelected
             )
 
-            ThemeMode.System -> SystemMockup(
+            AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM -> SystemMockup(
                 onSelect = onSelect,
                 isSelected = isSelected
             )
@@ -318,9 +313,10 @@ private fun ThemeSelectionCard(
 
         Text(
             text = when (mode) {
-                ThemeMode.Light -> "Light"
-                ThemeMode.Dark -> "Dark"
-                ThemeMode.System -> "System"
+                AppCompatDelegate.MODE_NIGHT_NO -> "Light"
+                AppCompatDelegate.MODE_NIGHT_YES -> "Dark"
+                AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM -> "System"
+                else -> ""
             },
             style = MaterialTheme.typography.labelMedium,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
@@ -439,7 +435,7 @@ private fun AboutSection() {
 private fun LightModeMockup(
     modifier: Modifier = Modifier,
     isSelected: Boolean,
-    onSelect: (ThemeMode) -> Unit
+    onSelect: (Int) -> Unit
 ) {
     Card(
         modifier = modifier
@@ -449,7 +445,7 @@ private fun LightModeMockup(
                 indication = null,
                 interactionSource = remember { MutableInteractionSource() }
             ) {
-                onSelect(ThemeMode.Light)
+                onSelect(AppCompatDelegate.MODE_NIGHT_NO)
             },
         shape = RoundedCornerShape(16.dp),
         border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
@@ -495,7 +491,7 @@ private fun LightModeMockup(
 private fun DarkModeMockup(
     modifier: Modifier = Modifier,
     isSelected: Boolean,
-    onSelect: (ThemeMode) -> Unit
+    onSelect: (Int) -> Unit
 ) {
     Card(
         modifier = modifier
@@ -505,7 +501,7 @@ private fun DarkModeMockup(
                 enabled = true,
                 indication = null,
                 interactionSource = remember { MutableInteractionSource() },
-                onClick = { onSelect(ThemeMode.Dark) }),
+                onClick = { onSelect(AppCompatDelegate.MODE_NIGHT_YES) }),
         border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.Black.copy(alpha = 0.95f)),
@@ -553,7 +549,7 @@ private fun DarkModeMockup(
 private fun SystemMockup(
     modifier: Modifier = Modifier,
     isSelected: Boolean,
-    onSelect: (ThemeMode) -> Unit
+    onSelect: (Int) -> Unit
 ) {
     Card(
         modifier = modifier
@@ -563,7 +559,7 @@ private fun SystemMockup(
                 enabled = true,
                 indication = null,
                 interactionSource = remember { MutableInteractionSource() },
-                onClick = { onSelect(ThemeMode.System) }),
+                onClick = { onSelect(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM) }),
         border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),

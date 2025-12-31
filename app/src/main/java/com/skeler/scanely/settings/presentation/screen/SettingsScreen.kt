@@ -36,10 +36,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -48,8 +46,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -58,9 +54,7 @@ import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -89,22 +83,17 @@ fun SettingsScreen(
     settingsViewModel: SettingsViewModel = hiltViewModel()
 ) {
     val navController = LocalNavController.current
-    var searchQuery by remember { mutableStateOf("") }
     val topBarScrollBehavior =
         TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
     val listState = rememberLazyListState()
 
     val isHighContrastDarkMode = LocalSettings.current.isHighContrastDarkMode
     val ocrLanguages = LocalSettings.current.ocrLanguages
-    // Sort and filter languages: Selected first, then alphabetical. Filter by query.
-    val languageList by remember(ocrLanguages, searchQuery) {
+
+    val languageList by remember {
         derivedStateOf {
             OcrHelper.SUPPORTED_LANGUAGES_MAP.entries
-                .sortedWith(
-                    compareByDescending<Map.Entry<String, String>> { ocrLanguages.contains(it.key) }
-                        .thenBy { it.value }
-                )
-                .filter { it.value.contains(searchQuery, ignoreCase = true) }
+                .sortedBy { it.value }
         }
     }
 
@@ -240,29 +229,13 @@ fun SettingsScreen(
 
             // --- Languages Section ---
             item {
-                Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 24.dp)) {
-                    Text(
-                        text = "Recognition Languages",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("Search languages...") },
-                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                        singleLine = true,
-                        shape = MaterialTheme.shapes.medium,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                            focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                        )
-                    )
-                }
+                Text(
+                    text = "Recognition Languages",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(24.dp)
+                )
             }
 
             items(languageList, key = { it.key }) { (code, name) ->
@@ -318,20 +291,29 @@ private fun ThemeSelectionCard(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        when (mode) {
-            AppCompatDelegate.MODE_NIGHT_NO -> LightModeMockup(
-                onSelect = onSelect,
-                isSelected = isSelected
-            )
+        Box(modifier = Modifier.fillMaxSize()) {
+            when (mode) {
+                AppCompatDelegate.MODE_NIGHT_NO -> LightModeMockup(
+                    onSelect = onSelect,
+                    isSelected = isSelected
+                )
 
-            AppCompatDelegate.MODE_NIGHT_YES -> DarkModeMockup(
-                onSelect = onSelect,
-                isSelected = isSelected
-            )
+                AppCompatDelegate.MODE_NIGHT_YES -> DarkModeMockup(
+                    onSelect = onSelect,
+                    isSelected = isSelected
+                )
 
-            AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM -> SystemMockup(
-                onSelect = onSelect,
-                isSelected = isSelected
+                AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM -> SystemMockup(
+                    onSelect = onSelect,
+                    isSelected = isSelected
+                )
+            }
+
+            CheckIcon(
+                isSelected = isSelected,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 20.dp)
             )
         }
 
@@ -466,7 +448,6 @@ private fun LightModeMockup(
     Card(
         modifier = modifier
             .aspectRatio(1f)
-            .clip(RoundedCornerShape(16.dp))
             .clickable(
                 indication = null,
                 interactionSource = remember { MutableInteractionSource() }
@@ -476,38 +457,29 @@ private fun LightModeMockup(
         shape = RoundedCornerShape(16.dp),
         border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 8.dp else 4.dp)
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            Column(
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 10.dp, vertical = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(5.dp)
+        ) {
+            TextMockup(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 10.dp, vertical = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(5.dp)
-            ) {
-                TextMockup(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(end = 10.dp)
-                )
+                    .fillMaxWidth()
+                    .padding(end = 10.dp)
+            )
 
-                TextMockup(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(end = 35.dp)
-                )
-                TextMockup(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(end = 20.dp)
-                )
-            }
-
-            CheckIcon(
-                isSelected = isSelected,
+            TextMockup(
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 20.dp)
+                    .fillMaxWidth()
+                    .padding(end = 35.dp)
+            )
+            TextMockup(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(end = 20.dp)
             )
         }
     }
@@ -522,7 +494,6 @@ private fun DarkModeMockup(
     Card(
         modifier = modifier
             .aspectRatio(1f)
-            .clip(RoundedCornerShape(16.dp))
             .clickable(
                 enabled = true,
                 indication = null,
@@ -531,41 +502,32 @@ private fun DarkModeMockup(
         border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.Black.copy(alpha = 0.95f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 8.dp else 4.dp)
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            Column(
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 10.dp, vertical = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(5.dp)
+        ) {
+            TextMockup(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 10.dp, vertical = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(5.dp)
-            ) {
-                TextMockup(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(end = 10.dp),
-                    color = Color.White
-                )
+                    .padding(end = 10.dp),
+                color = Color.White
+            )
 
-                TextMockup(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(end = 35.dp),
-                    color = Color.White
-                )
-                TextMockup(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(end = 20.dp),
-                    color = Color.White
-                )
-            }
-
-            CheckIcon(
-                isSelected = isSelected,
+            TextMockup(
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 20.dp)
+                    .fillMaxWidth()
+                    .padding(end = 35.dp),
+                color = Color.White
+            )
+            TextMockup(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(end = 20.dp),
+                color = Color.White
             )
         }
     }
@@ -580,7 +542,6 @@ private fun SystemMockup(
     Card(
         modifier = modifier
             .aspectRatio(1f)
-            .clip(RoundedCornerShape(16.dp))
             .clickable(
                 enabled = true,
                 indication = null,
@@ -588,74 +549,65 @@ private fun SystemMockup(
                 onClick = { onSelect(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM) }),
         border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
         shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 8.dp else 4.dp)
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            Row(
-                modifier = Modifier.fillMaxSize()
+        Row(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxSize()
+                    .background(Color.White)
+                    .padding(start = 10.dp, top = 20.dp, bottom = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(5.dp)
             ) {
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxSize()
-                        .background(Color.White)
-                        .padding(start = 10.dp, top = 20.dp, bottom = 20.dp),
-                    verticalArrangement = Arrangement.spacedBy(5.dp)
-                ) {
-                    TextMockup(
-                        modifier = Modifier.fillMaxWidth(),
-                        color = Color.Black,
-                        cornerShape = RoundedCornerShape(topStart = 4.dp, bottomStart = 4.dp)
-                    )
+                TextMockup(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = Color.Black,
+                    cornerShape = RoundedCornerShape(topStart = 4.dp, bottomStart = 4.dp)
+                )
 
-                    TextMockup(
-                        modifier = Modifier.fillMaxWidth(),
-                        color = Color.Black,
-                        cornerShape = RoundedCornerShape(topStart = 4.dp, bottomStart = 4.dp)
+                TextMockup(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = Color.Black,
+                    cornerShape = RoundedCornerShape(topStart = 4.dp, bottomStart = 4.dp)
 
-                    )
+                )
 
-                    TextMockup(
-                        modifier = Modifier.fillMaxWidth(),
-                        color = Color.Black,
-                        cornerShape = RoundedCornerShape(topStart = 4.dp, bottomStart = 4.dp)
-                    )
-                }
-
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxSize()
-                        .background(Color.Black)
-                        .padding(end = 10.dp, top = 20.dp, bottom = 20.dp),
-                    verticalArrangement = Arrangement.spacedBy(5.dp)
-                ) {
-                    TextMockup(
-                        modifier = Modifier.fillMaxWidth(),
-                        color = Color.White,
-                        cornerShape = RoundedCornerShape(topEnd = 4.dp, bottomEnd = 4.dp)
-                    )
-
-                    TextMockup(
-                        modifier = Modifier.fillMaxWidth(),
-                        color = Color.White,
-                        cornerShape = RoundedCornerShape(topEnd = 4.dp, bottomEnd = 4.dp)
-                    )
-
-                    TextMockup(
-                        modifier = Modifier.fillMaxWidth(),
-                        color = Color.White,
-                        cornerShape = RoundedCornerShape(topEnd = 4.dp, bottomEnd = 4.dp)
-                    )
-                }
+                TextMockup(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = Color.Black,
+                    cornerShape = RoundedCornerShape(topStart = 4.dp, bottomStart = 4.dp)
+                )
             }
 
-            CheckIcon(
-                isSelected = isSelected,
+            Column(
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 20.dp)
-            )
+                    .weight(1f)
+                    .fillMaxSize()
+                    .background(Color.Black)
+                    .padding(end = 10.dp, top = 20.dp, bottom = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(5.dp)
+            ) {
+                TextMockup(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = Color.White,
+                    cornerShape = RoundedCornerShape(topEnd = 4.dp, bottomEnd = 4.dp)
+                )
+
+                TextMockup(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = Color.White,
+                    cornerShape = RoundedCornerShape(topEnd = 4.dp, bottomEnd = 4.dp)
+                )
+
+                TextMockup(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = Color.White,
+                    cornerShape = RoundedCornerShape(topEnd = 4.dp, bottomEnd = 4.dp)
+                )
+            }
         }
     }
 }

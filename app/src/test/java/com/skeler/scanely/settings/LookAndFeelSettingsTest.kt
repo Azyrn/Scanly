@@ -28,8 +28,8 @@ class LookAndFeelSettingsTest {
     }
 
     @Test
-    fun `HIGH_CONTRAST_DARK_MODE default is false`() {
-        val defaultValue = SettingsKeys.HIGH_CONTRAST_DARK_MODE.default as Boolean
+    fun `IS_OLED_MODE_ENABLED default is false`() {
+        val defaultValue = SettingsKeys.IS_OLED_MODE_ENABLED.default as Boolean
         assertEquals(false, defaultValue)
     }
 
@@ -38,13 +38,13 @@ class LookAndFeelSettingsTest {
     // =========================================================================
 
     @Test
-    fun `SeedPalettes ALL contains 6 color palettes`() {
-        assertEquals(6, SeedPalettes.ALL.size)
+    fun `SeedPalettes ALL contains 20 color palettes`() {
+        assertEquals(20, SeedPalettes.ALL.size)
     }
 
     @Test
-    fun `SeedPalettes DEFAULT is Color06`() {
-        assertEquals(SeedPalettes.Color06, SeedPalettes.DEFAULT)
+    fun `SeedPalettes DEFAULT is Color16`() {
+        assertEquals(SeedPalettes.Color16, SeedPalettes.DEFAULT)
     }
 
     @Test
@@ -73,9 +73,9 @@ class LookAndFeelSettingsTest {
     // =========================================================================
 
     @Test
-    fun `THEME_MODE default follows system`() {
+    fun `THEME_MODE default is dark mode`() {
         val defaultMode = SettingsKeys.THEME_MODE.default as Int
-        // AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM = -1
-        assertEquals(-1, defaultMode)
+        // AppCompatDelegate.MODE_NIGHT_YES = 2
+        assertEquals(2, defaultMode)
     }
 }

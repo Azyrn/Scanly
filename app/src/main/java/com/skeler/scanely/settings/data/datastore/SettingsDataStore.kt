@@ -30,11 +30,6 @@ class SettingsDataStore @Inject constructor(
         val default = key.default as? Boolean == true
 
         return ds.data.map { prefs ->
-            if (!prefs.contains(preferencesKey)) {
-                runCatching {
-                    context.settingsDataStore.edit { it[preferencesKey] = default }
-                }
-            }
             prefs[preferencesKey] ?: default
         }
     }

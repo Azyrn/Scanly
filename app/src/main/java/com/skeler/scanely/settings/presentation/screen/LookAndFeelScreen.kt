@@ -61,6 +61,10 @@ import com.skeler.scanely.settings.presentation.viewmodel.SettingsViewModel
 import com.skeler.scanely.ui.theme.SeedColor
 import com.skeler.scanely.ui.theme.SeedPalettes
 
+import androidx.compose.foundation.Image
+import com.skeler.scanely.ui.components.illustrations.DynamicIllustrations
+import com.skeler.scanely.ui.components.illustrations.themePicker
+
 @Composable
 fun LookAndFeelScreen(
     settingsViewModel: SettingsViewModel = hiltViewModel()
@@ -72,7 +76,7 @@ fun LookAndFeelScreen(
     val useDynamicColors = settings.useDynamicColors
     val seedColorIndex = settings.seedColorIndex
     val isDarkTheme = settings.themeMode == AppCompatDelegate.MODE_NIGHT_YES
-    val isHighContrast = settings.isHighContrastDarkMode
+    val isOledMode = settings.isOledModeEnabled
 
     Scaffold(
         modifier = Modifier
@@ -102,20 +106,15 @@ fun LookAndFeelScreen(
                     modifier = Modifier.padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Illustration placeholder
-                    Box(
+                    // Illustration
+                    Image(
+                        imageVector = DynamicIllustrations.themePicker(),
+                        contentDescription = null,
                         modifier = Modifier
-                            .size(120.dp)
-                            .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f), CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.ColorLens,
-                            contentDescription = null,
-                            modifier = Modifier.size(64.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
+                            .fillMaxWidth()
+                            .height(200.dp)
+                    )
+
                     
                     Spacer(modifier = Modifier.height(32.dp))
                     
@@ -187,9 +186,9 @@ fun LookAndFeelScreen(
                     title = "Pure Black M3",
                     subtitle = "Save battery on OLED displays",
                     icon = Icons.Default.Contrast,
-                    checked = isHighContrast,
+                    checked = isOledMode,
                     onCheckedChange = { checked ->
-                         settingsViewModel.setBoolean(SettingsKeys.HIGH_CONTRAST_DARK_MODE, checked)
+                         settingsViewModel.setBoolean(SettingsKeys.IS_OLED_MODE_ENABLED, checked)
                     }
                 )
             }

@@ -171,6 +171,20 @@ object PdfProcessor {
                             )
                         }
                         
+                        // Early empty page detection to save CPU cycles
+                        if (ImagePreprocessor.isLikelyEmpty(bitmap)) {
+                            Log.d(TAG, "Page ${i + 1} appears empty, skipping OCR")
+                            bitmap.recycle()
+                            onProgress(ProgressUpdate(
+                                currentPage = i + 1,
+                                totalPages = pageCount,
+                                extractedText = "",
+                                statusMessage = "Page ${i + 1} is blank",
+                                pageConfidence = 0
+                            ))
+                            return@use
+                        }
+                        
                         // Preprocess and OCR
                         val preprocessedBitmap = ImagePreprocessor.preprocess(bitmap, recycleInput = true)
                         val ocrResult = ocrHelper.recognizeText(preprocessedBitmap)

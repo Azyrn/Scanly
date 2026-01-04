@@ -13,7 +13,7 @@ import kotlinx.coroutines.sync.withLock
 private const val TAG = "OcrHelper"
 
 /**
- * OCR result data class containing extracted text and metadata.
+ * OCR result containing extracted text and metadata.
  */
 data class OcrResult(
     val text: String,
@@ -22,6 +22,9 @@ data class OcrResult(
     val processingTimeMs: Long
 )
 
+/**
+ * Predefined OCR modes.
+ */
 enum class OcrMode(val label: String, val languages: List<String>) {
     ENGLISH_ARABIC("English + Arabic", listOf("eng", "ara")),
     ENGLISH("English Only", listOf("eng")),
@@ -30,26 +33,17 @@ enum class OcrMode(val label: String, val languages: List<String>) {
 }
 
 /**
- * Tesseract OCR wrapper providing thread-safe text extraction
- * with preprocessing and post-processing.
+ * Thread-safe Tesseract OCR wrapper with language-specific optimization.
  *
- * Features:
- * - Thread-safe with Mutex locking
- * - Multi-language support (up to 10 languages)
- * - Arabic RTL text handling
- * - Line and paragraph preservation
- * - Confidence-based filtering
- *
- * Usage:
- * ```
- * val ocrHelper = OcrHelper(context)
- * ocrHelper.initialize(listOf("eng", "ara"))
- * val result = ocrHelper.recognizeText(bitmap)
- * ocrHelper.release()
- * ```
+ * ARABIC OPTIMIZATION (2025 Best Practices):
+ * - OEM_LSTM_ONLY: LSTM handles cursive scripts correctly
+ * - textord_force_make_prop_words: Preserves Arabic ligatures
+ * - preserve_interword_spaces: Prevents RTL word merging
+ * - PSM_AUTO/SINGLE_BLOCK: Never SPARSE_TEXT for Arabic (breaks connections)
+ * - 450 DPI scaling for Arabic diacritics preservation
  */
 class OcrHelper(private val context: Context) {
-    
+
     companion object {
         val SUPPORTED_LANGUAGES_MAP = mapOf(
             "eng" to "English",
@@ -63,363 +57,411 @@ class OcrHelper(private val context: Context) {
             "jpn" to "Japanese",
             "chi_sim" to "Chinese (Simplified)"
         )
-        
-        // Minimum confidence threshold to include text
-        private const val MIN_CONFIDENCE_THRESHOLD = 30
-        
-        // Retry threshold - below this, we attempt a second pass
-        private const val RETRY_CONFIDENCE_THRESHOLD = 25
-        
-        // Common garbage characters from OCR noise
-        private val GARBAGE_PATTERN = Regex("[|\\[\\]{}\\\\<>^`~©®™•§¶]")
-        
-        // RTL Unicode markers
+
+        private const val MIN_CONFIDENCE = 30
+        private const val RETRY_CONFIDENCE = 25
+
+        private val GARBAGE_REGEX = Regex("[|\\[\\]{}\\\\<>^`~©®™•§¶]")
         private const val RTL_MARK = '\u200F'
-        private const val LTR_MARK = '\u200E'
+        
+        // Arabic-specific constants
+        private const val ARABIC_LANG_CODE = "ara"
     }
-    
+
     private val mutex = Mutex()
     private var tessApi: TessBaseAPI? = null
     private var currentLanguages: List<String> = emptyList()
     private var isInitialized = false
-    private var lastDetectedQuality: ImageQuality = ImageQuality.MEDIUM
+
+    // Quality/density state
+    private var detectedQuality: ImageQuality = ImageQuality.MEDIUM
+    private var detectedEdgeDensity: Float = 0.15f
+
+    /**
+     * Check if current languages include Arabic.
+     */
+    fun hasArabic(): Boolean = currentLanguages.any { it.startsWith(ARABIC_LANG_CODE) }
     
     /**
-     * Initialize Tesseract with specified languages.
-     * Must be called before recognizeText().
-     *
-     * @param languages List of language codes (e.g., ["eng", "ara"])
-     * @return true if initialization succeeded
+     * Check if a language code is Arabic.
+     */
+    private fun isArabicLanguage(langCode: String): Boolean = langCode.startsWith(ARABIC_LANG_CODE)
+
+    /**
+     * Set detected quality and edge density from preprocessor.
+     */
+    fun setDetectedQuality(quality: ImageQuality, edgeDensity: Float) {
+        detectedQuality = quality
+        detectedEdgeDensity = edgeDensity
+        Log.d(TAG, "Quality: $quality, density: ${"%.3f".format(edgeDensity)}")
+    }
+
+    /**
+     * Initialize Tesseract with languages.
      */
     suspend fun initialize(languages: List<String>): Boolean = withContext(Dispatchers.IO) {
         mutex.withLock {
             try {
                 if (languages.isEmpty()) {
-                    Log.e(TAG, "Initialize called with empty language list")
+                    Log.e(TAG, "Empty language list")
                     return@withContext false
                 }
 
-                // Ensure language files are available
-                val languagesReady = LanguageLoader.ensureLanguagesAvailable(context, languages)
-                if (!languagesReady) {
-                    Log.e(TAG, "Failed to prepare language files for: $languages")
+                val ready = LanguageLoader.ensureLanguagesAvailable(context, languages)
+                if (!ready) {
+                    Log.e(TAG, "Language files not ready: $languages")
                     return@withContext false
                 }
-                
-                // Create and init TessBaseAPI
+
                 val api = TessBaseAPI()
                 val dataPath = LanguageLoader.getDataPath(context)
-                
-                // Construct language string: "eng+ara" for multi-language
                 val langString = LanguageLoader.getLanguageString(languages)
+
+                Log.d(TAG, "Initializing Tesseract: '$langString' at '$dataPath'")
+
+                // CRITICAL: Use OEM_LSTM_ONLY for Arabic cursive script support
+                // Legacy engine (OEM_TESSERACT_ONLY) fragments Arabic ligatures
+                val oem = TessBaseAPI.OEM_LSTM_ONLY
                 
-                Log.d(TAG, "Initializing Tesseract with: '$langString' at '$dataPath'")
-                
-                val initResult = api.init(dataPath, langString)
-                
-                if (!initResult) {
-                    Log.e(TAG, "Tesseract init failed for: '$langString'")
-                    val fileExists = LanguageLoader.isLanguageAvailable(context, languages.first())
-                    Log.e(TAG, "Debug: Primary lang file ${languages.first()}.traineddata exists: $fileExists")
+                if (!api.init(dataPath, langString, oem)) {
+                    Log.e(TAG, "Tesseract init failed")
                     api.recycle()
                     return@withContext false
                 }
-                
-                // Apply base configuration
-                configureForQuality(api, ImageQuality.MEDIUM)
-                
+
+                // Apply language-specific configuration
+                initializeTesseractForLanguages(api, languages)
+
                 tessApi = api
                 currentLanguages = languages
                 isInitialized = true
-                
-                Log.d(TAG, "Tesseract initialized successfully with: $langString")
+
+                Log.d(TAG, "Tesseract ready: $langString (OEM_LSTM_ONLY)")
                 true
             } catch (e: Exception) {
-                Log.e(TAG, "Tesseract initialization crash", e)
+                Log.e(TAG, "Init error", e)
                 false
             }
         }
     }
-    
+
     /**
-     * Configure Tesseract settings based on detected image quality.
+     * Apply language-specific Tesseract configuration.
      * 
-     * For HIGH quality: Fast settings, minimal noise reduction
-     * For MEDIUM quality: Balanced settings
-     * For LOW quality: Aggressive noise reduction, better page segmentation
-     * 
-     * Note: RTL/Arabic support is preserved regardless of quality setting.
+     * Arabic requires special handling:
+     * - PSM_AUTO or PSM_SINGLE_BLOCK (not SPARSE_TEXT which breaks cursive connections)
+     * - textord_force_make_prop_words: Preserves ligature grouping
+     * - preserve_interword_spaces: Critical for RTL layout
+     * - Dictionary loading: Helps disambiguate similar shapes (ه vs ة)
      */
-    private fun configureForQuality(api: TessBaseAPI, quality: ImageQuality) {
-        lastDetectedQuality = quality
+    private fun initializeTesseractForLanguages(api: TessBaseAPI, languages: List<String>) {
+        val hasArabicLang = languages.any { isArabicLanguage(it) }
+        val hasLatinLang = languages.any { !isArabicLanguage(it) }
         
         try {
-            when (quality) {
-                ImageQuality.HIGH -> {
-                    // Clean document - use fast, accurate settings
-                    api.pageSegMode = TessBaseAPI.PageSegMode.PSM_AUTO
-                    api.setVariable("textord_heavy_nr", "0") // Light noise reduction
-                    api.setVariable("tessedit_pageseg_mode", "3") // Auto
-                }
+            if (hasArabicLang) {
+                Log.d(TAG, "Applying Arabic-optimized configuration")
                 
-                ImageQuality.MEDIUM -> {
-                    // Good quality photo - balanced settings
-                    api.pageSegMode = TessBaseAPI.PageSegMode.PSM_AUTO
-                    api.setVariable("textord_heavy_nr", "1") // Moderate noise reduction
-                    api.setVariable("tessedit_pageseg_mode", "1") // Auto with OSD
-                }
+                // PSM_AUTO (3) or PSM_SINGLE_BLOCK (6) for Arabic
+                // NEVER use PSM_SPARSE_TEXT - it breaks cursive connections
+                api.pageSegMode = TessBaseAPI.PageSegMode.PSM_AUTO
                 
-                ImageQuality.LOW -> {
-                    // Poor quality - aggressive processing
-                    api.pageSegMode = TessBaseAPI.PageSegMode.PSM_AUTO_OSD
-                    api.setVariable("textord_heavy_nr", "1") // Heavy noise reduction
-                    api.setVariable("tessedit_pageseg_mode", "1") // Auto with OSD
-                    api.setVariable("tessedit_do_invert", "1") // Detect inverted text
-                    // Disable dictionary for noisy images to reduce hallucinations
-                    api.setVariable("load_system_dawg", "0")
-                    api.setVariable("load_freq_dawg", "0")
-                }
+                // CRITICAL: Force proportional word detection for Arabic ligatures
+                // Without this, connected Arabic letters are split incorrectly
+                api.setVariable("textord_force_make_prop_words", "1")
+                
+                // Preserve spaces between Arabic words (RTL layout critical)
+                api.setVariable("preserve_interword_spaces", "1")
+                
+                // Enable dictionaries for Arabic word recognition
+                // Helps distinguish similar shapes: ه vs ة, ع vs غ
+                api.setVariable("load_system_dawg", "1")
+                api.setVariable("load_freq_dawg", "1")
+                
+                // Penalize non-dictionary words to reduce garbage output
+                api.setVariable("language_model_penalty_non_freq_dict_word", "0.15")
+                api.setVariable("language_model_penalty_non_dict_word", "0.25")
+                
+                // Disable noise rejection that can remove diacritics
+                api.setVariable("textord_noise_rejwords", "0")
+                
+                // Character blacklist - common OCR garbage
+                api.setVariable("tessedit_char_blacklist", "|{}[]\\<>^`~@#\$%")
+                
+            } else if (hasLatinLang) {
+                Log.d(TAG, "Applying Latin-optimized configuration")
+                
+                // Standard configuration for Latin scripts
+                applyLatinConfiguration(api)
             }
             
-            Log.d(TAG, "Configured Tesseract for $quality quality")
+            // Mixed Arabic + Latin (common in documents)
+            if (hasArabicLang && hasLatinLang) {
+                Log.d(TAG, "Mixed Arabic+Latin mode: prioritizing Arabic settings")
+                // Keep Arabic settings but enable Latin dictionary too
+                api.setVariable("load_system_dawg", "1")
+                api.setVariable("load_freq_dawg", "1")
+            }
+            
         } catch (e: Exception) {
-            Log.w(TAG, "Could not set Tesseract variables for $quality: ${e.message}")
+            Log.w(TAG, "Config error: ${e.message}")
         }
     }
-    
+
     /**
-     * Recognize text from an image URI.
-     * Applies preprocessing before OCR with quality-aware configuration.
+     * Apply Latin-specific configuration.
+     */
+    private fun applyLatinConfiguration(api: TessBaseAPI) {
+        // Dynamic PSM based on quality/density
+        val psm = when {
+            detectedQuality == ImageQuality.HIGH && detectedEdgeDensity > 0.25f -> {
+                TessBaseAPI.PageSegMode.PSM_SINGLE_BLOCK
+            }
+            detectedQuality == ImageQuality.LOW && detectedEdgeDensity < 0.05f -> {
+                TessBaseAPI.PageSegMode.PSM_SPARSE_TEXT
+            }
+            else -> TessBaseAPI.PageSegMode.PSM_AUTO
+        }
+        api.pageSegMode = psm
+        Log.d(TAG, "Latin PSM: $psm")
+
+        // Enable dictionaries for clean images
+        if (detectedQuality != ImageQuality.LOW) {
+            api.setVariable("load_system_dawg", "1")
+            api.setVariable("load_freq_dawg", "1")
+        } else {
+            // Disable for noisy images to prevent hallucinations
+            api.setVariable("load_system_dawg", "0")
+            api.setVariable("load_freq_dawg", "0")
+            api.setVariable("textord_noise_rejwords", "1")
+        }
+        
+        api.setVariable("tessedit_char_blacklist", "|{}[]\\<>^`~")
+    }
+
+    /**
+     * Update configuration for current quality/density.
+     * Called before recognition with latest image analysis.
+     */
+    private fun updateConfigurationForRecognition() {
+        tessApi?.let { api ->
+            try {
+                // For Arabic, never switch to SPARSE_TEXT
+                if (hasArabic()) {
+                    // Keep PSM_AUTO for Arabic regardless of density
+                    api.pageSegMode = TessBaseAPI.PageSegMode.PSM_AUTO
+                } else {
+                    // Dynamic PSM for Latin
+                    applyLatinConfiguration(api)
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Config update error: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Recognize text from URI.
      */
     suspend fun recognizeText(imageUri: Uri): OcrResult? = withContext(Dispatchers.IO) {
         if (!isInitialized || tessApi == null) {
-            Log.e(TAG, "OcrHelper not initialized")
+            Log.e(TAG, "Not initialized")
             return@withContext null
         }
-        
-        val preprocessed = ImagePreprocessor.preprocess(context, imageUri)
+
+        // Use language-aware preprocessing (450 DPI for Arabic)
+        val preprocessed = ImagePreprocessor.preprocess(
+            context, 
+            imageUri, 
+            currentLanguages.firstOrNull() ?: "eng"
+        )
         if (preprocessed == null) {
-            Log.e(TAG, "Image preprocessing failed")
+            Log.e(TAG, "Preprocessing failed")
             return@withContext null
         }
+
+        // NOTE: Do NOT call isLikelyEmpty here!
+        // The image is already preprocessed and binarized.
+        // Binarized images have very low variance (all black/white) = false positive empty detection.
         
-        // Detect quality and configure Tesseract accordingly
+        // Log preprocessed image info for debugging
+        Log.d(TAG, "Preprocessed image: ${preprocessed.width}x${preprocessed.height}")
+
+        // Update quality/density
         val quality = ImagePreprocessor.detectQuality(preprocessed)
+        val density = ImagePreprocessor.calculateEdgeDensity(preprocessed)
+        setDetectedQuality(quality, density)
+
         mutex.withLock {
-            tessApi?.let { configureForQuality(it, quality) }
+            updateConfigurationForRecognition()
         }
-        
-        val result = recognizeTextInternal(preprocessed, quality)
+
+        val result = recognizeInternal(preprocessed)
         preprocessed.recycle()
         result
     }
-    
+
     /**
-     * Recognize text from a bitmap.
-     * The bitmap should already be preprocessed for best results.
+     * Recognize text from bitmap.
      */
     suspend fun recognizeText(bitmap: Bitmap): OcrResult? = withContext(Dispatchers.IO) {
         if (!isInitialized || tessApi == null) {
-            Log.e(TAG, "OcrHelper not initialized")
+            Log.e(TAG, "Not initialized")
             return@withContext null
         }
-        
-        // Detect quality and configure Tesseract accordingly
+
+        // NOTE: Do NOT call isLikelyEmpty on already-preprocessed bitmaps!
+        // Binarized images have low variance = false positive.
+        Log.d(TAG, "Input bitmap: ${bitmap.width}x${bitmap.height}")
+
+        // Update quality/density
         val quality = ImagePreprocessor.detectQuality(bitmap)
+        val density = ImagePreprocessor.calculateEdgeDensity(bitmap)
+        setDetectedQuality(quality, density)
+
         mutex.withLock {
-            tessApi?.let { configureForQuality(it, quality) }
+            updateConfigurationForRecognition()
         }
-        
-        recognizeTextInternal(bitmap, quality)
+
+        recognizeInternal(bitmap)
     }
-    
+
     /**
-     * Internal recognition with retry logic for poor results.
+     * Internal recognition with retry logic.
      */
-    private suspend fun recognizeTextInternal(
-        bitmap: Bitmap, 
-        quality: ImageQuality
-    ): OcrResult? = mutex.withLock {
-        if (!isInitialized || tessApi == null) {
-            Log.e(TAG, "OcrHelper not initialized")
-            return@withLock null
-        }
-     
+    private suspend fun recognizeInternal(bitmap: Bitmap): OcrResult? = mutex.withLock {
+        if (tessApi == null) return@withLock null
+
         try {
-            val startTime = System.currentTimeMillis()
-            
+            val t0 = System.currentTimeMillis()
+
             tessApi?.setImage(bitmap)
-            
-            var rawText = tessApi?.utF8Text ?: ""
-            var confidence = tessApi?.meanConfidence() ?: 0
-            
-            val firstPassTime = System.currentTimeMillis() - startTime
-            Log.d(TAG, "First pass completed in ${firstPassTime}ms, confidence: $confidence%")
-            
-            // Retry with different settings for very poor results
-            if (confidence < RETRY_CONFIDENCE_THRESHOLD && rawText.length < 20 && quality == ImageQuality.LOW) {
-                Log.d(TAG, "Low confidence ($confidence%), attempting retry with sparse text mode")
-                
-                try {
-                    tessApi?.pageSegMode = TessBaseAPI.PageSegMode.PSM_SPARSE_TEXT
-                    tessApi?.setImage(bitmap)
-                    
-                    val retryText = tessApi?.utF8Text ?: ""
-                    val retryConfidence = tessApi?.meanConfidence() ?: 0
-                    
-                    Log.d(TAG, "Retry completed: confidence=$retryConfidence%, length=${retryText.length}")
-                    
-                    // Use retry result if better
-                    if (retryConfidence > confidence || 
-                        (retryText.length > rawText.length && retryConfidence >= confidence - 5)) {
-                        rawText = retryText
-                        confidence = retryConfidence
-                        Log.d(TAG, "Using retry result")
-                    }
-                    
-                    // Restore original page seg mode
-                    tessApi?.pageSegMode = TessBaseAPI.PageSegMode.PSM_AUTO_OSD
-                } catch (e: Exception) {
-                    Log.w(TAG, "Retry failed: ${e.message}")
+            var text = tessApi?.utF8Text ?: ""
+            var conf = tessApi?.meanConfidence() ?: 0
+
+            Log.d(TAG, "=== OCR RESULT ===")
+            Log.d(TAG, "Pass 1: confidence=$conf%, length=${text.length}")
+            Log.d(TAG, "Raw text (first 100): ${text.take(100)}")
+
+            // Retry with different PSM if poor result
+            // For Arabic, only retry with PSM_SINGLE_BLOCK (never SPARSE_TEXT)
+            if (conf < RETRY_CONFIDENCE && text.length < 20) {
+                Log.d(TAG, "Low confidence, retrying...")
+
+                val retryModes = if (hasArabic()) {
+                    // Arabic-safe retry modes (no SPARSE_TEXT)
+                    listOf(
+                        TessBaseAPI.PageSegMode.PSM_SINGLE_BLOCK,
+                        TessBaseAPI.PageSegMode.PSM_AUTO_OSD
+                    )
+                } else {
+                    // Latin can try SPARSE_TEXT
+                    listOf(
+                        TessBaseAPI.PageSegMode.PSM_SPARSE_TEXT,
+                        TessBaseAPI.PageSegMode.PSM_SINGLE_BLOCK,
+                        TessBaseAPI.PageSegMode.PSM_AUTO_OSD
+                    )
                 }
+
+                for (psm in retryModes) {
+                    try {
+                        tessApi?.pageSegMode = psm
+                        tessApi?.setImage(bitmap)
+                        val rt = tessApi?.utF8Text ?: ""
+                        val rc = tessApi?.meanConfidence() ?: 0
+
+                        Log.d(TAG, "PSM $psm: conf=$rc%, len=${rt.length}")
+
+                        if (rc > conf + 5 || (rt.length > text.length * 1.5 && rc >= conf - 5)) {
+                            text = rt
+                            conf = rc
+                            Log.d(TAG, "Using PSM $psm result")
+                            break
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Retry failed: ${e.message}")
+                    }
+                }
+
+                // Restore original configuration
+                updateConfigurationForRecognition()
             }
-            
-            val processingTime = System.currentTimeMillis() - startTime
-            
-            // Skip post-processing if confidence is very low
-            if (confidence < MIN_CONFIDENCE_THRESHOLD && rawText.length < 10) {
-                Log.w(TAG, "OCR confidence too low ($confidence%), likely garbage")
-                return@withLock OcrResult(
-                    text = "",
-                    confidence = confidence,
-                    languages = currentLanguages,
-                    processingTimeMs = processingTime
-                )
+
+            val elapsed = System.currentTimeMillis() - t0
+
+            if (conf < MIN_CONFIDENCE && text.length < 10) {
+                Log.w(TAG, "Confidence too low ($conf%)")
+                return@withLock OcrResult("", conf, currentLanguages, elapsed)
             }
-            
-            // Post-process the text
-            val cleanedText = postProcess(rawText)
-            
-            Log.d(TAG, "OCR completed. Cleaned text length: ${cleanedText.length}, quality: $quality")
-            
-            OcrResult(
-                text = cleanedText,
-                confidence = confidence,
-                languages = currentLanguages,
-                processingTimeMs = processingTime
-            )
+
+            val cleaned = postProcess(text)
+            Log.d(TAG, "OCR done: ${cleaned.length} chars, ${elapsed}ms")
+
+            OcrResult(cleaned, conf, currentLanguages, elapsed)
+
         } catch (e: Exception) {
-            Log.e(TAG, "OCR recognition failed", e)
+            Log.e(TAG, "Recognition error", e)
             null
         }
     }
-    
+
     /**
-     * Post-process extracted text:
-     * - Remove garbage characters
-     * - Preserve paragraph structure
-     * - Handle Arabic RTL text properly
-     * - Preserve numbers exactly (no 0→O conversion)
+     * Clean up OCR output.
      */
     private fun postProcess(text: String): String {
         if (text.isBlank()) return ""
-        
+
         var result = text
-        
-        // Remove common OCR garbage characters (but NOT numbers!)
-        result = result.replace(GARBAGE_PATTERN, "")
-        
-        // Normalize whitespace while preserving paragraph structure
-        result = result.replace(Regex("[ \\t]+"), " ")    // Multiple spaces to single
-        result = result.replace(Regex("\\n{3,}"), "\n\n") // Max 2 newlines
-        
-        // Process line by line to preserve structure
+            .replace(GARBAGE_REGEX, "")
+            .replace(Regex("[ \\t]+"), " ")
+            .replace(Regex("\\n{3,}"), "\n\n")
+
         result = result.lines()
-            .map { line -> 
-                var cleanLine = line.trim()
-                
-                // Remove lines that are likely noise (single chars, only punctuation)
-                if (cleanLine.length == 1 && !cleanLine[0].isLetterOrDigit()) {
-                    ""
-                } else if (cleanLine.matches(Regex("^[^\\p{L}\\p{N}]+$"))) {
-                    "" // Line contains no letters or numbers
-                } else {
-                    cleanLine
-                }
+            .map { it.trim() }
+            .filter { line ->
+                line.isNotEmpty() &&
+                !(line.length == 1 && !line[0].isLetterOrDigit()) &&
+                !line.matches(Regex("^[^\\p{L}\\p{N}]+$"))
             }
-            .filter { it.isNotEmpty() }
             .joinToString("\n")
-        
-        // Handle Arabic text: ensure proper RTL markers if Arabic is detected
+
         if (hasArabic() && containsArabic(result)) {
-            result = handleArabicText(result)
+            result = handleArabic(result)
         }
-        
+
         return result.trim()
     }
-    
-    /**
-     * Check if text contains Arabic characters.
-     */
+
     private fun containsArabic(text: String): Boolean {
-        return text.any { char ->
-            char.code in 0x0600..0x06FF || // Arabic
-            char.code in 0x0750..0x077F    // Arabic Supplement
+        return text.any { it.code in 0x0600..0x06FF || it.code in 0x0750..0x077F }
+    }
+
+    private fun handleArabic(text: String): String {
+        return text.lines().joinToString("\n") { line ->
+            if (containsArabic(line)) "$RTL_MARK$line" else line
         }
     }
-    
-    /**
-     * Handle Arabic RTL text: add proper Unicode markers for display.
-     */
-    private fun handleArabicText(text: String): String {
-        return text.lines().map { line ->
-            if (containsArabic(line)) {
-                // Add RTL mark at start of Arabic lines
-                "$RTL_MARK$line"
-            } else {
-                line
-            }
-        }.joinToString("\n")
-    }
-    
-    /**
-     * Check if the helper contains Arabic language.
-     */
-    fun hasArabic(): Boolean = currentLanguages.contains("ara")
-    
-    /**
-     * Get current initialization status.
-     */
+
     fun isReady(): Boolean = isInitialized && tessApi != null
-    
-    /**
-     * Get current languages.
-     */
+
     fun getCurrentLanguages(): List<String> = currentLanguages
-    
-    /**
-     * Release Tesseract resources.
-     * Must be called when done to prevent memory leaks.
-     */
+
     fun release() {
         try {
-            tessApi?.let {
-                it.recycle()
-            }
+            tessApi?.recycle()
             tessApi = null
             isInitialized = false
             currentLanguages = emptyList()
-            Log.d(TAG, "Tesseract resources released")
+            Log.d(TAG, "Released")
         } catch (e: Exception) {
-            Log.e(TAG, "Error releasing Tesseract", e)
+            Log.e(TAG, "Release error", e)
         }
     }
-    
-    /**
-     * Reinitialize with new languages.
-     */
+
     suspend fun reinitialize(languages: List<String>): Boolean {
         release()
         return initialize(languages)
     }
 }
+
+// --- END OF FILE: OCRHELPER.KT ---

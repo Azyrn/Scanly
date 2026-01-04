@@ -24,7 +24,7 @@ fun CompositionLocals(
     content: @Composable () -> Unit
 ) {
     val themeMode by settingsViewModel.intState(SettingsKeys.THEME_MODE)
-    val isHighContrastDarkMode by settingsViewModel.booleanState(SettingsKeys.HIGH_CONTRAST_DARK_MODE)
+    val isOledModeEnabled by settingsViewModel.booleanState(SettingsKeys.IS_OLED_MODE_ENABLED)
     val ocrLanguages by settingsViewModel.stringSetState(SettingsKeys.OCR_LANGUAGES)
     val useDynamicColors by settingsViewModel.booleanState(SettingsKeys.USE_DYNAMIC_COLORS)
     val seedColorIndex by settingsViewModel.intState(SettingsKeys.SEED_COLOR_INDEX)
@@ -32,14 +32,14 @@ fun CompositionLocals(
     val state =
         remember(
             themeMode,
-            isHighContrastDarkMode,
+            isOledModeEnabled,
             ocrLanguages,
             useDynamicColors,
             seedColorIndex
         ) {
             SettingsState(
                 themeMode = themeMode,
-                isHighContrastDarkMode = isHighContrastDarkMode,
+                isOledModeEnabled = isOledModeEnabled,
                 ocrLanguages = ocrLanguages,
                 useDynamicColors = useDynamicColors,
                 seedColorIndex = seedColorIndex

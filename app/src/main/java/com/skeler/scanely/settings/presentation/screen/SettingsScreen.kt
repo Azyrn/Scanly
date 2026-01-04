@@ -93,7 +93,7 @@ fun SettingsScreen(
         TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
     val listState = rememberLazyListState()
 
-    val isHighContrastDarkMode = LocalSettings.current.isHighContrastDarkMode
+    val isOledModeEnabled = LocalSettings.current.isOledModeEnabled
     val ocrLanguages = LocalSettings.current.ocrLanguages
 
     val languageList by remember {
@@ -375,7 +375,7 @@ private fun AboutSection() {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Scanly v1.3.0",
+                text = "Scanly v${com.skeler.scanely.BuildConfig.VERSION_NAME}",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
             )

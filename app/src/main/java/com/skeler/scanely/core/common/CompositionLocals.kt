@@ -23,30 +23,14 @@ fun CompositionLocals(
     settingsViewModel: SettingsViewModel = hiltViewModel(),
     content: @Composable () -> Unit
 ) {
-    val themeMode by settingsViewModel.intState(SettingsKeys.THEME_MODE)
-    val isOledModeEnabled by settingsViewModel.booleanState(SettingsKeys.IS_OLED_MODE_ENABLED)
-    val ocrLanguages by settingsViewModel.stringSetState(SettingsKeys.OCR_LANGUAGES)
-    val useDynamicColors by settingsViewModel.booleanState(SettingsKeys.USE_DYNAMIC_COLORS)
-    val seedColorIndex by settingsViewModel.intState(SettingsKeys.SEED_COLOR_INDEX)
+    // Use unified state flow to wait for data load (prevents violet flash)
+    val uiState by settingsViewModel.settingsUiState.collectAsState()
 
-    val state =
-        remember(
-            themeMode,
-            isOledModeEnabled,
-            ocrLanguages,
-            useDynamicColors,
-            seedColorIndex
-        ) {
-            SettingsState(
-                themeMode = themeMode,
-                isOledModeEnabled = isOledModeEnabled,
-                ocrLanguages = ocrLanguages,
-                useDynamicColors = useDynamicColors,
-                seedColorIndex = seedColorIndex
-            )
-        }
+    // If state is null, we are still loading settings from disk.
+    // Return early to render nothing (or a splash background) until data is ready.
+    val state = uiState ?: return
 
-    val isDarkTheme = when (themeMode) {
+    val isDarkTheme = when (state.themeMode) {
         AppCompatDelegate.MODE_NIGHT_YES -> true
         AppCompatDelegate.MODE_NIGHT_NO -> false
         else -> isSystemInDarkTheme()
@@ -60,27 +44,4 @@ fun CompositionLocals(
     }
 }
 
-@Composable
-private fun SettingsViewModel.booleanState(key: SettingsKeys): State<Boolean> {
-    return getBoolean(key).collectAsState(initial = key.default as Boolean)
-}
 
-@Composable
-private fun SettingsViewModel.intState(key: SettingsKeys): State<Int> {
-    return getInt(key).collectAsState(initial = key.default as Int)
-}
-
-@Composable
-private fun SettingsViewModel.floatState(key: SettingsKeys): State<Float> {
-    return getFloat(key).collectAsState(initial = key.default as Float)
-}
-
-@Composable
-private fun SettingsViewModel.stringState(key: SettingsKeys): State<String> {
-    return getString(key).collectAsState(initial = key.default as String)
-}
-
-@Composable
-private fun SettingsViewModel.stringSetState(key: SettingsKeys): State<Set<String>> {
-    return getStringSet(key).collectAsState(initial = key.default as Set<String>)
-}

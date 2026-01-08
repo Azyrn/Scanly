@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.6.0-beta.1] - 2026-01-08
+
+### Changed
+- **Navigation Transitions**: Enhanced animations using standard Google Gallery transitions (EaseOutExpo, 500ms) for consistent, buttery smoothness.
+- **Settings UI**: Updated "About" section header for improved clarity.
+
+### Fixed
+- **Theme Flicker**: Resolved a startup race condition where the default system theme would flash before the user's saved theme loaded.
+- **Navigation Lag**: Aligned transition directions (Push/Pull) and removed artificial delays on back navigation for instant responsiveness.
+
 ## [1.4.0-beta.1] - 2026-01-04
 
 ### Added

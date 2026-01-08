@@ -6,7 +6,6 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.FiniteAnimationSpec
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
@@ -34,12 +33,6 @@ private const val ENTER_ANIMATION_DURATION_MS = 500
 private const val ENTER_ANIMATION_DELAY_MS = 100
 private const val EXIT_ANIMATION_DURATION_MS = 500
 
-// --- Spring Constants ---
-object GallerySpring {
-    const val STIFFNESS_LOW = Spring.StiffnessLow
-    const val DAMPING_RATIO_MEDIUM = Spring.DampingRatioMediumBouncy
-}
-
 /**
  * Creates enter transition tween spec matching Google Gallery.
  * 500ms duration, EaseOutExpo easing, 100ms delay.
@@ -48,6 +41,16 @@ fun enterTween(): FiniteAnimationSpec<IntOffset> = tween(
     durationMillis = ENTER_ANIMATION_DURATION_MS,
     easing = EaseOutExpo,
     delayMillis = ENTER_ANIMATION_DELAY_MS,
+)
+
+/**
+ * Creates enter transition tween spec for POP (back navigation).
+ * 500ms duration, EaseOutExpo easing, NO delay (instant).
+ */
+fun popEnterTween(): FiniteAnimationSpec<IntOffset> = tween(
+    durationMillis = ENTER_ANIMATION_DURATION_MS,
+    easing = EaseOutExpo,
+    // No delay for back navigation to prevent "lag" feeling
 )
 
 /**
@@ -60,7 +63,7 @@ fun exitTween(): FiniteAnimationSpec<IntOffset> = tween(
 )
 
 /**
- * Slide enter transition from left (forward navigation).
+ * Slide enter transition from RIGHT (forward navigation).
  */
 fun AnimatedContentTransitionScope<*>.gallerySlideEnter(): EnterTransition = slideIntoContainer(
     towards = AnimatedContentTransitionScope.SlideDirection.Left,
@@ -68,26 +71,26 @@ fun AnimatedContentTransitionScope<*>.gallerySlideEnter(): EnterTransition = sli
 )
 
 /**
- * Slide exit transition to right (forward navigation).
+ * Slide exit transition to LEFT (forward navigation).
  */
 fun AnimatedContentTransitionScope<*>.gallerySlideExit(): ExitTransition = slideOutOfContainer(
-    towards = AnimatedContentTransitionScope.SlideDirection.Right,
+    towards = AnimatedContentTransitionScope.SlideDirection.Left,
     animationSpec = exitTween(),
 )
 
 /**
- * Pop enter transition from right (back navigation).
+ * Pop enter transition from LEFT (back navigation).
  */
 fun AnimatedContentTransitionScope<*>.galleryPopEnter(): EnterTransition = slideIntoContainer(
     towards = AnimatedContentTransitionScope.SlideDirection.Right,
-    animationSpec = enterTween(),
+    animationSpec = popEnterTween(),
 )
 
 /**
- * Pop exit transition to left (back navigation).
+ * Pop exit transition to RIGHT (back navigation).
  */
 fun AnimatedContentTransitionScope<*>.galleryPopExit(): ExitTransition = slideOutOfContainer(
-    towards = AnimatedContentTransitionScope.SlideDirection.Left,
+    towards = AnimatedContentTransitionScope.SlideDirection.Right,
     animationSpec = exitTween(),
 )
 
@@ -121,3 +124,4 @@ fun rememberDelayedAnimationProgress(
     }
     return progress
 }
+

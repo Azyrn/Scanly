@@ -3,10 +3,15 @@ package com.skeler.scanely.settings.presentation.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.skeler.scanely.settings.data.SettingsKeys
+import com.skeler.scanely.settings.domain.model.SettingsState
 import com.skeler.scanely.settings.domain.repository.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -17,6 +22,28 @@ import javax.inject.Inject
 class SettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository
 ) : ViewModel() {
+
+    // Unified state flow to prevent partial/default rendering
+    val settingsUiState: StateFlow<SettingsState?> = combine(
+        settingsRepository.getInt(SettingsKeys.THEME_MODE),
+        settingsRepository.getBoolean(SettingsKeys.IS_OLED_MODE_ENABLED),
+        settingsRepository.getStringSet(SettingsKeys.OCR_LANGUAGES),
+        settingsRepository.getBoolean(SettingsKeys.USE_DYNAMIC_COLORS),
+        settingsRepository.getInt(SettingsKeys.SEED_COLOR_INDEX)
+    ) { themeMode, isOled, langs, dynamic, seedIndex ->
+        SettingsState(
+            themeMode = themeMode,
+            isOledModeEnabled = isOled,
+            ocrLanguages = langs,
+            useDynamicColors = dynamic,
+            seedColorIndex = seedIndex
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Eagerly,
+        initialValue = null // Critical: Null indicates "loading from disk"
+    )
+
     fun setBoolean(key: SettingsKeys, value: Boolean) {
         viewModelScope.launch(Dispatchers.IO) {
             settingsRepository.setBoolean(key, value)

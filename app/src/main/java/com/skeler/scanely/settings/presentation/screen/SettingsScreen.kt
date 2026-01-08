@@ -10,6 +10,9 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import coil.compose.AsyncImage
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.BorderStroke
@@ -316,29 +319,15 @@ private fun AboutSection() {
     ) {
         // Source Code Section
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-             Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                 Icon(
-                    imageVector = Icons.Default.Code,
-                    contentDescription = null, // decorative
-                    modifier = Modifier.size(24.dp), 
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                 // Note: If ic_code doesn't exist, I'll use a standard icon from Icons object in the next step or fallback. 
-                 // For now, I'll use Icons.Default.Code if available or a similar one. 
-                 // Actually, let's use a standard icon to be safe.
-             }
-             // Wait, the design shows "Source Code" as a header? Or just the card?
-             // The image shows "Source Code" text inside the card or above?
-             // Image: 
-             // < > Source Code
-             //     https://github.com...
-             
-             SourceCodeCard(
-                 onClick = { uriHandler.openUri("https://github.com/Azyrn/Scanly") }
-             )
+            Text(
+                text = "About",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+              SourceCodeCard(
+                  onClick = { uriHandler.openUri("https://github.com/Azyrn/Scanly") }
+              )
         }
 
         // Contributors Section

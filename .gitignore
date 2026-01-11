@@ -12,3 +12,11 @@ local.properties
 *.jks
 *.keystore
 release_log*.txt
+
+# Firebase
+google-services.json
+firebase.json
+.firebaserc
+.firebase/
+dataconnect/
+app/src/main/kotlin/com/google/firebase/dataconnect/generated/

@@ -1,5 +1,0 @@
-connectorId: example
-generate:
-  kotlinSdk:
-    - outputDir: ../../app/src/main/kotlin
-      package: com.google.firebase.dataconnect.generated

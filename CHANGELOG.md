@@ -1,5 +1,36 @@
 # Changelog
 
+## [v2.7.0] - 2026-01-11
+
+### New Features
+- **AI Document Extraction**: Extract text from PDFs and text files using Google Gemini AI.
+- **Translation Support**: Translate extracted text into 15+ languages with one tap.
+- **Barcode Smart Actions**: Scan barcodes and QR codes with actionable results:
+  - Copy text to clipboard
+  - Open URLs in browser
+  - Dial phone numbers
+  - Send emails and SMS
+  - Connect to WiFi networks
+  - Add contacts to address book
+- **Offline OCR**: Built-in Google ML Kit text recognition works completely offline.
+
+### Bug Fixes
+- **History Image Persistence**: Fixed issue where all history items showed the same image.
+- **Back Navigation**: Results screen now correctly returns to History when accessed from there.
+- **Barcode Actions**: Fixed barcode/QR copy and open actions not working.
+
+### Security
+- Removed sensitive Firebase configuration files from repository.
+- Updated `.gitignore` to prevent accidental commits of Firebase files.
+
+### Under the Hood
+- Created `ActionExecutor` utility for barcode action handling.
+- Created `HistoryViewModel` with Hilt injection for consistent data access.
+- Limited document picker to PDF and TXT files (Gemini API supported formats).
+- Improved error messages for unsupported file types.
+
+---
+
 ## [v2.4.0] - 2026-01-10
 
 ### 🚀 New Features & Improvements

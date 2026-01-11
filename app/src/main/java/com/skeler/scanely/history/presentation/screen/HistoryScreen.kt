@@ -21,7 +21,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -36,13 +36,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,11 +53,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.skeler.scanely.core.presentation.components.svg.DynamicColorImageVectors
 import com.skeler.scanely.core.presentation.components.svg.vectors.noSearchResult
 import com.skeler.scanely.history.data.HistoryItem
-import com.skeler.scanely.history.data.HistoryManager
+import com.skeler.scanely.history.presentation.HistoryViewModel
 import com.skeler.scanely.navigation.LocalNavController
 import com.skeler.scanely.navigation.Routes
 import com.skeler.scanely.ui.ScanViewModel
@@ -73,9 +71,11 @@ fun HistoryScreen() {
     val context = LocalContext.current
     val activity = context as ComponentActivity
     val scanViewModel: ScanViewModel = hiltViewModel(activity)
+    val historyViewModel: HistoryViewModel = hiltViewModel()
     val navController = LocalNavController.current
-    val historyManager = remember { HistoryManager(context) }
-    var historyItems by remember { mutableStateOf<List<HistoryItem>>(emptyList()) }
+    
+    val historyItems by historyViewModel.historyItems.collectAsState()
+    
     val topBarScrollBehavior =
         TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
     val listState = rememberLazyListState()
@@ -86,10 +86,6 @@ fun HistoryScreen() {
                 lastScrollOffset = it
             }
         }
-    }
-
-    LaunchedEffect(Unit) {
-        historyItems = historyManager.getHistory()
     }
 
     Scaffold(
@@ -128,16 +124,15 @@ fun HistoryScreen() {
                     expanded = isFabExpanded,
                     icon = {
                         Icon(
-                            imageVector = Icons.Default.ContentCopy,
-                            contentDescription = "Delete"
+                            imageVector = Icons.Default.DeleteOutline,
+                            contentDescription = "Clear History"
                         )
                     },
                     text = {
-                        Text("Delete")
+                        Text("Clear All")
                     },
                     onClick = {
-                        historyManager.clearHistory()
-                        historyItems = emptyList()
+                        historyViewModel.clearHistory()
                     }
                 )
             }
@@ -168,13 +163,13 @@ fun HistoryScreen() {
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = PaddingValues(16.dp)
             ) {
-                items(historyItems) { item ->
+                items(historyItems, key = { it.id }) { item ->
                     HistoryItemCard(
                         item = item,
                         onClick = {
                             // Navigate to results with saved text (no re-extraction)
                             scanViewModel.onImageSelected(Uri.parse(item.imageUri))
-                            // Pass saved text via navigation args or shared state
+                            // Pass saved text via shared state
                             scanViewModel.setHistoryText(item.text)
                             navController.navigate(Routes.RESULTS)
                         },

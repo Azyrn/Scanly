@@ -6,7 +6,9 @@ import androidx.lifecycle.viewModelScope
 import com.skeler.scanely.core.ai.AiMode
 import com.skeler.scanely.core.ai.AiResult
 import com.skeler.scanely.core.ai.GenerativeAiService
+import com.skeler.scanely.history.data.HistoryManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,15 +24,19 @@ data class AiScanState(
     val mode: AiMode? = null,
     val originalText: String? = null,
     val translatedText: String? = null,
-    val isTranslating: Boolean = false
+    val isTranslating: Boolean = false,
+    /** URI of the last processed image (for rescan) */
+    val lastImageUri: Uri? = null
 )
 
 /**
  * ViewModel for AI-powered image analysis.
+ * Saves successful results to history.
  */
 @HiltViewModel
 class AiScanViewModel @Inject constructor(
-    private val aiService: GenerativeAiService
+    private val aiService: GenerativeAiService,
+    private val historyManager: HistoryManager
 ) : ViewModel() {
 
     private val _aiState = MutableStateFlow(AiScanState())
@@ -43,20 +49,48 @@ class AiScanViewModel @Inject constructor(
         viewModelScope.launch {
             _aiState.value = AiScanState(
                 isProcessing = true,
-                mode = mode
+                mode = mode,
+                lastImageUri = imageUri
             )
 
             val result = aiService.processImage(imageUri, mode)
-
             val originalText = if (result is AiResult.Success) result.text else null
 
-            _aiState.value = AiScanState(
+            _aiState.value = _aiState.value.copy(
                 isProcessing = false,
                 result = result,
-                mode = mode,
                 originalText = originalText
             )
+
+            // Save to history on success
+            if (result is AiResult.Success && result.text.isNotBlank()) {
+                saveToHistory(result.text, imageUri)
+            }
         }
+    }
+
+    /**
+     * Save extraction result to history.
+     */
+    private fun saveToHistory(text: String, uri: Uri) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                historyManager.saveItem(text, uri.toString())
+            } catch (e: Exception) {
+                // Silent fail - don't interrupt user flow
+            }
+        }
+    }
+
+    /**
+     * Rescan the last processed image with the same mode.
+     */
+    fun rescan() {
+        val currentState = _aiState.value
+        val imageUri = currentState.lastImageUri ?: return
+        val mode = currentState.mode ?: return
+
+        processImage(imageUri, mode)
     }
 
     /**
@@ -78,19 +112,6 @@ class AiScanViewModel @Inject constructor(
                     is AiResult.Error -> "Translation error: ${translationResult.message}"
                 }
             )
-        }
-    }
-
-    /**
-     * Check rate limit before showing mode selection.
-     * Returns AiResult.RateLimited if exceeded, null if allowed.
-     */
-    suspend fun checkRateLimit(): AiResult? {
-        return try {
-            val result = aiService.extractText(Uri.EMPTY)
-            if (result is AiResult.RateLimited) result else null
-        } catch (e: Exception) {
-            null
         }
     }
 

@@ -149,20 +149,19 @@ class ScanViewModel @Inject constructor(
     /**
      * Execute an AI request with 2-request rate limiting.
      *
-     * Logic:
-     * - If currently in cooldown (remainingSeconds > 0), show sheet
-     * - Otherwise, increment request count
-     * - If count reaches MAX_REQUESTS_BEFORE_COOLDOWN (2), start 60s cooldown + show sheet
+     * FIXED Logic:
+     * - 2 FREE requests allowed (extract + translate)
+     * - AFTER 2nd request completes, start 60s cooldown
+     * - During cooldown, block all requests
      *
      * @param onAllowed Callback executed only if rate limit allows
      * @return true if request was allowed, false if rate limited
      */
     fun triggerAiWithRateLimit(onAllowed: () -> Unit): Boolean {
-        val currentState = _rateLimitState.value
         val now = System.currentTimeMillis()
 
         // Check if currently in cooldown
-        if (currentState.remainingSeconds > 0) {
+        if (_rateLimitState.value.remainingSeconds > 0) {
             _showRateLimitSheet.value = true
             return false
         }
@@ -174,20 +173,23 @@ class ScanViewModel @Inject constructor(
             _rateLimitState.value = RateLimitState(requestCount = 0)
         }
 
-        val newCount = currentState.requestCount + 1
+        // Read current count AFTER potential reset
+        val currentCount = _rateLimitState.value.requestCount
+        val newCount = currentCount + 1
 
-        // Allow the request
+        // Allow the request FIRST
         onAllowed()
 
+        // Then update state
         if (newCount >= MAX_REQUESTS_BEFORE_COOLDOWN) {
-            // Hit the limit, start cooldown
+            // Hit the limit, start cooldown AFTER the request
             cooldownStartTimestamp = now
-            _rateLimitState.value = currentState.copy(requestCount = newCount)
+            _rateLimitState.value = _rateLimitState.value.copy(requestCount = newCount)
             _showRateLimitSheet.value = true
             startCooldown()
         } else {
             // Still under limit, just increment
-            _rateLimitState.value = currentState.copy(requestCount = newCount)
+            _rateLimitState.value = _rateLimitState.value.copy(requestCount = newCount)
         }
 
         return true

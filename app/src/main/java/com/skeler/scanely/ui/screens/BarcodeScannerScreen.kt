@@ -67,6 +67,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
+import com.skeler.scanely.core.actions.ActionExecutor
 import com.skeler.scanely.core.actions.ScanAction
 import com.skeler.scanely.core.barcode.BarcodeAnalyzer
 import com.skeler.scanely.navigation.LocalNavController
@@ -191,8 +192,8 @@ fun BarcodeScannerScreen() {
                 actions = detectedActions,
                 onActionClick = { action ->
                     showActionsSheet = false
-                    // Handle action - will be implemented via ActionExecutor
-                    Log.d(TAG, "Action selected: ${action.label}")
+                    // Execute the action (open URL, copy text, call, email, etc.)
+                    ActionExecutor.execute(context, action)
                 },
                 onDismiss = {
                     showActionsSheet = false

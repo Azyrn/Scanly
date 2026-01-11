@@ -90,8 +90,6 @@ import com.skeler.scanely.ui.components.GalleryPicker
 import com.skeler.scanely.ui.components.RateLimitSheet
 import com.skeler.scanely.ui.viewmodel.AiScanViewModel
 import com.skeler.scanely.ui.viewmodel.OcrViewModel
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -119,6 +117,13 @@ fun HomeScreen() {
     val showRateLimitSheet by scanViewModel.showRateLimitSheet.collectAsState()
     val rateLimitState by scanViewModel.rateLimitState.collectAsState()
 
+    // Auto-dismiss rate limit sheet when cooldown completes
+    LaunchedEffect(rateLimitState.remainingSeconds, rateLimitState.justBecameReady) {
+        if (rateLimitState.remainingSeconds == 0 && rateLimitState.justBecameReady) {
+            scanViewModel.dismissRateLimitSheet()
+        }
+    }
+
     // Selected AI mode for gallery picker
     var pendingAiMode by remember { mutableStateOf<AiMode?>(null) }
 
@@ -136,14 +141,55 @@ fun HomeScreen() {
         }
     )
 
-    // Gallery picker for AI scan
+    // Gallery picker for AI scan (images) - triggers immediately with rate limit check
     val aiGalleryPicker = GalleryPicker { uri ->
         if (uri != null && pendingAiMode != null) {
-            aiViewModel.processImage(uri, pendingAiMode!!)
+            val mode = pendingAiMode!!
             pendingAiMode = null
-            navController.navigate(Routes.RESULTS)
+            
+            // Check rate limit - 2 free requests, then 60s cooldown
+            // Only navigate if request is allowed
+            val allowed = scanViewModel.triggerAiWithRateLimit {
+                // Rate limit allows - trigger API immediately
+                scanViewModel.onImageSelected(uri)
+                aiViewModel.processImage(uri, mode)
+            }
+            
+            // Only navigate if request was allowed
+            if (allowed) {
+                navController.navigate(Routes.RESULTS)
+            }
         }
     }
+
+    // Document picker for AI scan (PDF, DOCX, PPTX, etc.)
+    val aiDocumentPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument(),
+        onResult = { uri ->
+            if (uri != null && pendingAiMode != null) {
+                val mode = pendingAiMode!!
+                pendingAiMode = null
+                
+                // Take persistable permission
+                try {
+                    val flags = android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    context.contentResolver.takePersistableUriPermission(uri, flags)
+                } catch (e: Exception) {
+                    // Ignore if permission taking fails
+                }
+                
+                // Check rate limit
+                val allowed = scanViewModel.triggerAiWithRateLimit {
+                    scanViewModel.onPdfSelected(uri)
+                    aiViewModel.processImage(uri, mode)
+                }
+                
+                if (allowed) {
+                    navController.navigate(Routes.RESULTS)
+                }
+            }
+        }
+    )
 
     val launchGalleryPicker = GalleryPicker { uri ->
         if (uri != null) {
@@ -186,18 +232,27 @@ fun HomeScreen() {
         }
     }
 
-    // Handle AI mode selection
+    // Handle AI mode selection - use correct picker based on mode
     fun onAiModeSelected(mode: AiMode) {
-        // Use the 2-request rate limit system
-        val allowed = scanViewModel.triggerAiWithRateLimit {
-            pendingAiMode = mode
-            showAiBottomSheet = false
-            aiGalleryPicker()
-        }
+        pendingAiMode = mode
+        showAiBottomSheet = false
         
-        if (!allowed) {
-            // Rate limited - sheet is already shown by triggerAiWithRateLimit
-            showAiBottomSheet = false
+        when (mode) {
+            AiMode.EXTRACT_TEXT -> {
+                // Use photo gallery for images
+                aiGalleryPicker()
+            }
+            AiMode.EXTRACT_PDF_TEXT -> {
+                // Use document picker for PDF and text files (Gemini supported)
+                aiDocumentPicker.launch(arrayOf(
+                    "application/pdf",
+                    "text/plain"
+                ))
+            }
+            else -> {
+                // Default to image picker
+                aiGalleryPicker()
+            }
         }
     }
 
@@ -327,10 +382,10 @@ fun HomeScreen() {
                 )
 
                 AiModeItem(
-                    icon = Icons.Default.ImageSearch,
-                    title = "Describe Image",
-                    subtitle = "AI-generated description of the scene",
-                    onClick = { onAiModeSelected(AiMode.DESCRIBE_IMAGE) }
+                    icon = Icons.Outlined.PictureAsPdf,
+                    title = "Extract PDF",
+                    subtitle = "AI-powered PDF and text file extraction",
+                    onClick = { onAiModeSelected(AiMode.EXTRACT_PDF_TEXT) }
                 )
             }
         }

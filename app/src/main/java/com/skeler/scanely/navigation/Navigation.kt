@@ -52,7 +52,7 @@ fun ScanelyNavigation(
         NavHost(
             navController = navController,
             startDestination = Routes.HOME,
-            // Google Gallery-style transitions: EaseOutExpo 500ms with asymmetric timing
+            // Smooth fade+scale transitions (no jarring edge clipping)
             enterTransition = { gallerySlideEnter() },
             exitTransition = { gallerySlideExit() },
             popEnterTransition = { galleryPopEnter() },

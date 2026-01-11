@@ -1,6 +1,5 @@
 package com.skeler.scanely.core.animation
 
-import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.Easing
@@ -8,13 +7,16 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.unit.IntOffset
 import kotlinx.coroutines.delay
 import kotlin.math.pow
 
@@ -29,69 +31,69 @@ val EaseOutExpo = Easing { fraction ->
 }
 
 // --- Animation Duration Constants ---
-private const val ENTER_ANIMATION_DURATION_MS = 500
-private const val ENTER_ANIMATION_DELAY_MS = 100
-private const val EXIT_ANIMATION_DURATION_MS = 500
+// ULTRATHINK Reasoning:
+// - Enter: 300ms allows eye to track the scale expansion
+// - Exit: 150ms feels "responsive" since user initiated the action
+// - Scale: 0.92→1.0 is subliminal yet creates depth perception
+private const val ENTER_DURATION_MS = 400
+private const val ENTER_DELAY_MS = 100
+private const val EXIT_DURATION_MS = 150
+private const val INITIAL_SCALE = 0.92f
+private const val EXIT_SCALE = 1.08f
 
 /**
- * Creates enter transition tween spec matching Google Gallery.
- * 500ms duration, EaseOutExpo easing, 100ms delay.
+ * Fade+Scale enter transition (forward navigation).
+ *
+ * ULTRATHINK Deep Reasoning:
+ * - Full-width slides CLIP corners on rounded screens (20-40dp radii)
+ * - FadeIn + ScaleIn keeps ALL 4 corners visible throughout animation
+ * - Content emerges from CENTER, requiring no eye tracking across viewport
+ * - 0.92f scale creates subtle "emerging from depth" effect
  */
-fun enterTween(): FiniteAnimationSpec<IntOffset> = tween(
-    durationMillis = ENTER_ANIMATION_DURATION_MS,
-    easing = EaseOutExpo,
-    delayMillis = ENTER_ANIMATION_DELAY_MS,
+fun gallerySlideEnter(): EnterTransition = fadeIn(
+    animationSpec = tween(ENTER_DURATION_MS, easing = EaseOutExpo, delayMillis = ENTER_DELAY_MS)
+) + scaleIn(
+    initialScale = INITIAL_SCALE,
+    animationSpec = tween(ENTER_DURATION_MS, easing = EaseOutExpo, delayMillis = ENTER_DELAY_MS)
 )
 
 /**
- * Creates enter transition tween spec for POP (back navigation).
- * 500ms duration, EaseOutExpo easing, NO delay (instant).
+ * Fade+Scale exit transition (forward navigation).
+ *
+ * Exit scales UP slightly (1.08) to create "pushed back" parallax effect
+ * while new content emerges in front.
  */
-fun popEnterTween(): FiniteAnimationSpec<IntOffset> = tween(
-    durationMillis = ENTER_ANIMATION_DURATION_MS,
-    easing = EaseOutExpo,
-    // No delay for back navigation to prevent "lag" feeling
+fun gallerySlideExit(): ExitTransition = fadeOut(
+    animationSpec = tween(durationMillis = EXIT_DURATION_MS, easing = FastOutSlowInEasing)
+) + scaleOut(
+    targetScale = EXIT_SCALE,
+    animationSpec = tween(durationMillis = EXIT_DURATION_MS, easing = FastOutSlowInEasing)
 )
 
 /**
- * Creates exit transition tween spec matching Google Gallery.
- * 500ms duration, EaseOutExpo easing, no delay.
+ * Pop enter transition (back navigation).
+ *
+ * When going BACK, content scales DOWN from 1.08 to 1.0 (reversing the exit).
+ * This creates visual continuity: what "pushed back" now "pulls forward".
  */
-fun exitTween(): FiniteAnimationSpec<IntOffset> = tween(
-    durationMillis = EXIT_ANIMATION_DURATION_MS,
-    easing = EaseOutExpo,
+fun galleryPopEnter(): EnterTransition = fadeIn(
+    animationSpec = tween(ENTER_DURATION_MS, easing = EaseOutExpo, delayMillis = ENTER_DELAY_MS)
+) + scaleIn(
+    initialScale = EXIT_SCALE,
+    animationSpec = tween(ENTER_DURATION_MS, easing = EaseOutExpo, delayMillis = ENTER_DELAY_MS)
 )
 
 /**
- * Slide enter transition from RIGHT (forward navigation).
+ * Pop exit transition (back navigation).
+ *
+ * Exiting screen scales DOWN and fades, as if "falling away" to reveal
+ * the previous screen behind it.
  */
-fun AnimatedContentTransitionScope<*>.gallerySlideEnter(): EnterTransition = slideIntoContainer(
-    towards = AnimatedContentTransitionScope.SlideDirection.Left,
-    animationSpec = enterTween(),
-)
-
-/**
- * Slide exit transition to LEFT (forward navigation).
- */
-fun AnimatedContentTransitionScope<*>.gallerySlideExit(): ExitTransition = slideOutOfContainer(
-    towards = AnimatedContentTransitionScope.SlideDirection.Left,
-    animationSpec = exitTween(),
-)
-
-/**
- * Pop enter transition from LEFT (back navigation).
- */
-fun AnimatedContentTransitionScope<*>.galleryPopEnter(): EnterTransition = slideIntoContainer(
-    towards = AnimatedContentTransitionScope.SlideDirection.Right,
-    animationSpec = popEnterTween(),
-)
-
-/**
- * Pop exit transition to RIGHT (back navigation).
- */
-fun AnimatedContentTransitionScope<*>.galleryPopExit(): ExitTransition = slideOutOfContainer(
-    towards = AnimatedContentTransitionScope.SlideDirection.Right,
-    animationSpec = exitTween(),
+fun galleryPopExit(): ExitTransition = fadeOut(
+    animationSpec = tween(durationMillis = EXIT_DURATION_MS, easing = FastOutSlowInEasing)
+) + scaleOut(
+    targetScale = INITIAL_SCALE,
+    animationSpec = tween(durationMillis = EXIT_DURATION_MS, easing = FastOutSlowInEasing)
 )
 
 /**
@@ -124,4 +126,5 @@ fun rememberDelayedAnimationProgress(
     }
     return progress
 }
+
 

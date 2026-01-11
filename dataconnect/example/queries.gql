@@ -1,0 +1,41 @@
+mutation CreateUser($displayName: String!, $email: String, $photoUrl: String) @auth(level: USER) {
+  user_insert(data: {
+    displayName: $displayName,
+    email: $email,
+    photoUrl: $photoUrl,
+    createdAt_expr: "request.time"
+  })
+}
+
+query GetCurrentUser @auth(level: USER) {
+  user(key: {id_expr: "auth.uid"}) {
+    id
+    displayName
+    email
+    photoUrl
+    createdAt
+  }
+}
+
+mutation CreateFolder($name: String!, $description: String, $parentFolderId: UUID) @auth(level: USER) {
+  folder_insert(data: {
+    name: $name,
+    description: $description,
+    parentFolderId: $parentFolderId,
+    userId_expr: "auth.uid",
+    createdAt_expr: "request.time"
+  })
+}
+
+query ListDocumentsInFolder($folderId: UUID!) @auth(level: USER) {
+  folder(id: $folderId) {
+    documents_via_DocumentFolder {
+      id
+      title
+      extractedText
+      imageUrl
+      lastModifiedAt
+      tags
+    }
+  }
+}

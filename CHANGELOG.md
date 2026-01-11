@@ -19,7 +19,6 @@
 - **Back Navigation**: Results screen now correctly returns to History when accessed from there.
 - **Barcode Actions**: Fixed barcode/QR copy and open actions not working.
 
-
 ### Under the Hood
 - Created `ActionExecutor` utility for barcode action handling.
 - Created `HistoryViewModel` with Hilt injection for consistent data access.

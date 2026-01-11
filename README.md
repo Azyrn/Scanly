@@ -1,6 +1,6 @@
 # Scanly
 
-Scanly is a fast, intelligent document and barcode scanner for Android. It leverages Google Gemini AI for advanced text extraction and provides a diverse set of tools for barcode interactions.
+Scanly is a fast, modern, and privacy-focused document scanner for Android. Powered by Tesseract 5 and Google ML Kit, it performs all Text Recognition (OCR) directly on your device—completely offline, keeping your data private.
 
 ### AI Document Scanning
 - **Extract Text from Images:** Use Gemini AI to accurately extract text from photos.

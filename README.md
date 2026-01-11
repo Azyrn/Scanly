@@ -1,26 +1,44 @@
-This app was built with fully optimized coding practices using Google Antigravity.  
-AI assistance was provided using Claude Opus 4.5 and Gemini 3 Pro.  
-AI results improved using the King Prompt from [here](https://github.com/aicodeking/yt-tutorial/blob/main/gemini-king-mode.md).
-
 # Scanly
 
-Scanly is a fast, privacy-focused document scanner for Android. It turns your phone into a powerful text extractor and barcode scanner—completely offline.
+Scanly is a fast, intelligent document and barcode scanner for Android. It leverages Google Gemini AI for advanced text extraction and provides a diverse set of tools for barcode interactions.
 
-## Features
+## Version 2.7.0 Features
 
-- **Extract Text from Images:** accurately recognize text in photos using advanced OCR.
-- **PDF Support:** Convert entire PDF documents into editable text.
-- **QR & Barcode Scanner:** Instantly scan QR codes, barcodes, and more.
-- **Multi-Language:** Built-in support for English and Arabic.
-- **Privacy First:** 100% offline. Your data never leaves your device.
-- **Modern Design:** Material 3 interface with Dark Mode & OLED support.
+### AI Document Scanning
+- **Extract Text from Images:** Use Gemini AI to accurately extract text from photos.
+- **PDF & Document Support:** Extract text directly from PDF and text files.
+- **Translation:** Translate extracted text into 15+ languages instantly.
+- **Result Reading:** Clean, distraction-free reading mode for extracted results.
+
+### Barcode & QR Scanner
+- **Smart Actions:** Automatically detects content type and offers relevant actions:
+  - Copy text
+  - Open URLs in browser
+  - Dial phone numbers
+  - Send Emails and SMS
+  - Connect to WiFi networks
+  - Add contacts to address book
+
+### History & Privacy
+- **Local History:** All scans are saved locally on your device.
+- **Privacy Focused:** Your scan history remains private and secure on your phone.
+- **Offline Access:** Access your previous scan results anytime without internet.
+
+### Modern Design
+- **Material 3:** Built with the latest Android design guidelines.
+- **Dark Mode:** Full support for system dark themes.
+- **Responsive UI:** Smooth, animated interface powered by Jetpack Compose.
 
 ## Installation
 
-Download the latest `.apk` from the [Releases](https://github.com/Azyrn/Scanly/releases) section and install it on your Android device.
+Download the latest `.apk` from the Releases section and install it on your Android device.
 
 ## Built With
 
-- **Kotlin & Jetpack Compose:** For a smooth, modern UI.
-- **Tesseract 5:** High-performance OCR engine.
-- **Google ML Kit:** Fast barcode scanning.
+- **Kotlin:** 100% Kotlin codebase.
+- **Jetpack Compose:** Modern toolkit for native UI.
+- **Google Gemini API:** Generative AI models for text processing.
+- **CameraX:** Consistent camera experience across devices.
+- **Room Database:** Robust local data persistence.
+- **Dagger Hilt:** Dependency injection.
+

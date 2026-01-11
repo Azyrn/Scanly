@@ -193,6 +193,8 @@ fun HomeScreen() {
 
     val launchGalleryPicker = GalleryPicker { uri ->
         if (uri != null) {
+            // Clear previous results before new extraction
+            ocrViewModel.clearResult()
             scanViewModel.onImageSelected(uri)
             ocrViewModel.processImage(uri)
             navController.navigate(Routes.RESULTS)
@@ -212,6 +214,8 @@ fun HomeScreen() {
                     // Ignore if permission taking fails (might be temporary access)
                 }
                 
+                // Clear previous results before new extraction
+                ocrViewModel.clearResult()
                 scanViewModel.onPdfSelected(uri)
                 ocrViewModel.processPdf(uri)
                 navController.navigate(Routes.RESULTS)

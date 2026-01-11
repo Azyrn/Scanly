@@ -1,0 +1,209 @@
+extend type Query {
+  """
+  ✨ Look up a single `Document` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  document(
+    """
+    The unique ID of the object.
+    """
+    id: UUID
+
+    """
+    The key used to identify the object.
+    """
+    key: Document_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Document_FirstRow
+  ): Document @fdc_generated(from: "Document", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `DocumentFolder` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  documentFolder(
+    """
+    The key used to identify the object.
+    """
+    key: DocumentFolder_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: DocumentFolder_FirstRow
+  ): DocumentFolder @fdc_generated(from: "DocumentFolder", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `Folder` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  folder(
+    """
+    The unique ID of the object.
+    """
+    id: UUID
+
+    """
+    The key used to identify the object.
+    """
+    key: Folder_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Folder_FirstRow
+  ): Folder @fdc_generated(from: "Folder", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `User` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  user(
+    """
+    The unique ID of the object.
+    """
+    id: UUID
+
+    """
+    The key used to identify the object.
+    """
+    key: User_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: User_FirstRow
+  ): User @fdc_generated(from: "User", purpose: QUERY_SINGLE)
+  """
+  ✨ List `Document` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  documents(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: Document_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [Document_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: Document_Having
+  ): [Document!]! @fdc_generated(from: "Document", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `DocumentFolder` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  documentFolders(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: DocumentFolder_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [DocumentFolder_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: DocumentFolder_Having
+  ): [DocumentFolder!]! @fdc_generated(from: "DocumentFolder", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `Folder` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  folders(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: Folder_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [Folder_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: Folder_Having
+  ): [Folder!]! @fdc_generated(from: "Folder", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `User` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  users(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: User_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [User_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: User_Having
+  ): [User!]! @fdc_generated(from: "User", purpose: QUERY_MULTIPLE)
+}

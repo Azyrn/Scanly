@@ -1,0 +1,30 @@
+type User @table {
+  displayName: String!
+  createdAt: Timestamp!
+  email: String
+  photoUrl: String
+}
+
+type Document @table {
+  user: User!
+  title: String!
+  createdAt: Timestamp!
+  imageUrl: String!
+  extractedText: String!
+  lastModifiedAt: Timestamp
+  tags: [String]
+}
+
+type Folder @table {
+  user: User!
+  name: String!
+  createdAt: Timestamp!
+  description: String
+  parentFolderId: UUID
+}
+
+type DocumentFolder @table(key: ["document", "folder"]) {
+  document: Document!
+  folder: Folder!
+  createdAt: Timestamp!
+}

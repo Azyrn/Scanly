@@ -1,0 +1,1120 @@
+"""
+✨ `Document_KeyOutput` returns the primary key fields of table type `Document`.
+
+It has the same format as `Document_Key`, but is only used as mutation return value.
+"""
+scalar Document_KeyOutput
+"""
+✨ `DocumentFolder_KeyOutput` returns the primary key fields of table type `DocumentFolder`.
+
+It has the same format as `DocumentFolder_Key`, but is only used as mutation return value.
+"""
+scalar DocumentFolder_KeyOutput
+"""
+✨ `Folder_KeyOutput` returns the primary key fields of table type `Folder`.
+
+It has the same format as `Folder_Key`, but is only used as mutation return value.
+"""
+scalar Folder_KeyOutput
+"""
+✨ `User_KeyOutput` returns the primary key fields of table type `User`.
+
+It has the same format as `User_Key`, but is only used as mutation return value.
+"""
+scalar User_KeyOutput
+"""
+✨ Generated data input type for table 'Document'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input Document_Data {
+  """
+  ✨ Generated from Field `Document`.`id` of type `UUID!`
+  """
+  id: UUID
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `Document`.`id` of type `UUID!`)
+  """
+  id_expr: UUID_Expr
+  """
+  ✨ Generated from Field `Document`.`userId` of type `UUID!`
+  """
+  userId: UUID
+  """
+  ✨ `_expr` server value variant of `userId` (✨ Generated from Field `Document`.`userId` of type `UUID!`)
+  """
+  userId_expr: UUID_Expr
+  """
+  ✨ Generated from Field `Document`.`user` of type `User!`
+  """
+  user: User_Key
+  """
+  ✨ Generated from Field `Document`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp
+  """
+  ✨ `_expr` server value variant of `createdAt` (✨ Generated from Field `Document`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_expr: Timestamp_Expr
+  """
+  ✨ `_time` server value variant of `createdAt` (✨ Generated from Field `Document`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_time: Timestamp_Relative
+  """
+  ✨ `_update` server value variant of `createdAt` (✨ Generated from Field `Document`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_update: [Timestamp_Update!]
+  """
+  ✨ Generated from Field `Document`.`extractedText` of type `String!`
+  """
+  extractedText: String
+  """
+  ✨ `_expr` server value variant of `extractedText` (✨ Generated from Field `Document`.`extractedText` of type `String!`)
+  """
+  extractedText_expr: String_Expr
+  """
+  ✨ Generated from Field `Document`.`imageUrl` of type `String!`
+  """
+  imageUrl: String
+  """
+  ✨ `_expr` server value variant of `imageUrl` (✨ Generated from Field `Document`.`imageUrl` of type `String!`)
+  """
+  imageUrl_expr: String_Expr
+  """
+  ✨ Generated from Field `Document`.`lastModifiedAt` of type `Timestamp`
+  """
+  lastModifiedAt: Timestamp
+  """
+  ✨ `_expr` server value variant of `lastModifiedAt` (✨ Generated from Field `Document`.`lastModifiedAt` of type `Timestamp`)
+  """
+  lastModifiedAt_expr: Timestamp_Expr
+  """
+  ✨ `_time` server value variant of `lastModifiedAt` (✨ Generated from Field `Document`.`lastModifiedAt` of type `Timestamp`)
+  """
+  lastModifiedAt_time: Timestamp_Relative
+  """
+  ✨ `_update` server value variant of `lastModifiedAt` (✨ Generated from Field `Document`.`lastModifiedAt` of type `Timestamp`)
+  """
+  lastModifiedAt_update: [Timestamp_Update!]
+  """
+  ✨ Generated from Field `Document`.`tags` of type `[String]`
+  """
+  tags: [String!]
+  """
+  ✨ `_update` server value variant of `tags` (✨ Generated from Field `Document`.`tags` of type `[String]`)
+  """
+  tags_update: [String_ListUpdate!]
+  """
+  ✨ Generated from Field `Document`.`title` of type `String!`
+  """
+  title: String
+  """
+  ✨ `_expr` server value variant of `title` (✨ Generated from Field `Document`.`title` of type `String!`)
+  """
+  title_expr: String_Expr
+}
+"""
+✨ Generated filter input type for table 'Document'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input Document_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [Document_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: Document_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [Document_Filter!]
+  """
+  ✨ Generated from Field `Document`.`id` of type `UUID!`
+  """
+  id: UUID_Filter
+  """
+  ✨ Generated from Field `Document`.`userId` of type `UUID!`
+  """
+  userId: UUID_Filter
+  """
+  ✨ Generated from Field `Document`.`user` of type `User!`
+  """
+  user: User_Filter
+  """
+  ✨ Generated from Field `Document`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp_Filter
+  """
+  ✨ Generated from Field `Document`.`extractedText` of type `String!`
+  """
+  extractedText: String_Filter
+  """
+  ✨ Generated from Field `Document`.`imageUrl` of type `String!`
+  """
+  imageUrl: String_Filter
+  """
+  ✨ Generated from Field `Document`.`lastModifiedAt` of type `Timestamp`
+  """
+  lastModifiedAt: Timestamp_Filter
+  """
+  ✨ Generated from Field `Document`.`tags` of type `[String]`
+  """
+  tags: String_ListFilter
+  """
+  ✨ Generated from Field `Document`.`title` of type `String!`
+  """
+  title: String_Filter
+  """
+  ✨ Generated from Field `Document`.`documentFolders_on_document` of type `[DocumentFolder!]!`
+  """
+  documentFolders_on_document: DocumentFolder_ListFilter
+  """
+  ✨ Generated from Field `Document`.`folders_via_DocumentFolder` of type `[Folder!]!`
+  """
+  folders_via_DocumentFolder: Folder_ListFilter
+}
+"""
+✨ Generated first-row input type for table 'Document'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input Document_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [Document_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: Document_Filter
+}
+"""
+✨ Generated having input type for table 'Document'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input Document_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [Document_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: Document_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [Document_Having!]
+  """
+  ✨ Generated from Field `Document`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `Document`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: Int_Filter
+  """
+  ✨ Generated from Field `Document`.`extractedText_count` of type `Int!`
+  """
+  extractedText_count: Int_Filter
+  """
+  ✨ Generated from Field `Document`.`id_count` of type `Int!`
+  """
+  id_count: Int_Filter
+  """
+  ✨ Generated from Field `Document`.`imageUrl_count` of type `Int!`
+  """
+  imageUrl_count: Int_Filter
+  """
+  ✨ Generated from Field `Document`.`lastModifiedAt_count` of type `Int!`
+  """
+  lastModifiedAt_count: Int_Filter
+  """
+  ✨ Generated from Field `Document`.`title_count` of type `Int!`
+  """
+  title_count: Int_Filter
+  """
+  ✨ Generated from Field `Document`.`userId_count` of type `Int!`
+  """
+  userId_count: Int_Filter
+  """
+  ✨ Generated from Field `Document`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `Document`.`lastModifiedAt_min` of type `Timestamp`
+  """
+  lastModifiedAt_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `Document`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: Timestamp_Filter
+  """
+  ✨ Generated from Field `Document`.`lastModifiedAt_max` of type `Timestamp`
+  """
+  lastModifiedAt_max: Timestamp_Filter
+}
+"""
+✨ Generated key input type for table 'Document'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input Document_Key {
+  """
+  ✨ Generated from Field `Document`.`id` of type `UUID!`
+  """
+  id: UUID
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `Document`.`id` of type `UUID!`)
+  """
+  id_expr: UUID_Expr
+}
+"""
+✨ Generated list filter input type for table 'Document'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input Document_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: Document_Filter
+}
+"""
+✨ Generated order input type for table 'Document'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input Document_Order {
+  """
+  ✨ Generated from Field `Document`.`id` of type `UUID!`
+  """
+  id: OrderDirection
+  """
+  ✨ Generated from Field `Document`.`userId` of type `UUID!`
+  """
+  userId: OrderDirection
+  """
+  ✨ Generated from Field `Document`.`user` of type `User!`
+  """
+  user: User_Order
+  """
+  ✨ Generated from Field `Document`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: OrderDirection
+  """
+  ✨ Generated from Field `Document`.`extractedText` of type `String!`
+  """
+  extractedText: OrderDirection
+  """
+  ✨ Generated from Field `Document`.`imageUrl` of type `String!`
+  """
+  imageUrl: OrderDirection
+  """
+  ✨ Generated from Field `Document`.`lastModifiedAt` of type `Timestamp`
+  """
+  lastModifiedAt: OrderDirection
+  """
+  ✨ Generated from Field `Document`.`title` of type `String!`
+  """
+  title: OrderDirection
+  """
+  ✨ Generated from Field `Document`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `Document`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: OrderDirection
+  """
+  ✨ Generated from Field `Document`.`extractedText_count` of type `Int!`
+  """
+  extractedText_count: OrderDirection
+  """
+  ✨ Generated from Field `Document`.`id_count` of type `Int!`
+  """
+  id_count: OrderDirection
+  """
+  ✨ Generated from Field `Document`.`imageUrl_count` of type `Int!`
+  """
+  imageUrl_count: OrderDirection
+  """
+  ✨ Generated from Field `Document`.`lastModifiedAt_count` of type `Int!`
+  """
+  lastModifiedAt_count: OrderDirection
+  """
+  ✨ Generated from Field `Document`.`title_count` of type `Int!`
+  """
+  title_count: OrderDirection
+  """
+  ✨ Generated from Field `Document`.`userId_count` of type `Int!`
+  """
+  userId_count: OrderDirection
+  """
+  ✨ Generated from Field `Document`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: OrderDirection
+  """
+  ✨ Generated from Field `Document`.`lastModifiedAt_min` of type `Timestamp`
+  """
+  lastModifiedAt_min: OrderDirection
+  """
+  ✨ Generated from Field `Document`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: OrderDirection
+  """
+  ✨ Generated from Field `Document`.`lastModifiedAt_max` of type `Timestamp`
+  """
+  lastModifiedAt_max: OrderDirection
+}
+"""
+✨ Generated data input type for table 'DocumentFolder'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input DocumentFolder_Data {
+  """
+  ✨ Generated from Field `DocumentFolder`.`documentId` of type `UUID!`
+  """
+  documentId: UUID
+  """
+  ✨ `_expr` server value variant of `documentId` (✨ Generated from Field `DocumentFolder`.`documentId` of type `UUID!`)
+  """
+  documentId_expr: UUID_Expr
+  """
+  ✨ Generated from Field `DocumentFolder`.`folderId` of type `UUID!`
+  """
+  folderId: UUID
+  """
+  ✨ `_expr` server value variant of `folderId` (✨ Generated from Field `DocumentFolder`.`folderId` of type `UUID!`)
+  """
+  folderId_expr: UUID_Expr
+  """
+  ✨ Generated from Field `DocumentFolder`.`document` of type `Document!`
+  """
+  document: Document_Key
+  """
+  ✨ Generated from Field `DocumentFolder`.`folder` of type `Folder!`
+  """
+  folder: Folder_Key
+  """
+  ✨ Generated from Field `DocumentFolder`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp
+  """
+  ✨ `_expr` server value variant of `createdAt` (✨ Generated from Field `DocumentFolder`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_expr: Timestamp_Expr
+  """
+  ✨ `_time` server value variant of `createdAt` (✨ Generated from Field `DocumentFolder`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_time: Timestamp_Relative
+  """
+  ✨ `_update` server value variant of `createdAt` (✨ Generated from Field `DocumentFolder`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_update: [Timestamp_Update!]
+}
+"""
+✨ Generated filter input type for table 'DocumentFolder'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input DocumentFolder_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [DocumentFolder_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: DocumentFolder_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [DocumentFolder_Filter!]
+  """
+  ✨ Generated from Field `DocumentFolder`.`documentId` of type `UUID!`
+  """
+  documentId: UUID_Filter
+  """
+  ✨ Generated from Field `DocumentFolder`.`folderId` of type `UUID!`
+  """
+  folderId: UUID_Filter
+  """
+  ✨ Generated from Field `DocumentFolder`.`document` of type `Document!`
+  """
+  document: Document_Filter
+  """
+  ✨ Generated from Field `DocumentFolder`.`folder` of type `Folder!`
+  """
+  folder: Folder_Filter
+  """
+  ✨ Generated from Field `DocumentFolder`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp_Filter
+}
+"""
+✨ Generated first-row input type for table 'DocumentFolder'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input DocumentFolder_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [DocumentFolder_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: DocumentFolder_Filter
+}
+"""
+✨ Generated having input type for table 'DocumentFolder'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input DocumentFolder_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [DocumentFolder_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: DocumentFolder_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [DocumentFolder_Having!]
+  """
+  ✨ Generated from Field `DocumentFolder`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `DocumentFolder`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: Int_Filter
+  """
+  ✨ Generated from Field `DocumentFolder`.`documentId_count` of type `Int!`
+  """
+  documentId_count: Int_Filter
+  """
+  ✨ Generated from Field `DocumentFolder`.`folderId_count` of type `Int!`
+  """
+  folderId_count: Int_Filter
+  """
+  ✨ Generated from Field `DocumentFolder`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `DocumentFolder`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: Timestamp_Filter
+}
+"""
+✨ Generated key input type for table 'DocumentFolder'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input DocumentFolder_Key {
+  """
+  ✨ Generated from Field `DocumentFolder`.`documentId` of type `UUID!`
+  """
+  documentId: UUID
+  """
+  ✨ `_expr` server value variant of `documentId` (✨ Generated from Field `DocumentFolder`.`documentId` of type `UUID!`)
+  """
+  documentId_expr: UUID_Expr
+  """
+  ✨ Generated from Field `DocumentFolder`.`folderId` of type `UUID!`
+  """
+  folderId: UUID
+  """
+  ✨ `_expr` server value variant of `folderId` (✨ Generated from Field `DocumentFolder`.`folderId` of type `UUID!`)
+  """
+  folderId_expr: UUID_Expr
+}
+"""
+✨ Generated list filter input type for table 'DocumentFolder'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input DocumentFolder_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: DocumentFolder_Filter
+}
+"""
+✨ Generated order input type for table 'DocumentFolder'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input DocumentFolder_Order {
+  """
+  ✨ Generated from Field `DocumentFolder`.`documentId` of type `UUID!`
+  """
+  documentId: OrderDirection
+  """
+  ✨ Generated from Field `DocumentFolder`.`folderId` of type `UUID!`
+  """
+  folderId: OrderDirection
+  """
+  ✨ Generated from Field `DocumentFolder`.`document` of type `Document!`
+  """
+  document: Document_Order
+  """
+  ✨ Generated from Field `DocumentFolder`.`folder` of type `Folder!`
+  """
+  folder: Folder_Order
+  """
+  ✨ Generated from Field `DocumentFolder`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: OrderDirection
+  """
+  ✨ Generated from Field `DocumentFolder`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `DocumentFolder`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: OrderDirection
+  """
+  ✨ Generated from Field `DocumentFolder`.`documentId_count` of type `Int!`
+  """
+  documentId_count: OrderDirection
+  """
+  ✨ Generated from Field `DocumentFolder`.`folderId_count` of type `Int!`
+  """
+  folderId_count: OrderDirection
+  """
+  ✨ Generated from Field `DocumentFolder`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: OrderDirection
+  """
+  ✨ Generated from Field `DocumentFolder`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: OrderDirection
+}
+"""
+✨ Generated data input type for table 'Folder'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input Folder_Data {
+  """
+  ✨ Generated from Field `Folder`.`id` of type `UUID!`
+  """
+  id: UUID
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `Folder`.`id` of type `UUID!`)
+  """
+  id_expr: UUID_Expr
+  """
+  ✨ Generated from Field `Folder`.`userId` of type `UUID!`
+  """
+  userId: UUID
+  """
+  ✨ `_expr` server value variant of `userId` (✨ Generated from Field `Folder`.`userId` of type `UUID!`)
+  """
+  userId_expr: UUID_Expr
+  """
+  ✨ Generated from Field `Folder`.`user` of type `User!`
+  """
+  user: User_Key
+  """
+  ✨ Generated from Field `Folder`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp
+  """
+  ✨ `_expr` server value variant of `createdAt` (✨ Generated from Field `Folder`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_expr: Timestamp_Expr
+  """
+  ✨ `_time` server value variant of `createdAt` (✨ Generated from Field `Folder`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_time: Timestamp_Relative
+  """
+  ✨ `_update` server value variant of `createdAt` (✨ Generated from Field `Folder`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_update: [Timestamp_Update!]
+  """
+  ✨ Generated from Field `Folder`.`description` of type `String`
+  """
+  description: String
+  """
+  ✨ `_expr` server value variant of `description` (✨ Generated from Field `Folder`.`description` of type `String`)
+  """
+  description_expr: String_Expr
+  """
+  ✨ Generated from Field `Folder`.`name` of type `String!`
+  """
+  name: String
+  """
+  ✨ `_expr` server value variant of `name` (✨ Generated from Field `Folder`.`name` of type `String!`)
+  """
+  name_expr: String_Expr
+  """
+  ✨ Generated from Field `Folder`.`parentFolderId` of type `UUID`
+  """
+  parentFolderId: UUID
+  """
+  ✨ `_expr` server value variant of `parentFolderId` (✨ Generated from Field `Folder`.`parentFolderId` of type `UUID`)
+  """
+  parentFolderId_expr: UUID_Expr
+}
+"""
+✨ Generated filter input type for table 'Folder'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input Folder_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [Folder_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: Folder_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [Folder_Filter!]
+  """
+  ✨ Generated from Field `Folder`.`id` of type `UUID!`
+  """
+  id: UUID_Filter
+  """
+  ✨ Generated from Field `Folder`.`userId` of type `UUID!`
+  """
+  userId: UUID_Filter
+  """
+  ✨ Generated from Field `Folder`.`user` of type `User!`
+  """
+  user: User_Filter
+  """
+  ✨ Generated from Field `Folder`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp_Filter
+  """
+  ✨ Generated from Field `Folder`.`description` of type `String`
+  """
+  description: String_Filter
+  """
+  ✨ Generated from Field `Folder`.`name` of type `String!`
+  """
+  name: String_Filter
+  """
+  ✨ Generated from Field `Folder`.`parentFolderId` of type `UUID`
+  """
+  parentFolderId: UUID_Filter
+  """
+  ✨ Generated from Field `Folder`.`documentFolders_on_folder` of type `[DocumentFolder!]!`
+  """
+  documentFolders_on_folder: DocumentFolder_ListFilter
+  """
+  ✨ Generated from Field `Folder`.`documents_via_DocumentFolder` of type `[Document!]!`
+  """
+  documents_via_DocumentFolder: Document_ListFilter
+}
+"""
+✨ Generated first-row input type for table 'Folder'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input Folder_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [Folder_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: Folder_Filter
+}
+"""
+✨ Generated having input type for table 'Folder'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input Folder_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [Folder_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: Folder_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [Folder_Having!]
+  """
+  ✨ Generated from Field `Folder`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `Folder`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: Int_Filter
+  """
+  ✨ Generated from Field `Folder`.`description_count` of type `Int!`
+  """
+  description_count: Int_Filter
+  """
+  ✨ Generated from Field `Folder`.`id_count` of type `Int!`
+  """
+  id_count: Int_Filter
+  """
+  ✨ Generated from Field `Folder`.`name_count` of type `Int!`
+  """
+  name_count: Int_Filter
+  """
+  ✨ Generated from Field `Folder`.`parentFolderId_count` of type `Int!`
+  """
+  parentFolderId_count: Int_Filter
+  """
+  ✨ Generated from Field `Folder`.`userId_count` of type `Int!`
+  """
+  userId_count: Int_Filter
+  """
+  ✨ Generated from Field `Folder`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `Folder`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: Timestamp_Filter
+}
+"""
+✨ Generated key input type for table 'Folder'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input Folder_Key {
+  """
+  ✨ Generated from Field `Folder`.`id` of type `UUID!`
+  """
+  id: UUID
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `Folder`.`id` of type `UUID!`)
+  """
+  id_expr: UUID_Expr
+}
+"""
+✨ Generated list filter input type for table 'Folder'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input Folder_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: Folder_Filter
+}
+"""
+✨ Generated order input type for table 'Folder'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input Folder_Order {
+  """
+  ✨ Generated from Field `Folder`.`id` of type `UUID!`
+  """
+  id: OrderDirection
+  """
+  ✨ Generated from Field `Folder`.`userId` of type `UUID!`
+  """
+  userId: OrderDirection
+  """
+  ✨ Generated from Field `Folder`.`user` of type `User!`
+  """
+  user: User_Order
+  """
+  ✨ Generated from Field `Folder`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: OrderDirection
+  """
+  ✨ Generated from Field `Folder`.`description` of type `String`
+  """
+  description: OrderDirection
+  """
+  ✨ Generated from Field `Folder`.`name` of type `String!`
+  """
+  name: OrderDirection
+  """
+  ✨ Generated from Field `Folder`.`parentFolderId` of type `UUID`
+  """
+  parentFolderId: OrderDirection
+  """
+  ✨ Generated from Field `Folder`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `Folder`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: OrderDirection
+  """
+  ✨ Generated from Field `Folder`.`description_count` of type `Int!`
+  """
+  description_count: OrderDirection
+  """
+  ✨ Generated from Field `Folder`.`id_count` of type `Int!`
+  """
+  id_count: OrderDirection
+  """
+  ✨ Generated from Field `Folder`.`name_count` of type `Int!`
+  """
+  name_count: OrderDirection
+  """
+  ✨ Generated from Field `Folder`.`parentFolderId_count` of type `Int!`
+  """
+  parentFolderId_count: OrderDirection
+  """
+  ✨ Generated from Field `Folder`.`userId_count` of type `Int!`
+  """
+  userId_count: OrderDirection
+  """
+  ✨ Generated from Field `Folder`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: OrderDirection
+  """
+  ✨ Generated from Field `Folder`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: OrderDirection
+}
+"""
+✨ Generated data input type for table 'User'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input User_Data {
+  """
+  ✨ Generated from Field `User`.`id` of type `UUID!`
+  """
+  id: UUID
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `User`.`id` of type `UUID!`)
+  """
+  id_expr: UUID_Expr
+  """
+  ✨ Generated from Field `User`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp
+  """
+  ✨ `_expr` server value variant of `createdAt` (✨ Generated from Field `User`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_expr: Timestamp_Expr
+  """
+  ✨ `_time` server value variant of `createdAt` (✨ Generated from Field `User`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_time: Timestamp_Relative
+  """
+  ✨ `_update` server value variant of `createdAt` (✨ Generated from Field `User`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_update: [Timestamp_Update!]
+  """
+  ✨ Generated from Field `User`.`displayName` of type `String!`
+  """
+  displayName: String
+  """
+  ✨ `_expr` server value variant of `displayName` (✨ Generated from Field `User`.`displayName` of type `String!`)
+  """
+  displayName_expr: String_Expr
+  """
+  ✨ Generated from Field `User`.`email` of type `String`
+  """
+  email: String
+  """
+  ✨ `_expr` server value variant of `email` (✨ Generated from Field `User`.`email` of type `String`)
+  """
+  email_expr: String_Expr
+  """
+  ✨ Generated from Field `User`.`photoUrl` of type `String`
+  """
+  photoUrl: String
+  """
+  ✨ `_expr` server value variant of `photoUrl` (✨ Generated from Field `User`.`photoUrl` of type `String`)
+  """
+  photoUrl_expr: String_Expr
+}
+"""
+✨ Generated filter input type for table 'User'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input User_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [User_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: User_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [User_Filter!]
+  """
+  ✨ Generated from Field `User`.`id` of type `UUID!`
+  """
+  id: UUID_Filter
+  """
+  ✨ Generated from Field `User`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp_Filter
+  """
+  ✨ Generated from Field `User`.`displayName` of type `String!`
+  """
+  displayName: String_Filter
+  """
+  ✨ Generated from Field `User`.`email` of type `String`
+  """
+  email: String_Filter
+  """
+  ✨ Generated from Field `User`.`photoUrl` of type `String`
+  """
+  photoUrl: String_Filter
+  """
+  ✨ Generated from Field `User`.`documents_on_user` of type `[Document!]!`
+  """
+  documents_on_user: Document_ListFilter
+  """
+  ✨ Generated from Field `User`.`folders_on_user` of type `[Folder!]!`
+  """
+  folders_on_user: Folder_ListFilter
+}
+"""
+✨ Generated first-row input type for table 'User'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input User_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [User_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: User_Filter
+}
+"""
+✨ Generated having input type for table 'User'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input User_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [User_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: User_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [User_Having!]
+  """
+  ✨ Generated from Field `User`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`displayName_count` of type `Int!`
+  """
+  displayName_count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`email_count` of type `Int!`
+  """
+  email_count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`id_count` of type `Int!`
+  """
+  id_count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`photoUrl_count` of type `Int!`
+  """
+  photoUrl_count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `User`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: Timestamp_Filter
+}
+"""
+✨ Generated key input type for table 'User'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input User_Key {
+  """
+  ✨ Generated from Field `User`.`id` of type `UUID!`
+  """
+  id: UUID
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `User`.`id` of type `UUID!`)
+  """
+  id_expr: UUID_Expr
+}
+"""
+✨ Generated list filter input type for table 'User'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input User_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: User_Filter
+}
+"""
+✨ Generated order input type for table 'User'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input User_Order {
+  """
+  ✨ Generated from Field `User`.`id` of type `UUID!`
+  """
+  id: OrderDirection
+  """
+  ✨ Generated from Field `User`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: OrderDirection
+  """
+  ✨ Generated from Field `User`.`displayName` of type `String!`
+  """
+  displayName: OrderDirection
+  """
+  ✨ Generated from Field `User`.`email` of type `String`
+  """
+  email: OrderDirection
+  """
+  ✨ Generated from Field `User`.`photoUrl` of type `String`
+  """
+  photoUrl: OrderDirection
+  """
+  ✨ Generated from Field `User`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`displayName_count` of type `Int!`
+  """
+  displayName_count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`email_count` of type `Int!`
+  """
+  email_count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`id_count` of type `Int!`
+  """
+  id_count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`photoUrl_count` of type `Int!`
+  """
+  photoUrl_count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: OrderDirection
+  """
+  ✨ Generated from Field `User`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: OrderDirection
+}

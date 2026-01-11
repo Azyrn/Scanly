@@ -265,6 +265,7 @@ class ScanViewModel @Inject constructor(
         stateHolder.update {
             it.copy(
                 selectedImageUri = uri,
+                pdfThumbnail = null, // Clear old PDF thumbnail
                 isProcessing = false,
                 progressMessage = "",
                 historyText = null // Clear any previous history text
@@ -287,7 +288,8 @@ class ScanViewModel @Inject constructor(
             it.copy(
                 selectedImageUri = uri,
                 isProcessing = true,
-                progressMessage = "Opening PDF..."
+                progressMessage = "Opening PDF...",
+                historyText = null // Clear any previous history text
             )
         }
         

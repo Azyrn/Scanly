@@ -19,10 +19,6 @@
 - **Back Navigation**: Results screen now correctly returns to History when accessed from there.
 - **Barcode Actions**: Fixed barcode/QR copy and open actions not working.
 
-### Security
-- Removed sensitive Firebase configuration files from repository.
-- Updated `.gitignore` to prevent accidental commits of Firebase files.
-
 ### Under the Hood
 - Created `ActionExecutor` utility for barcode action handling.
 - Created `HistoryViewModel` with Hilt injection for consistent data access.

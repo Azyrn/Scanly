@@ -26,7 +26,13 @@ data class AiScanState(
     val translatedText: String? = null,
     val isTranslating: Boolean = false,
     /** URI of the last processed image (for rescan) */
-    val lastImageUri: Uri? = null
+    val lastImageUri: Uri? = null,
+    /** Total number of files being processed (for multi-file) */
+    val totalFiles: Int = 0,
+    /** Current file index being processed (1-indexed for display) */
+    val currentFileIndex: Int = 0,
+    /** All URIs being processed (for multi-file) */
+    val allUris: List<Uri> = emptyList()
 )
 
 /**
@@ -70,6 +76,71 @@ class AiScanViewModel @Inject constructor(
     }
 
     /**
+     * Process multiple files with the specified AI mode.
+     * Results are combined with file separators.
+     */
+    fun processMultipleFiles(uris: List<Uri>, mode: AiMode) {
+        if (uris.isEmpty()) return
+
+        viewModelScope.launch {
+            _aiState.value = AiScanState(
+                isProcessing = true,
+                mode = mode,
+                totalFiles = uris.size,
+                currentFileIndex = 1,
+                allUris = uris,
+                lastImageUri = uris.first()
+            )
+
+            val allResults = StringBuilder()
+
+            uris.forEachIndexed { index, uri ->
+                _aiState.value = _aiState.value.copy(
+                    currentFileIndex = index + 1,
+                    lastImageUri = uri
+                )
+
+                val result = aiService.processImage(uri, mode)
+
+                when (result) {
+                    is AiResult.Success -> {
+                        if (allResults.isNotEmpty()) {
+                            allResults.append("\n\n--- File ${index + 1} ---\n\n")
+                        }
+                        allResults.append(result.text)
+                    }
+                    is AiResult.Error -> {
+                        if (allResults.isNotEmpty()) {
+                            allResults.append("\n\n--- File ${index + 1} (Error) ---\n\n")
+                        }
+                        allResults.append("Error: ${result.message}")
+                    }
+                    is AiResult.RateLimited -> {
+                        allResults.append("\n\n--- Rate Limited ---\n")
+                    }
+                }
+            }
+
+            val combinedResult = if (allResults.isNotEmpty()) {
+                AiResult.Success(allResults.toString())
+            } else {
+                AiResult.Error("No text extracted from any file")
+            }
+
+            _aiState.value = _aiState.value.copy(
+                isProcessing = false,
+                result = combinedResult,
+                originalText = if (combinedResult is AiResult.Success) combinedResult.text else null
+            )
+
+            // Save combined result to history (using first file as reference)
+            if (combinedResult is AiResult.Success && combinedResult.text.isNotBlank()) {
+                saveToHistory(combinedResult.text, uris.first())
+            }
+        }
+    }
+
+    /**
      * Save extraction result to history.
      */
     private fun saveToHistory(text: String, uri: Uri) {
@@ -84,13 +155,13 @@ class AiScanViewModel @Inject constructor(
 
     /**
      * Rescan the last processed image with the same mode.
+     * Returns the URI and mode for the caller to trigger with rate limit check.
      */
-    fun rescan() {
+    fun getRescanParams(): Pair<Uri, AiMode>? {
         val currentState = _aiState.value
-        val imageUri = currentState.lastImageUri ?: return
-        val mode = currentState.mode ?: return
-
-        processImage(imageUri, mode)
+        val imageUri = currentState.lastImageUri ?: return null
+        val mode = currentState.mode ?: return null
+        return Pair(imageUri, mode)
     }
 
     /**

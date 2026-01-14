@@ -58,3 +58,24 @@ fun MultiGalleryPicker(
         )
     }
 }
+
+/**
+ * Multiple document picker for PDFs and text files.
+ * 
+ * @param mimeTypes MIME types to filter (default: PDF and plain text)
+ * @param onDocumentsSelected Callback with list of selected document Uris
+ */
+@Composable
+fun MultiDocumentPicker(
+    mimeTypes: Array<String> = arrayOf("application/pdf", "text/plain"),
+    onDocumentsSelected: (List<Uri>) -> Unit
+): () -> Unit {
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenMultipleDocuments()
+    ) { uris ->
+        onDocumentsSelected(uris)
+    }
+    
+    return { launcher.launch(mimeTypes) }
+}
+

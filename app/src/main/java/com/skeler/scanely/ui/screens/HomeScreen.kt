@@ -87,6 +87,8 @@ import com.skeler.scanely.navigation.LocalNavController
 import com.skeler.scanely.navigation.Routes
 import com.skeler.scanely.ui.ScanViewModel
 import com.skeler.scanely.ui.components.GalleryPicker
+import com.skeler.scanely.ui.components.MultiDocumentPicker
+import com.skeler.scanely.ui.components.MultiGalleryPicker
 import com.skeler.scanely.ui.components.RateLimitSheet
 import com.skeler.scanely.ui.viewmodel.AiScanViewModel
 import com.skeler.scanely.ui.viewmodel.OcrViewModel
@@ -141,55 +143,53 @@ fun HomeScreen() {
         }
     )
 
-    // Gallery picker for AI scan (images) - triggers immediately with rate limit check
-    val aiGalleryPicker = GalleryPicker { uri ->
-        if (uri != null && pendingAiMode != null) {
+    // Multi-image picker for AI scan - allows selecting multiple images
+    val aiMultiGalleryPicker = MultiGalleryPicker(maxItems = 10) { uris ->
+        if (uris.isNotEmpty() && pendingAiMode != null) {
             val mode = pendingAiMode!!
             pendingAiMode = null
             
-            // Check rate limit - 2 free requests, then 60s cooldown
-            // Only navigate if request is allowed
+            // Check rate limit - batch counts as 1 request
             val allowed = scanViewModel.triggerAiWithRateLimit {
-                // Rate limit allows - trigger API immediately
-                scanViewModel.onImageSelected(uri)
-                aiViewModel.processImage(uri, mode)
+                scanViewModel.onImageSelected(uris.first())
+                aiViewModel.processMultipleFiles(uris, mode)
             }
             
-            // Only navigate if request was allowed
             if (allowed) {
                 navController.navigate(Routes.RESULTS)
             }
         }
     }
 
-    // Document picker for AI scan (PDF, DOCX, PPTX, etc.)
-    val aiDocumentPicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument(),
-        onResult = { uri ->
-            if (uri != null && pendingAiMode != null) {
-                val mode = pendingAiMode!!
-                pendingAiMode = null
-                
-                // Take persistable permission
+    // Multi-document picker for AI scan (PDF, text files)
+    val aiMultiDocumentPicker = MultiDocumentPicker(
+        mimeTypes = arrayOf("application/pdf", "text/plain")
+    ) { uris ->
+        if (uris.isNotEmpty() && pendingAiMode != null) {
+            val mode = pendingAiMode!!
+            pendingAiMode = null
+            
+            // Take persistable permission for all URIs
+            uris.forEach { uri ->
                 try {
                     val flags = android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
                     context.contentResolver.takePersistableUriPermission(uri, flags)
                 } catch (e: Exception) {
                     // Ignore if permission taking fails
                 }
-                
-                // Check rate limit
-                val allowed = scanViewModel.triggerAiWithRateLimit {
-                    scanViewModel.onPdfSelected(uri)
-                    aiViewModel.processImage(uri, mode)
-                }
-                
-                if (allowed) {
-                    navController.navigate(Routes.RESULTS)
-                }
+            }
+            
+            // Check rate limit - batch counts as 1 request
+            val allowed = scanViewModel.triggerAiWithRateLimit {
+                scanViewModel.onPdfSelected(uris.first())
+                aiViewModel.processMultipleFiles(uris, mode)
+            }
+            
+            if (allowed) {
+                navController.navigate(Routes.RESULTS)
             }
         }
-    )
+    }
 
     val launchGalleryPicker = GalleryPicker { uri ->
         if (uri != null) {
@@ -243,19 +243,16 @@ fun HomeScreen() {
         
         when (mode) {
             AiMode.EXTRACT_TEXT -> {
-                // Use photo gallery for images
-                aiGalleryPicker()
+                // Use multi-image picker for photos
+                aiMultiGalleryPicker()
             }
             AiMode.EXTRACT_PDF_TEXT -> {
-                // Use document picker for PDF and text files (Gemini supported)
-                aiDocumentPicker.launch(arrayOf(
-                    "application/pdf",
-                    "text/plain"
-                ))
+                // Use multi-document picker for PDFs
+                aiMultiDocumentPicker()
             }
             else -> {
-                // Default to image picker
-                aiGalleryPicker()
+                // Default to multi-image picker
+                aiMultiGalleryPicker()
             }
         }
     }

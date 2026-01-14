@@ -1,48 +1,17 @@
 # Changelog
 
-## [v2.7.0] - 2026-01-11
+## [2.9.0] - 2026-01-14
+### Added
+- **Multi-File AI Processing**: Select multiple images or PDFs at once for batch analysis.
+- **Gemini API Integration**: Replaced legacy AI service with Google Gemini for improved accuracy and speed.
+- **Rate Limit Persistence**: Cooldown state now persists across app restarts (DataStore integration).
 
-### New Features
-- **AI Document Extraction**: Extract text from PDFs and text files using Google Gemini AI.
-- **Translation Support**: Translate extracted text into 15+ languages with one tap.
-- **Barcode Smart Actions**: Scan barcodes and QR codes with actionable results:
-  - Copy text to clipboard
-  - Open URLs in browser
-  - Dial phone numbers
-  - Send emails and SMS
-  - Connect to WiFi networks
-  - Add contacts to address book
-- **Offline OCR**: Built-in Google ML Kit text recognition works completely offline.
+### Fixed
+- **Rate Limit Abuse**: Fixed critical bug where restarting the app bypassed the 60s cooldown.
+- **Build System**: Removed dependency on `google-services.json` to allow building without Firebase credentials.
+- **UI Progress**: Added detailed progress indicators for multi-file processing.
 
-### Bug Fixes
-- **History Image Persistence**: Fixed issue where all history items showed the same image.
-- **Back Navigation**: Results screen now correctly returns to History when accessed from there.
-- **Barcode Actions**: Fixed barcode/QR copy and open actions not working.
-
-### Under the Hood
-- Created `ActionExecutor` utility for barcode action handling.
-- Created `HistoryViewModel` with Hilt injection for consistent data access.
-- Limited document picker to PDF and TXT files (Gemini API supported formats).
-- Improved error messages for unsupported file types.
-
----
-
-## [v2.4.0] - 2026-01-10
-
-### 🚀 New Features & Improvements
-- **Startlingly Fast PDF Extraction**: Text extraction from PDFs is now robust and reliable. Added intelligent white-background rendering for optimal ML Kit OCR accuracy.
-- **Smart Rate Limiting (2-Request Model)**:
-    - **Extract + Translate**: You now get 2 consecutive AI requests (e.g., Extract then immediately Translate) before a 60-second cooldown.
-    - **Visual Countdown**: A sleek modal sheet appears during cooldowns with a live progress indicator.
-    - **Unlimited Free OCR**: Standard ML Kit text extraction (Camera/Gallery/PDF) is now strictly **unlimited** and offline-capable (no translate button for pure OCR results).
-- **Offline Mode Polish**: The "Translate" button now intelligently hides itself when the device is offline to prevent error states.
-
-### 🐛 Bug Fixes
-- **PDF Previews**: Fixed an issue where opening a PDF wouldn't show a thumbnail preview in the results screen.
-- **Rate Limit Conflict**: Resolved a conflict where the AI service's internal rate limit was blocking the valid second request of the new rate limit model.
-- **UI Cleanups**: Removed distracting "rotating tips" from the AI Floating Action Button for a cleaner look.
-
-### 🔧 Under the Hood
-- Updated `PdfRendererHelper` with better error handling and per-page exception safety.
-- Migrated rate limiting logic fully to `ScanViewModel` for centralized control.
-- Bumped `minSdk` compatibility checks and dependencies.
+## [2.7.0] - 2026-01-11
+### Added
+- **UI Polish**: Added Wikipedia-style Results screen with hero images and clean typography.
+- **Haptics**: Added haptic feedback when AI cooldown completes.

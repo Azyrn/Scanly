@@ -32,6 +32,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
@@ -223,20 +224,47 @@ fun ResultsScreen() {
         },
         floatingActionButton = {
             if (displayText != null && !isProcessing && !isTranslating) {
-                FloatingActionButton(
-                    onClick = {
-                        val clipboardManager = context.getSystemService(android.content.ClipboardManager::class.java)
-                        val clipData = ClipData.newPlainText("Extracted Text", displayText)
-                        clipboardManager.setPrimaryClip(clipData)
-                        Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
-                    },
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.ContentCopy,
-                        contentDescription = "Copy All"
-                    )
+                    // Rescan FAB (rate-limited)
+                    if (isAiResult && aiState.lastImageUri != null) {
+                        FloatingActionButton(
+                            onClick = {
+                                val params = aiViewModel.getRescanParams()
+                                if (params != null) {
+                                    scanViewModel.triggerAiWithRateLimit {
+                                        aiViewModel.processImage(params.first, params.second)
+                                    }
+                                }
+                            },
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "Rescan"
+                            )
+                        }
+                    }
+                    
+                    // Copy FAB
+                    FloatingActionButton(
+                        onClick = {
+                            val clipboardManager = context.getSystemService(android.content.ClipboardManager::class.java)
+                            val clipData = ClipData.newPlainText("Extracted Text", displayText)
+                            clipboardManager.setPrimaryClip(clipData)
+                            Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
+                        },
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ContentCopy,
+                            contentDescription = "Copy All"
+                        )
+                    }
                 }
             }
         },
@@ -255,20 +283,15 @@ fun ResultsScreen() {
             ) {
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Hero Image (Wikipedia style - rounded, with caption)
-                if (imageUri != null || pdfThumbnail != null) {
-                    HeroImage(
-                        imageUri = imageUri,
-                        pdfThumbnail = pdfThumbnail
-                    )
-                    
-                    Spacer(modifier = Modifier.height(24.dp))
-                }
+                // Source image removed for cleaner document-style reading experience
 
                 // Content Area
                 when {
                     isProcessing -> {
-                        ProcessingContent()
+                        ProcessingContent(
+                            currentFile = aiState.currentFileIndex,
+                            totalFiles = aiState.totalFiles
+                        )
                     }
                     isTranslating -> {
                         TranslatingContent()
@@ -429,7 +452,13 @@ private fun HeroImage(
 }
 
 /**
- * Wikipedia-style readable text - clean, flowing paragraphs
+ * Document-style readable text with refined typography.
+ * 
+ * ULTRATHINK Rationale:
+ * - Line height 1.6x (32sp on 20sp base) improves readability for dense extracted text
+ * - Letter spacing 0.025sp enhances character distinction without feeling artificial
+ * - bodyMedium (16sp) chosen over bodyLarge for document-density similar to Google Docs
+ * - RTL-aware via TextDirection.Content for mixed-language documents
  */
 @Composable
 private fun ReadableTextContent(text: String) {
@@ -442,24 +471,29 @@ private fun ReadableTextContent(text: String) {
         SelectionContainer {
             Text(
                 text = text,
-                style = MaterialTheme.typography.bodyLarge.copy(
-                    // Wikipedia-style typography
-                    lineHeight = 28.sp,
-                    letterSpacing = 0.02.sp,
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    // Document-style typography (Google Docs / Wikipedia aesthetic)
+                    lineHeight = 26.sp,
+                    letterSpacing = 0.025.sp,
                     textDirection = TextDirection.Content
                 ),
                 color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp, bottom = 16.dp)
             )
         }
     }
 }
 
 /**
- * Processing indicator
+ * Processing indicator with optional multi-file progress.
  */
 @Composable
-private fun ProcessingContent() {
+private fun ProcessingContent(
+    currentFile: Int = 0,
+    totalFiles: Int = 0
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -470,13 +504,21 @@ private fun ProcessingContent() {
         CircularWavyProgressIndicator(modifier = Modifier.size(56.dp))
         Spacer(modifier = Modifier.height(24.dp))
         Text(
-            text = "Extracting text...",
+            text = if (totalFiles > 1) {
+                "Processing file $currentFile of $totalFiles..."
+            } else {
+                "Extracting text..."
+            },
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "This may take a few moments",
+            text = if (totalFiles > 1) {
+                "Processing ${totalFiles} files"
+            } else {
+                "This may take a few moments"
+            },
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.outline
         )

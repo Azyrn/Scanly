@@ -138,12 +138,17 @@ Rules:
                     val bitmap = loadBitmapFromUri(uri)
                         ?: return@withContext AiResult.Error("Failed to load image")
                     
-                    generativeModel.generateContent(
-                        content {
-                            image(bitmap)
-                            text(prompt)
-                        }
-                    )
+                    try {
+                        generativeModel.generateContent(
+                            content {
+                                image(bitmap)
+                                text(prompt)
+                            }
+                        )
+                    } finally {
+                        // Recycle bitmap to prevent memory leaks
+                        bitmap.recycle()
+                    }
                 }
             }
 

@@ -2,6 +2,7 @@ package com.skeler.scanely.history.data
 
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import androidx.core.net.toUri
 import dagger.hilt.android.qualifiers.ApplicationContext
 import org.json.JSONArray
@@ -10,6 +11,8 @@ import java.io.File
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
+
+private const val TAG = "HistoryManager"
 
 data class HistoryItem(
     val id: String = UUID.randomUUID().toString(),
@@ -75,6 +78,7 @@ class HistoryManager @Inject constructor(
             destFile.toUri().toString()
         } catch (e: Exception) {
             // If copy fails, return original URI (may not persist)
+            Log.w(TAG, "Image copy failed, using original URI", e)
             sourceUri
         }
     }

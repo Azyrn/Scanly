@@ -7,6 +7,9 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.skeler.scanely.core.network.NetworkObserver
+import com.skeler.scanely.core.ocr.PdfRendererHelper
+import com.skeler.scanely.settings.data.SettingsKeys
+import com.skeler.scanely.settings.data.datastore.SettingsDataStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -16,12 +19,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
-import com.skeler.scanely.core.ocr.PdfRendererHelper
 
 private const val TAG = "ScanViewModel"
 
@@ -97,7 +100,8 @@ class ScanViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val stateHolder: ScanStateHolder,
     private val networkObserver: NetworkObserver,
-    private val pdfRendererHelper: PdfRendererHelper
+    private val pdfRendererHelper: PdfRendererHelper,
+    private val settingsDataStore: SettingsDataStore
 ) : ViewModel() {
 
     val uiState: StateFlow<ScanUiState> = stateHolder.uiState
@@ -138,6 +142,103 @@ class ScanViewModel @Inject constructor(
 
     private var currentProcessingJob: Job? = null
 
+    init {
+        // Restore persisted rate limit state on cold start
+        viewModelScope.launch {
+            restoreRateLimitState()
+        }
+    }
+
+    /**
+     * Restore rate limit state from DataStore on app startup.
+     * If mid-cooldown, resume the timer from where it left off.
+     */
+    private suspend fun restoreRateLimitState() {
+        try {
+            val savedTimestamp = settingsDataStore.longFlow(SettingsKeys.LAST_AI_REQUEST_TIMESTAMP).first()
+            val savedCount = settingsDataStore.intFlow(SettingsKeys.AI_REQUEST_COUNT).first()
+
+            val now = System.currentTimeMillis()
+            val elapsed = now - savedTimestamp
+
+            when {
+                // Still in cooldown - resume timer
+                savedTimestamp > 0 && elapsed < RATE_LIMIT_MS -> {
+                    cooldownStartTimestamp = savedTimestamp
+                    val remainingMs = RATE_LIMIT_MS - elapsed
+                    startCooldownFromRemaining(remainingMs)
+                    Log.d(TAG, "Restored cooldown: ${remainingMs / 1000}s remaining")
+                }
+                // Cooldown expired - reset state
+                savedTimestamp > 0 && elapsed >= RATE_LIMIT_MS -> {
+                    persistRateLimitState(0L, 0)
+                    Log.d(TAG, "Cooldown expired, state reset")
+                }
+                // No active cooldown, but restore request count if valid
+                savedCount > 0 && savedCount < MAX_REQUESTS_BEFORE_COOLDOWN -> {
+                    _rateLimitState.value = RateLimitState(requestCount = savedCount)
+                    Log.d(TAG, "Restored request count: $savedCount")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to restore rate limit state", e)
+        }
+    }
+
+    /**
+     * Persist rate limit state to DataStore.
+     */
+    private fun persistRateLimitState(timestamp: Long, count: Int) {
+        viewModelScope.launch {
+            settingsDataStore.setLong(SettingsKeys.LAST_AI_REQUEST_TIMESTAMP, timestamp)
+            settingsDataStore.setInt(SettingsKeys.AI_REQUEST_COUNT, count)
+        }
+    }
+
+    /**
+     * Start cooldown from a remaining time (used when restoring state).
+     */
+    private fun startCooldownFromRemaining(remainingMs: Long) {
+        cooldownJob?.cancel()
+
+        cooldownJob = viewModelScope.launch(Dispatchers.Main) {
+            var remaining = (remainingMs / 1000).toInt().coerceAtLeast(1)
+
+            // Initial state
+            _rateLimitState.value = RateLimitState(
+                remainingSeconds = remaining,
+                progress = 1.0f - (remaining.toFloat() / RATE_LIMIT_SECONDS),
+                justBecameReady = false,
+                requestCount = MAX_REQUESTS_BEFORE_COOLDOWN
+            )
+
+            while (remaining > 0) {
+                delay(1000L)
+                remaining--
+
+                val progress = 1.0f - (remaining.toFloat() / RATE_LIMIT_SECONDS)
+
+                _rateLimitState.value = RateLimitState(
+                    remainingSeconds = remaining,
+                    progress = progress,
+                    justBecameReady = remaining == 0,
+                    requestCount = if (remaining == 0) 0 else MAX_REQUESTS_BEFORE_COOLDOWN
+                )
+            }
+
+            // Reset after cooldown
+            delay(100)
+            _rateLimitState.value = RateLimitState(
+                remainingSeconds = 0,
+                progress = 1.0f,
+                justBecameReady = false,
+                requestCount = 0
+            )
+            cooldownStartTimestamp = 0L
+            persistRateLimitState(0L, 0)
+        }
+    }
+
     // ========== Rate Limit Sheet Control ==========
 
     fun dismissRateLimitSheet() {
@@ -171,6 +272,7 @@ class ScanViewModel @Inject constructor(
             // Cooldown expired, reset
             cooldownStartTimestamp = 0L
             _rateLimitState.value = RateLimitState(requestCount = 0)
+            persistRateLimitState(0L, 0)
         }
 
         // Read current count AFTER potential reset
@@ -186,10 +288,12 @@ class ScanViewModel @Inject constructor(
             cooldownStartTimestamp = now
             _rateLimitState.value = _rateLimitState.value.copy(requestCount = newCount)
             _showRateLimitSheet.value = true
+            persistRateLimitState(now, newCount) // Persist cooldown start
             startCooldown()
         } else {
             // Still under limit, just increment
             _rateLimitState.value = _rateLimitState.value.copy(requestCount = newCount)
+            persistRateLimitState(0L, newCount) // Persist request count
         }
 
         return true
@@ -248,6 +352,7 @@ class ScanViewModel @Inject constructor(
                 requestCount = 0
             )
             cooldownStartTimestamp = 0L
+            persistRateLimitState(0L, 0) // Persist reset
         }
     }
 

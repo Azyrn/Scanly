@@ -24,29 +24,26 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
@@ -143,9 +140,14 @@ fun ResultsScreen() {
     // Track if result is from AI (only AI results can be translated)
     val isAiResult = aiResultText != null
     
-    // Display translated text if available, otherwise original
-    val displayText = aiState.translatedText ?: primaryResultText
-    val hasTranslation = aiState.translatedText != null
+    // Derive display text from cache
+    val cachedLanguages = aiState.translationCache.keys.toList()
+    val currentLanguage = aiState.currentLanguage
+    val displayText = if (currentLanguage != null) {
+        aiState.translationCache[currentLanguage] ?: primaryResultText
+    } else {
+        primaryResultText
+    }
 
     // Rate Limit & Network State
     val rateLimitState by scanViewModel.rateLimitState.collectAsState()
@@ -297,16 +299,18 @@ fun ResultsScreen() {
                         TranslatingContent()
                     }
                     displayText != null -> {
-                        // Translate/Revert buttons (for AI results only)
+                        // Language chip row (for AI results only)
                         if (isAiResult && isOnline) {
-                            TranslateActions(
-                                hasTranslation = hasTranslation,
+                            LanguageChipRow(
+                                cachedLanguages = cachedLanguages,
+                                currentLanguage = currentLanguage,
                                 showLanguageMenu = showLanguageMenu,
                                 onShowLanguageMenu = { showLanguageMenu = true },
                                 onDismissLanguageMenu = { showLanguageMenu = false },
-                                onRevert = { aiViewModel.clearTranslation() },
-                                languages = languages,
-                                onLanguageSelected = { language ->
+                                onSelectOriginal = { aiViewModel.showOriginal() },
+                                onSelectCached = { aiViewModel.selectCachedLanguage(it) },
+                                allLanguages = languages,
+                                onNewLanguageSelected = { language ->
                                     showLanguageMenu = false
                                     scanViewModel.triggerAiWithRateLimit {
                                         aiViewModel.translateResult(language)
@@ -330,62 +334,62 @@ fun ResultsScreen() {
 }
 
 /**
- * Translate/Revert action buttons
+ * Language chip row for instant switching between original and cached translations.
+ * 
+ * Layout: [Original] [Japanese] [French] ... [+ ▼]
  */
 @Composable
-private fun TranslateActions(
-    hasTranslation: Boolean,
+private fun LanguageChipRow(
+    cachedLanguages: List<String>,
+    currentLanguage: String?,
     showLanguageMenu: Boolean,
     onShowLanguageMenu: () -> Unit,
     onDismissLanguageMenu: () -> Unit,
-    onRevert: () -> Unit,
-    languages: List<String>,
-    onLanguageSelected: (String) -> Unit
+    onSelectOriginal: () -> Unit,
+    onSelectCached: (String) -> Unit,
+    allLanguages: List<String>,
+    onNewLanguageSelected: (String) -> Unit
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        if (hasTranslation) {
-            // Revert button
-            OutlinedButton(
-                onClick = onRevert,
-                modifier = Modifier.weight(1f)
+        // Original chip
+        FilterChip(
+            selected = currentLanguage == null,
+            onClick = onSelectOriginal,
+            label = { Text("Original") }
+        )
+        
+        // Cached language chips
+        cachedLanguages.forEach { language ->
+            FilterChip(
+                selected = currentLanguage == language,
+                onClick = { onSelectCached(language) },
+                label = { Text(language) }
+            )
+        }
+        
+        // Add new language chip with dropdown
+        Box {
+            FilterChip(
+                selected = false,
+                onClick = onShowLanguageMenu,
+                label = { Text("Translate") }
+            )
+            
+            DropdownMenu(
+                expanded = showLanguageMenu,
+                onDismissRequest = onDismissLanguageMenu
             ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.Undo,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Show Original")
-            }
-        } else {
-            // Translate button with dropdown
-            Box(modifier = Modifier.weight(1f)) {
-                FilledTonalButton(
-                    onClick = onShowLanguageMenu,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Translate,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
+                // Filter out already-cached languages
+                allLanguages.filterNot { it in cachedLanguages }.forEach { language ->
+                    DropdownMenuItem(
+                        text = { Text(language) },
+                        onClick = { onNewLanguageSelected(language) }
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Translate")
-                }
-                
-                DropdownMenu(
-                    expanded = showLanguageMenu,
-                    onDismissRequest = onDismissLanguageMenu
-                ) {
-                    languages.forEach { language ->
-                        DropdownMenuItem(
-                            text = { Text(language) },
-                            onClick = { onLanguageSelected(language) }
-                        )
-                    }
                 }
             }
         }
@@ -501,7 +505,7 @@ private fun ProcessingContent(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        CircularWavyProgressIndicator(modifier = Modifier.size(56.dp))
+        CircularProgressIndicator(modifier = Modifier.size(48.dp))
         Spacer(modifier = Modifier.height(24.dp))
         Text(
             text = if (totalFiles > 1) {

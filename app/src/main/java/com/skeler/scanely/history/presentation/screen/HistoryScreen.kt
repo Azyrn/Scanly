@@ -7,6 +7,7 @@ import androidx.activity.ComponentActivity
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -21,12 +22,16 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
@@ -164,19 +169,53 @@ fun HistoryScreen() {
                 contentPadding = PaddingValues(16.dp)
             ) {
                 items(historyItems, key = { it.id }) { item ->
-                    HistoryItemCard(
-                        item = item,
-                        onClick = {
-                            // Navigate to results with saved text (no re-extraction)
-                            scanViewModel.onImageSelected(Uri.parse(item.imageUri))
-                            // Pass saved text via shared state
-                            scanViewModel.setHistoryText(item.text)
-                            navController.navigate(Routes.RESULTS)
+                    val dismissState = rememberSwipeToDismissBoxState(
+                        confirmValueChange = { value ->
+                            if (value == SwipeToDismissBoxValue.EndToStart) {
+                                historyViewModel.deleteItem(item.id)
+                                true
+                            } else {
+                                false
+                            }
+                        }
+                    )
+                    
+                    SwipeToDismissBox(
+                        state = dismissState,
+                        backgroundContent = {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(
+                                        MaterialTheme.colorScheme.errorContainer,
+                                        MaterialTheme.shapes.medium
+                                    )
+                                    .padding(horizontal = 20.dp),
+                                contentAlignment = Alignment.CenterEnd
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "Delete",
+                                    tint = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                            }
                         },
+                        enableDismissFromStartToEnd = false,
                         modifier = Modifier
                             .fillMaxWidth()
                             .animateItem()
-                    )
+                    ) {
+                        HistoryItemCard(
+                            item = item,
+                            onClick = {
+                                // Navigate to results with saved text (no re-extraction)
+                                scanViewModel.onImageSelected(Uri.parse(item.imageUri))
+                                // Pass saved text via shared state
+                                scanViewModel.setHistoryText(item.text)
+                                navController.navigate(Routes.RESULTS)
+                            }
+                        )
+                    }
                 }
             }
         }

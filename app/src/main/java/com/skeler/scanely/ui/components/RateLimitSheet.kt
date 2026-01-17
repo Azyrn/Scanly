@@ -2,6 +2,8 @@
 
 package com.skeler.scanely.ui.components
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,6 +18,7 @@ import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.StrokeCap
@@ -36,6 +39,7 @@ private const val RATE_LIMIT_SECONDS = 60
  * - "Developer is using limited API" humanizes the constraint
  * - Dismiss button respects user agency vs auto-dismiss
  * - Semantics for TalkBack accessibility
+ * - Smooth progress animation (1s tween) for fluid bar movement
  */
 @Composable
 fun RateLimitSheet(
@@ -44,7 +48,12 @@ fun RateLimitSheet(
     modifier: Modifier = Modifier,
     sheetState: SheetState = rememberModalBottomSheetState()
 ) {
-    val progress = 1f - (remainingSeconds.toFloat() / RATE_LIMIT_SECONDS)
+    val targetProgress = 1f - (remainingSeconds.toFloat() / RATE_LIMIT_SECONDS)
+    val animatedProgress by animateFloatAsState(
+        targetValue = targetProgress,
+        animationSpec = tween(durationMillis = 1000),
+        label = "progress"
+    )
     
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -92,7 +101,7 @@ fun RateLimitSheet(
             
             // Progress indicator (fills from 0 to 1)
             LinearProgressIndicator(
-                progress = { progress },
+                progress = { animatedProgress },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(8.dp)

@@ -23,7 +23,10 @@ data class AiScanState(
     val result: AiResult? = null,
     val mode: AiMode? = null,
     val originalText: String? = null,
-    val translatedText: String? = null,
+    /** Cached translations: language name -> translated text */
+    val translationCache: Map<String, String> = emptyMap(),
+    /** Currently displayed language (null = original text) */
+    val currentLanguage: String? = null,
     val isTranslating: Boolean = false,
     /** URI of the last processed image (for rescan) */
     val lastImageUri: Uri? = null,
@@ -166,6 +169,7 @@ class AiScanViewModel @Inject constructor(
 
     /**
      * Translate the current result text to a target language.
+     * Stores result in cache for instant switching later.
      */
     fun translateResult(targetLanguage: String) {
         val currentText = _aiState.value.originalText ?: return
@@ -175,22 +179,42 @@ class AiScanViewModel @Inject constructor(
 
             val translationResult = aiService.translateText(currentText, targetLanguage)
 
-            _aiState.value = _aiState.value.copy(
-                isTranslating = false,
-                translatedText = when (translationResult) {
-                    is AiResult.Success -> translationResult.text
-                    is AiResult.RateLimited -> "Rate limited: wait ${translationResult.remainingMs / 1000}s"
-                    is AiResult.Error -> "Translation error: ${translationResult.message}"
+            when (translationResult) {
+                is AiResult.Success -> {
+                    // Cache the successful translation
+                    val updatedCache = _aiState.value.translationCache + (targetLanguage to translationResult.text)
+                    _aiState.value = _aiState.value.copy(
+                        isTranslating = false,
+                        translationCache = updatedCache,
+                        currentLanguage = targetLanguage
+                    )
                 }
-            )
+                is AiResult.RateLimited -> {
+                    _aiState.value = _aiState.value.copy(isTranslating = false)
+                    // Rate limit handled by ScanViewModel - don't update state further
+                }
+                is AiResult.Error -> {
+                    _aiState.value = _aiState.value.copy(isTranslating = false)
+                    // Could show error toast via state if needed
+                }
+            }
         }
     }
 
     /**
-     * Clear translation to show original text again.
+     * Switch to a previously cached translation instantly (no API call).
      */
-    fun clearTranslation() {
-        _aiState.value = _aiState.value.copy(translatedText = null)
+    fun selectCachedLanguage(language: String) {
+        if (_aiState.value.translationCache.containsKey(language)) {
+            _aiState.value = _aiState.value.copy(currentLanguage = language)
+        }
+    }
+
+    /**
+     * Show original text (keeps cache intact for quick switching back).
+     */
+    fun showOriginal() {
+        _aiState.value = _aiState.value.copy(currentLanguage = null)
     }
 
     /**
@@ -200,3 +224,4 @@ class AiScanViewModel @Inject constructor(
         _aiState.value = AiScanState()
     }
 }
+

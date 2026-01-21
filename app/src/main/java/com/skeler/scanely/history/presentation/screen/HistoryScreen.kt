@@ -35,9 +35,11 @@ import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
@@ -45,6 +47,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -92,6 +95,9 @@ fun HistoryScreen() {
             }
         }
     }
+    
+    // Confirmation dialog state
+    var showClearConfirmDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -137,7 +143,7 @@ fun HistoryScreen() {
                         Text("Clear All")
                     },
                     onClick = {
-                        historyViewModel.clearHistory()
+                        showClearConfirmDialog = true
                     }
                 )
             }
@@ -220,6 +226,30 @@ fun HistoryScreen() {
                 }
             }
         }
+    }
+    
+    // Clear All Confirmation Dialog
+    if (showClearConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearConfirmDialog = false },
+            title = { Text("Clear History") },
+            text = { Text("Are you sure you want to delete all history? This action cannot be undone.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        historyViewModel.clearHistory()
+                        showClearConfirmDialog = false
+                    }
+                ) {
+                    Text("Delete All", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearConfirmDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 

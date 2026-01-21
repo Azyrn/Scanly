@@ -107,17 +107,47 @@ object ScanActionDetector {
             actions.add(ScanAction.SendEmail(email))
         }
         
-        // Detect phone numbers
+        // Detect phone numbers - STRICT: require country code (+XX or 00XX)
         val phones = PHONE_PATTERN.findAll(text).map { it.value }.toList()
-        phones.take(3).forEach { phone ->
-            // Filter out numbers that are too short (likely not phone numbers)
-            val digitsOnly = phone.filter { it.isDigit() }
-            if (digitsOnly.length >= 7) {
-                actions.add(ScanAction.CallPhone(phone))
+        phones.take(2).forEach { phone ->
+            if (isValidPhoneNumber(phone)) {
+                actions.add(ScanAction.CallPhone(phone.trim()))
             }
         }
         
         return actions
+    }
+    
+    /**
+     * Strict phone number validation:
+     * - Must start with + or 00 (country code indicator)
+     * - Must have 10-15 digits total
+     * - Must not be just a sequence of numbers (like barcodes)
+     */
+    private fun isValidPhoneNumber(phone: String): Boolean {
+        val cleaned = phone.trim()
+        
+        // Must start with + or 00 (international format)
+        if (!cleaned.startsWith("+") && !cleaned.startsWith("00")) {
+            return false
+        }
+        
+        // Count digits
+        val digitsOnly = cleaned.filter { it.isDigit() }
+        
+        // International phone numbers are typically 10-15 digits (including country code)
+        if (digitsOnly.length < 10 || digitsOnly.length > 15) {
+            return false
+        }
+        
+        // Should have at least one separator or reasonable structure
+        // Pure digit strings (like barcodes) are not valid phones
+        val hasProperFormat = cleaned.contains(" ") || 
+                              cleaned.contains("-") || 
+                              cleaned.contains("(") ||
+                              cleaned.startsWith("+")
+        
+        return hasProperFormat
     }
     
     /**

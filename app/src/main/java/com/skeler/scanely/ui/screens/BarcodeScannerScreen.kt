@@ -20,16 +20,19 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -48,6 +51,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -71,6 +75,14 @@ import com.skeler.scanely.core.actions.ActionExecutor
 import com.skeler.scanely.core.actions.ScanAction
 import com.skeler.scanely.core.barcode.BarcodeAnalyzer
 import com.skeler.scanely.navigation.LocalNavController
+import com.skeler.scanely.ui.components.GalleryPicker
+import com.skeler.scanely.ui.viewmodel.UnifiedScanViewModel
+import androidx.activity.ComponentActivity
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.outlined.PhotoLibrary
+import androidx.hilt.navigation.compose.hiltViewModel
+import kotlinx.coroutines.launch
 import java.util.concurrent.Executors
 
 private const val TAG = "BarcodeScannerScreen"
@@ -79,18 +91,47 @@ private const val TAG = "BarcodeScannerScreen"
 @Composable
 fun BarcodeScannerScreen() {
     val context = LocalContext.current
+    val activity = context as ComponentActivity
     val lifecycleOwner = LocalLifecycleOwner.current
     val navController = LocalNavController.current
     val cameraPermissionState = rememberPermissionState(Manifest.permission.CAMERA)
+    val unifiedViewModel: UnifiedScanViewModel = hiltViewModel(activity)
 
     var detectedActions by remember { mutableStateOf<List<ScanAction>>(emptyList()) }
     var showActionsSheet by remember { mutableStateOf(false) }
+    var textToShow by remember { mutableStateOf<String?>(null) }
+    var isProcessingGallery by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val textSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val scope = rememberCoroutineScope()
+
+    // Gallery picker for barcode-only mode
+    val galleryPicker = GalleryPicker { uri ->
+        if (uri != null) {
+            isProcessingGallery = true
+            // Process barcode-only (no OCR)
+            scope.launch {
+                val actions = unifiedViewModel.let {
+                    it.processBarcodeOnly(uri)
+                    // Wait for result
+                    kotlinx.coroutines.delay(500)
+                    it.uiState.value.barcodeActions
+                }
+                isProcessingGallery = false
+                if (actions.isNotEmpty()) {
+                    detectedActions = actions
+                    showActionsSheet = true
+                } else {
+                    android.widget.Toast.makeText(context, "No barcode found", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
 
     // Barcode analyzer
     val barcodeAnalyzer = remember {
         BarcodeAnalyzer { actions ->
-            if (actions.isNotEmpty() && !showActionsSheet) {
+            if (actions.isNotEmpty() && !showActionsSheet && textToShow == null) {
                 detectedActions = actions
                 showActionsSheet = true
             }
@@ -133,18 +174,51 @@ fun BarcodeScannerScreen() {
                 enter = fadeIn(),
                 exit = fadeOut()
             ) {
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = Color.Black.copy(alpha = 0.7f)
-                    ),
-                    shape = MaterialTheme.shapes.medium
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Text(
-                        text = "Point camera at barcode or QR code",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                    )
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color.Black.copy(alpha = 0.7f)
+                        ),
+                        shape = MaterialTheme.shapes.medium
+                    ) {
+                        Text(
+                            text = "Point camera at barcode or QR code",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.White,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                    }
+                    
+                    // Gallery upload button
+                    Card(
+                        onClick = { galleryPicker() },
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color.Transparent
+                        ),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.5f)),
+                        shape = RoundedCornerShape(24.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.PhotoLibrary,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = if (isProcessingGallery) "Scanning..." else "Upload from gallery",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.White
+                            )
+                        }
+                    }
                 }
             }
 
@@ -192,13 +266,37 @@ fun BarcodeScannerScreen() {
                 actions = detectedActions,
                 onActionClick = { action ->
                     showActionsSheet = false
-                    // Execute the action (open URL, copy text, call, email, etc.)
-                    ActionExecutor.execute(context, action)
+                    // Handle ShowRaw specially with styled sheet
+                    if (action is ScanAction.ShowRaw) {
+                        textToShow = action.text
+                    } else {
+                        // Execute other actions normally
+                        ActionExecutor.execute(context, action)
+                    }
                 },
                 onDismiss = {
                     showActionsSheet = false
                     detectedActions = emptyList()
                 }
+            )
+        }
+    }
+
+    // Text Detail Bottom Sheet (styled)
+    textToShow?.let { text ->
+        ModalBottomSheet(
+            onDismissRequest = { textToShow = null },
+            sheetState = textSheetState
+        ) {
+            TextDetailSheet(
+                text = text,
+                onCopy = {
+                    val clipboard = context.getSystemService(android.content.ClipboardManager::class.java)
+                    val clip = android.content.ClipData.newPlainText("Barcode Content", text)
+                    clipboard.setPrimaryClip(clip)
+                    android.widget.Toast.makeText(context, "Copied to clipboard", android.widget.Toast.LENGTH_SHORT).show()
+                },
+                onDismiss = { textToShow = null }
             )
         }
     }
@@ -376,6 +474,68 @@ private fun BarcodeActionsSheet(
             }
 
             item { Spacer(modifier = Modifier.height(16.dp)) }
+        }
+    }
+}
+
+/**
+ * Styled text detail sheet for "View Text" action.
+ * Matches Scanly's Material 3 aesthetic.
+ */
+@Composable
+private fun TextDetailSheet(
+    text: String,
+    onCopy: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp)
+            .padding(bottom = 32.dp)
+    ) {
+        Text(
+            text = "Barcode Content",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        // Selectable text in a styled card
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+            ),
+            shape = MaterialTheme.shapes.medium,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            androidx.compose.foundation.text.selection.SelectionContainer {
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Copy button (full width, prominent)
+        androidx.compose.material3.FilledTonalButton(
+            onClick = {
+                onCopy()
+                onDismiss()
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(
+                imageVector = Icons.Default.ContentCopy,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Copy to Clipboard")
         }
     }
 }

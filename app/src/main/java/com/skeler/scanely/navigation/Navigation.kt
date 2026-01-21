@@ -23,11 +23,13 @@ import com.skeler.scanely.ui.screens.CameraScreen
 import com.skeler.scanely.ui.screens.HomeScreen
 import com.skeler.scanely.ui.screens.ResultsScreen
 import com.skeler.scanely.ui.screens.BarcodeScannerScreen
+import com.skeler.scanely.ui.screens.UnifiedResultsScreen
 
 object Routes {
     const val HOME = "home"
     const val CAMERA = "camera"
     const val RESULTS = "results"
+    const val UNIFIED_RESULTS = "unified_results"
     const val BARCODE_SCANNER = "barcode_scanner"
     const val SETTINGS = "settings"
     const val LOOK_AND_FEEL = "look_and_feel"
@@ -84,6 +86,10 @@ fun ScanelyNavigation(
 
             composable(Routes.BARCODE_SCANNER) {
                 BarcodeScannerScreen()
+            }
+
+            composable(Routes.UNIFIED_RESULTS) {
+                UnifiedResultsScreen()
             }
         }
     }

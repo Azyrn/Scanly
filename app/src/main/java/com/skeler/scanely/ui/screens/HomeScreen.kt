@@ -92,6 +92,7 @@ import com.skeler.scanely.ui.components.MultiGalleryPicker
 import com.skeler.scanely.ui.components.RateLimitSheet
 import com.skeler.scanely.ui.viewmodel.AiScanViewModel
 import com.skeler.scanely.ui.viewmodel.OcrViewModel
+import com.skeler.scanely.ui.viewmodel.UnifiedScanViewModel
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -191,13 +192,18 @@ fun HomeScreen() {
         }
     }
 
+    // Unified scan ViewModel for gallery images
+    val unifiedViewModel: UnifiedScanViewModel = hiltViewModel(activity)
+
     val launchGalleryPicker = GalleryPicker { uri ->
         if (uri != null) {
             // Clear previous results before new extraction
+            aiViewModel.clearResult()
             ocrViewModel.clearResult()
             scanViewModel.onImageSelected(uri)
-            ocrViewModel.processImage(uri)
-            navController.navigate(Routes.RESULTS)
+            // Use unified scanning (OCR + barcode)
+            unifiedViewModel.processImage(uri)
+            navController.navigate(Routes.UNIFIED_RESULTS)
         }
     }
 
@@ -215,6 +221,7 @@ fun HomeScreen() {
                 }
                 
                 // Clear previous results before new extraction
+                aiViewModel.clearResult()
                 ocrViewModel.clearResult()
                 scanViewModel.onPdfSelected(uri)
                 ocrViewModel.processPdf(uri)

@@ -50,7 +50,7 @@ class BarcodeAnalyzer(
 
     // Throttle: minimum time between callbacks (ms)
     private var lastProcessedTime = 0L
-    private val throttleInterval = 500L
+    private val throttleInterval = 100L
 
     @OptIn(ExperimentalGetImage::class)
     override fun analyze(imageProxy: ImageProxy) {

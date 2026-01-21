@@ -1,5 +1,9 @@
 # Changelog
 
+## [2.9.1] - 2026-01-21
+### Fixed
+- **Version Bump**: Updated app version to 2.9.1.
+
 ## [2.9.0] - 2026-01-14
 ### Added
 - **Multi-File AI Processing**: Select multiple images or PDFs at once for batch analysis.

@@ -177,7 +177,8 @@ fun HistoryScreen() {
                             } else {
                                 false
                             }
-                        }
+                        },
+                        positionalThreshold = { totalDistance -> totalDistance * 0.5f }
                     )
                     
                     SwipeToDismissBox(

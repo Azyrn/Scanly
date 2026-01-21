@@ -82,6 +82,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.hilt.navigation.compose.hiltViewModel
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.concurrent.Executors
 
@@ -111,15 +112,14 @@ fun BarcodeScannerScreen() {
             isProcessingGallery = true
             // Process barcode-only (no OCR)
             scope.launch {
-                val actions = unifiedViewModel.let {
-                    it.processBarcodeOnly(uri)
-                    // Wait for result
-                    kotlinx.coroutines.delay(500)
-                    it.uiState.value.barcodeActions
-                }
+                unifiedViewModel.processBarcodeOnly(uri)
+                
+                // Wait for scan to complete by collecting StateFlow
+                val result = unifiedViewModel.uiState.first { !it.isLoading }
+                
                 isProcessingGallery = false
-                if (actions.isNotEmpty()) {
-                    detectedActions = actions
+                if (result.barcodeActions.isNotEmpty()) {
+                    detectedActions = result.barcodeActions
                     showActionsSheet = true
                 } else {
                     android.widget.Toast.makeText(context, "No barcode found", android.widget.Toast.LENGTH_SHORT).show()

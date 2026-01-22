@@ -16,10 +16,11 @@ import androidx.compose.runtime.setValue
  * with fallback to legacy picker for older versions.
  * 
  * @param onImageSelected Callback with selected image Uri, null if cancelled
- * @param onLaunch Trigger to launch the picker
+ * @return Lambda to launch the picker
  */
+@Suppress("ComposableNaming") // Returns a lambda, not a Unit-returning composable
 @Composable
-fun GalleryPicker(
+fun rememberGalleryPicker(
     onImageSelected: (Uri?) -> Unit
 ): () -> Unit {
     val launcher = rememberLauncherForActivityResult(
@@ -40,9 +41,11 @@ fun GalleryPicker(
  * 
  * @param maxItems Maximum number of images to select
  * @param onImagesSelected Callback with list of selected image Uris
+ * @return Lambda to launch the picker
  */
+@Suppress("ComposableNaming") // Returns a lambda, not a Unit-returning composable
 @Composable
-fun MultiGalleryPicker(
+fun rememberMultiGalleryPicker(
     maxItems: Int = 10,
     onImagesSelected: (List<Uri>) -> Unit
 ): () -> Unit {
@@ -64,9 +67,11 @@ fun MultiGalleryPicker(
  * 
  * @param mimeTypes MIME types to filter (default: PDF and plain text)
  * @param onDocumentsSelected Callback with list of selected document Uris
+ * @return Lambda to launch the picker
  */
+@Suppress("ComposableNaming") // Returns a lambda, not a Unit-returning composable
 @Composable
-fun MultiDocumentPicker(
+fun rememberMultiDocumentPicker(
     mimeTypes: Array<String> = arrayOf("application/pdf", "text/plain"),
     onDocumentsSelected: (List<Uri>) -> Unit
 ): () -> Unit {

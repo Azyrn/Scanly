@@ -4,7 +4,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
+import androidx.core.net.toUri
 import android.net.wifi.WifiManager
 import android.net.wifi.WifiNetworkSuggestion
 import android.os.Build
@@ -51,7 +51,7 @@ object ActionExecutor {
             if (!url.startsWith("http://") && !url.startsWith("https://")) {
                 finalUrl = "https://$url"
             }
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(finalUrl))
+            val intent = Intent(Intent.ACTION_VIEW, finalUrl.toUri())
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(intent)
         } catch (e: Exception) {
@@ -72,7 +72,7 @@ object ActionExecutor {
 
     private fun callPhone(context: Context, number: String) {
         try {
-            val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$number"))
+            val intent = Intent(Intent.ACTION_DIAL, "tel:$number".toUri())
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(intent)
         } catch (e: Exception) {
@@ -83,7 +83,7 @@ object ActionExecutor {
     private fun sendEmail(context: Context, email: String, subject: String?, body: String?) {
         try {
             val intent = Intent(Intent.ACTION_SENDTO).apply {
-                data = Uri.parse("mailto:")
+                data = "mailto:".toUri()
                 putExtra(Intent.EXTRA_EMAIL, arrayOf(email))
                 subject?.let { putExtra(Intent.EXTRA_SUBJECT, it) }
                 body?.let { putExtra(Intent.EXTRA_TEXT, it) }
@@ -97,7 +97,7 @@ object ActionExecutor {
 
     private fun sendSms(context: Context, number: String, message: String?) {
         try {
-            val intent = Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:$number"))
+            val intent = Intent(Intent.ACTION_SENDTO, "smsto:$number".toUri())
             message?.let { intent.putExtra("sms_body", it) }
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(intent)

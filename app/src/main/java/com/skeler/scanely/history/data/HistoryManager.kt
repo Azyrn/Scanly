@@ -64,7 +64,7 @@ class HistoryManager @Inject constructor(
      */
     private fun copyImageToInternalStorage(sourceUri: String): String {
         return try {
-            val uri = Uri.parse(sourceUri)
+            val uri = sourceUri.toUri()
             val fileName = "${UUID.randomUUID()}.jpg"
             val destFile = File(imagesDir, fileName)
             
@@ -89,7 +89,7 @@ class HistoryManager @Inject constructor(
     private fun deleteImage(imageUri: String) {
         try {
             if (imageUri.startsWith("file://")) {
-                val file = File(Uri.parse(imageUri).path ?: return)
+                val file = File(imageUri.toUri().path ?: return)
                 if (file.exists() && file.parentFile == imagesDir) {
                     file.delete()
                 }

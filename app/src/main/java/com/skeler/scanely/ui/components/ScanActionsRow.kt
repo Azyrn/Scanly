@@ -2,7 +2,7 @@ package com.skeler.scanely.ui.components
 
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
+import androidx.core.net.toUri
 import android.net.wifi.WifiNetworkSuggestion
 import android.os.Build
 import android.provider.ContactsContract
@@ -177,7 +177,7 @@ private fun executeAction(
     when (action) {
         is ScanAction.OpenUrl -> {
             try {
-                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(action.url))
+                val intent = Intent(Intent.ACTION_VIEW, action.url.toUri())
                 context.startActivity(intent)
             } catch (e: Exception) {
                 Toast.makeText(context, "Cannot open URL", Toast.LENGTH_SHORT).show()
@@ -197,7 +197,7 @@ private fun executeAction(
         
         is ScanAction.CallPhone -> {
             try {
-                val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:${action.number}"))
+                val intent = Intent(Intent.ACTION_DIAL, "tel:${action.number}".toUri())
                 context.startActivity(intent)
             } catch (e: Exception) {
                 Toast.makeText(context, "Cannot open dialer", Toast.LENGTH_SHORT).show()
@@ -207,7 +207,7 @@ private fun executeAction(
         is ScanAction.SendEmail -> {
             try {
                 val intent = Intent(Intent.ACTION_SENDTO).apply {
-                    data = Uri.parse("mailto:${action.email}")
+                    data = "mailto:${action.email}".toUri()
                     action.subject?.let { putExtra(Intent.EXTRA_SUBJECT, it) }
                     action.body?.let { putExtra(Intent.EXTRA_TEXT, it) }
                 }
@@ -223,7 +223,7 @@ private fun executeAction(
         
         is ScanAction.SendSms -> {
             try {
-                val intent = Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:${action.number}")).apply {
+                val intent = Intent(Intent.ACTION_SENDTO, "smsto:${action.number}".toUri()).apply {
                     action.message?.let { putExtra("sms_body", it) }
                 }
                 context.startActivity(intent)

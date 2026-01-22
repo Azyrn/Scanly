@@ -75,7 +75,7 @@ import com.skeler.scanely.core.actions.ActionExecutor
 import com.skeler.scanely.core.actions.ScanAction
 import com.skeler.scanely.core.barcode.BarcodeAnalyzer
 import com.skeler.scanely.navigation.LocalNavController
-import com.skeler.scanely.ui.components.GalleryPicker
+import com.skeler.scanely.ui.components.rememberGalleryPicker
 import com.skeler.scanely.ui.viewmodel.UnifiedScanViewModel
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.BorderStroke
@@ -107,7 +107,7 @@ fun BarcodeScannerScreen() {
     val scope = rememberCoroutineScope()
 
     // Gallery picker for barcode-only mode
-    val galleryPicker = GalleryPicker { uri ->
+    val galleryPicker = rememberGalleryPicker { uri ->
         if (uri != null) {
             isProcessingGallery = true
             // Process barcode-only (no OCR)

@@ -7,24 +7,27 @@ junitVersion = "1.3.0"
 espressoCore = "3.7.0"
 lifecycleRuntimeKtx = "2.10.0"
 activityCompose = "1.12.2"
-composeBom = "2025.12.01"
+composeBom = "2026.01.00"
 # New dependencies
-cameraX = "1.4.1"
+cameraX = "1.5.2"
 coil = "2.7.0"
 navigationCompose = "2.9.6"
-accompanist = "0.36.0"
-# tesseract, mlkit removed
-material3 = "1.5.0-alpha11"
+accompanist = "0.37.3"
+# ML Kit
+mlkitBarcode = "17.3.0"
+mlkitTextRecognition = "16.0.1"
+material3 = "1.5.0-alpha12"
 datastore = "1.2.0"
-hilt = "2.57.2"
+hilt = "2.55"
 hiltExt = "1.3.0"
 ksp = "2.2.20-2.0.3"
-serialization = "1.9.0"
+serialization = "1.10.0"
 work = "2.11.0"
 generativeai = "0.9.0"
-googleServices = "4.4.2"
-crashlytics = "3.0.2"
-firebaseBom = "33.7.0"
+googleServices = "4.4.4"
+crashlytics = "3.0.6"
+firebaseBom = "34.8.0"
+material = "1.13.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -32,6 +35,7 @@ junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
+androidx-lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "lifecycleRuntimeKtx" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 androidx-compose-ui = { group = "androidx.compose.ui", name = "ui" }
@@ -54,7 +58,10 @@ navigation-compose = { group = "androidx.navigation", name = "navigation-compose
 accompanist-permissions = { group = "com.google.accompanist", name = "accompanist-permissions", version.ref = "accompanist" }
 # Material Icons Extended
 androidx-compose-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
-# OCR/MLKit libs removed
+# ML Kit
+mlkit-barcode = { group = "com.google.mlkit", name = "barcode-scanning", version.ref = "mlkitBarcode" }
+mlkit-text-recognition = { group = "com.google.mlkit", name = "text-recognition", version.ref = "mlkitTextRecognition" }
+# DataStore
 datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
 hilt-android-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "hilt" }
@@ -63,7 +70,7 @@ hilt-work = { module = "androidx.hilt:hilt-work", version.ref = "hiltExt" }
 serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "serialization" }
 androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "work" }
 # Material Color Utilities for proper tonal palette generation
-material-color-utilities = { group = "com.google.android.material", name = "material", version = "1.12.0" }
+material-color-utilities = { group = "com.google.android.material", name = "material", version.ref = "material" }
 # Google Generative AI (Gemini)
 generativeai = { group = "com.google.ai.client.generativeai", name = "generativeai", version.ref = "generativeai" }
 
@@ -80,3 +87,4 @@ ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }
 firebase-crashlytics = { id = "com.google.firebase.crashlytics", version.ref = "crashlytics" }
+

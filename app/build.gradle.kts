@@ -95,7 +95,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.0")
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
     
     // Compose
     implementation(platform(libs.androidx.compose.bom))
@@ -136,16 +136,14 @@ dependencies {
     // Accompanist Permissions
     implementation(libs.accompanist.permissions)
     
-    // OCR/ML Kit dependencies removed
-    
     // Google Generative AI (Gemini)
     implementation(libs.generativeai)
     
     // Google ML Kit Barcode Scanning
-    implementation("com.google.mlkit:barcode-scanning:17.3.0")
+    implementation(libs.mlkit.barcode)
     
     // Google ML Kit Text Recognition (On-Device)
-    implementation("com.google.mlkit:text-recognition:16.0.1")
+    implementation(libs.mlkit.text.recognition)
     
     // Testing
     testImplementation(libs.junit)

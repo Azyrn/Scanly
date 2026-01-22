@@ -9,6 +9,7 @@ package com.skeler.scanely.ui.screens
  */
 import android.Manifest
 import android.content.pm.PackageManager
+import android.os.Build
 import android.view.HapticFeedbackConstants
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -86,9 +87,9 @@ import com.skeler.scanely.core.ai.AiResult
 import com.skeler.scanely.navigation.LocalNavController
 import com.skeler.scanely.navigation.Routes
 import com.skeler.scanely.ui.ScanViewModel
-import com.skeler.scanely.ui.components.GalleryPicker
-import com.skeler.scanely.ui.components.MultiDocumentPicker
-import com.skeler.scanely.ui.components.MultiGalleryPicker
+import com.skeler.scanely.ui.components.rememberGalleryPicker
+import com.skeler.scanely.ui.components.rememberMultiDocumentPicker
+import com.skeler.scanely.ui.components.rememberMultiGalleryPicker
 import com.skeler.scanely.ui.components.RateLimitSheet
 import com.skeler.scanely.ui.viewmodel.AiScanViewModel
 import com.skeler.scanely.ui.viewmodel.OcrViewModel
@@ -145,7 +146,7 @@ fun HomeScreen() {
     )
 
     // Multi-image picker for AI scan - allows selecting multiple images
-    val aiMultiGalleryPicker = MultiGalleryPicker(maxItems = 10) { uris ->
+    val aiMultiGalleryPicker = rememberMultiGalleryPicker(maxItems = 10) { uris ->
         if (uris.isNotEmpty() && pendingAiMode != null) {
             val mode = pendingAiMode!!
             pendingAiMode = null
@@ -163,7 +164,7 @@ fun HomeScreen() {
     }
 
     // Multi-document picker for AI scan (PDF, text files)
-    val aiMultiDocumentPicker = MultiDocumentPicker(
+    val aiMultiDocumentPicker = rememberMultiDocumentPicker(
         mimeTypes = arrayOf("application/pdf", "text/plain")
     ) { uris ->
         if (uris.isNotEmpty() && pendingAiMode != null) {
@@ -195,7 +196,7 @@ fun HomeScreen() {
     // Unified scan ViewModel for gallery images
     val unifiedViewModel: UnifiedScanViewModel = hiltViewModel(activity)
 
-    val launchGalleryPicker = GalleryPicker { uri ->
+    val launchGalleryPicker = rememberGalleryPicker { uri ->
         if (uri != null) {
             // Clear previous results before new extraction
             aiViewModel.clearResult()
@@ -544,7 +545,11 @@ private fun GamifiedAiFab(
     // Haptic feedback when becoming ready
     LaunchedEffect(rateLimitState.justBecameReady) {
         if (rateLimitState.justBecameReady) {
-            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+            } else {
+                view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+            }
         }
     }
 

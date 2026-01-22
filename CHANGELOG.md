@@ -1,25 +1,24 @@
 # Changelog
 
-## [2.9.2] - 2026-01-21
+## [2.9.2] - 2026-01-22
 ### Added
-- **Unified Gallery Scanning**: Single scan flow for both OCR text and QR/barcode detection from gallery images.
-- **Smart Barcode Actions**: Auto-detect URLs, WiFi, contacts, phone numbers, and emails from scanned barcodes.
-- **QR-Only Mode**: Gallery picker in barcode scanner screen now performs barcode-only detection (no OCR noise).
+- **Android 14+ Partial Photo Access**: Added `READ_MEDIA_VISUAL_USER_SELECTED` permission support.
+- **WiFi QR Support**: Added `CHANGE_WIFI_STATE` permission for WiFi network suggestions.
+- **Unified Gallery Scanning**: Single scan flow for both OCR text and QR/barcode detection.
+- **Smart Barcode Actions**: Auto-detect URLs, WiFi, contacts, phone numbers, and emails.
 
 ### Fixed
-- **Race Condition**: Fixed gallery picker using proper StateFlow collection instead of unreliable delay.
-- **Memory Safety**: Added bitmap downsampling (max 2048px) to prevent OOM on large screenshots.
-- **Concurrent Scan Prevention**: Cancel previous scan job before starting new one.
-- **Phone Number Validation**: Stricter E.123 format validation to prevent false positives.
+- **Critical Lint Error**: Fixed missing permission causing crash on WiFi QR code scans.
+- **API 30 Compatibility**: Added version check for `HapticFeedbackConstants.CONFIRM`.
+- **Race Condition**: Fixed gallery picker using proper StateFlow collection.
+- **Memory Safety**: Bitmap downsampling (max 2048px) to prevent OOM.
 
 ### Improved
-- **Barcode Deduplication**: Filter duplicate barcodes by raw value.
-- **Clean Actions**: One primary action per barcode type (no redundant ShowRaw + Copy).
-- **Dead Code Removal**: Removed unused `getActionKey()` and `async`/`awaitAll` imports.
-
-## [2.9.1] - 2026-01-21
-### Fixed
-- **Version Bump**: Updated app version to 2.9.1.
+- **Dependency Updates**: CameraX 1.5.2, Compose BOM 2026.01.00, Material3 1.5.0-alpha12.
+- **KTX Extensions**: Migrated `Uri.parse()` to `.toUri()` across 5 files.
+- **Composable Naming**: Renamed picker functions to `remember*` pattern per conventions.
+- **Version Catalog**: Moved ML Kit and lifecycle deps to centralized catalog.
+- **Resource Cleanup**: Removed 7 unused color resources.
 
 ## [2.9.0] - 2026-01-14
 ### Added

@@ -1,63 +1,41 @@
 package com.skeler.scanely.ui.screens
 
 /**
- * Clean & Simple HomeScreen
- * - Center: 3 Main Actions (Camera, Gallery, PDF)
- * - Top: App Bar with Settings
- * - Bottom: History Link + AI Scan FAB
- * - Settings: Theme Selection + Developer Info
+ * Clean & Simple HomeScreen - Orchestration Layer Only
+ * 
+ * Components extracted to:
+ * - MainActionButton.kt
+ * - GamifiedAiFab.kt
+ * - AiModeBottomSheet.kt
  */
 import android.Manifest
 import android.content.pm.PackageManager
-import android.os.Build
-import android.view.HapticFeedbackConstants
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.TextSnippet
-import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.ImageSearch
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.PictureAsPdf
 import androidx.compose.material.icons.outlined.QrCodeScanner
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LargeFloatingActionButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -65,32 +43,30 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.skeler.scanely.core.ai.AiMode
-import com.skeler.scanely.core.ai.AiResult
 import com.skeler.scanely.navigation.LocalNavController
 import com.skeler.scanely.navigation.Routes
 import com.skeler.scanely.ui.ScanViewModel
+import com.skeler.scanely.ui.components.AiModeBottomSheet
+import com.skeler.scanely.ui.components.GamifiedAiFab
+import com.skeler.scanely.ui.components.MainActionButton
+import com.skeler.scanely.ui.components.RateLimitDisplayState
+import com.skeler.scanely.ui.components.RateLimitSheet
 import com.skeler.scanely.ui.components.rememberGalleryPicker
 import com.skeler.scanely.ui.components.rememberMultiDocumentPicker
 import com.skeler.scanely.ui.components.rememberMultiGalleryPicker
-import com.skeler.scanely.ui.components.RateLimitSheet
 import com.skeler.scanely.ui.viewmodel.AiScanViewModel
 import com.skeler.scanely.ui.viewmodel.OcrViewModel
 import com.skeler.scanely.ui.viewmodel.UnifiedScanViewModel
@@ -104,20 +80,17 @@ fun HomeScreen() {
     val scanViewModel: ScanViewModel = hiltViewModel(activity)
     val aiViewModel: AiScanViewModel = hiltViewModel(activity)
     val ocrViewModel: OcrViewModel = hiltViewModel(activity)
+    val unifiedViewModel: UnifiedScanViewModel = hiltViewModel(activity)
     val navController = LocalNavController.current
     val scope = rememberCoroutineScope()
 
-    // Snackbar state
+    // UI State
     val snackbarHostState = remember { SnackbarHostState() }
-
-    // AI bottom sheet state
     var showAiBottomSheet by remember { mutableStateOf(false) }
     val aiSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var pendingAiMode by remember { mutableStateOf<AiMode?>(null) }
 
-    // AI state
-    val aiState by aiViewModel.aiState.collectAsState()
-
-    // Rate Limit state for modal sheet
+    // Rate Limit state
     val showRateLimitSheet by scanViewModel.showRateLimitSheet.collectAsState()
     val rateLimitState by scanViewModel.rateLimitState.collectAsState()
 
@@ -128,9 +101,6 @@ fun HomeScreen() {
         }
     }
 
-    // Selected AI mode for gallery picker
-    var pendingAiMode by remember { mutableStateOf<AiMode?>(null) }
-
     // Camera permission launcher
     val cameraPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
@@ -138,133 +108,95 @@ fun HomeScreen() {
             if (isGranted) {
                 showAiBottomSheet = true
             } else {
-                scope.launch {
-                    snackbarHostState.showSnackbar("Camera permission denied")
-                }
+                scope.launch { snackbarHostState.showSnackbar("Camera permission denied") }
             }
         }
     )
 
-    // Multi-image picker for AI scan - allows selecting multiple images
+    // Pickers
     val aiMultiGalleryPicker = rememberMultiGalleryPicker(maxItems = 10) { uris ->
         if (uris.isNotEmpty() && pendingAiMode != null) {
             val mode = pendingAiMode!!
             pendingAiMode = null
-            
-            // Check rate limit - batch counts as 1 request
-            val allowed = scanViewModel.triggerAiWithRateLimit {
+            if (scanViewModel.triggerAiWithRateLimit {
                 scanViewModel.onImageSelected(uris.first())
                 aiViewModel.processMultipleFiles(uris, mode)
-            }
-            
-            if (allowed) {
+            }) {
                 navController.navigate(Routes.RESULTS)
             }
         }
     }
 
-    // Multi-document picker for AI scan (PDF, text files)
     val aiMultiDocumentPicker = rememberMultiDocumentPicker(
         mimeTypes = arrayOf("application/pdf", "text/plain")
     ) { uris ->
         if (uris.isNotEmpty() && pendingAiMode != null) {
             val mode = pendingAiMode!!
             pendingAiMode = null
-            
-            // Take persistable permission for all URIs
             uris.forEach { uri ->
                 try {
-                    val flags = android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
-                    context.contentResolver.takePersistableUriPermission(uri, flags)
-                } catch (e: Exception) {
-                    // Ignore if permission taking fails
-                }
+                    context.contentResolver.takePersistableUriPermission(
+                        uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    )
+                } catch (_: Exception) { }
             }
-            
-            // Check rate limit - batch counts as 1 request
-            val allowed = scanViewModel.triggerAiWithRateLimit {
+            if (scanViewModel.triggerAiWithRateLimit {
                 scanViewModel.onPdfSelected(uris.first())
                 aiViewModel.processMultipleFiles(uris, mode)
-            }
-            
-            if (allowed) {
+            }) {
                 navController.navigate(Routes.RESULTS)
             }
         }
     }
 
-    // Unified scan ViewModel for gallery images
-    val unifiedViewModel: UnifiedScanViewModel = hiltViewModel(activity)
-
     val launchGalleryPicker = rememberGalleryPicker { uri ->
         if (uri != null) {
-            // Clear previous results before new extraction
             aiViewModel.clearResult()
             ocrViewModel.clearResult()
             scanViewModel.onImageSelected(uri)
-            // Use unified scanning (OCR + barcode)
             unifiedViewModel.processImage(uri)
             navController.navigate(Routes.UNIFIED_RESULTS)
         }
     }
 
-    // PDF Picker
     val pdfLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument(),
-        onResult = { uri ->
-            if (uri != null) {
-                // Take persistable permission to access content later
-                try {
-                    val flags = android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
-                    context.contentResolver.takePersistableUriPermission(uri, flags)
-                } catch (e: Exception) {
-                    // Ignore if permission taking fails (might be temporary access)
-                }
-                
-                // Clear previous results before new extraction
-                aiViewModel.clearResult()
-                ocrViewModel.clearResult()
-                scanViewModel.onPdfSelected(uri)
-                ocrViewModel.processPdf(uri)
-                navController.navigate(Routes.RESULTS)
-            }
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            try {
+                context.contentResolver.takePersistableUriPermission(
+                    uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            } catch (_: Exception) { }
+            aiViewModel.clearResult()
+            ocrViewModel.clearResult()
+            scanViewModel.onPdfSelected(uri)
+            ocrViewModel.processPdf(uri)
+            navController.navigate(Routes.RESULTS)
         }
-    )
+    }
 
-    // Handle AI FAB click
+    // Actions
     fun onAiFabClick() {
-        val cameraPermission = ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.CAMERA
-        )
-        if (cameraPermission == PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) 
+            == PackageManager.PERMISSION_GRANTED) {
             showAiBottomSheet = true
         } else {
             cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
         }
     }
 
-    // Handle AI mode selection - use correct picker based on mode
     fun onAiModeSelected(mode: AiMode) {
         pendingAiMode = mode
         showAiBottomSheet = false
-        
         when (mode) {
-            AiMode.EXTRACT_TEXT -> {
-                // Use multi-image picker for photos
-                aiMultiGalleryPicker()
-            }
-            AiMode.EXTRACT_PDF_TEXT -> {
-                // Use multi-document picker for PDFs
-                aiMultiDocumentPicker()
-            }
-            else -> {
-                // Default to multi-image picker
-                aiMultiGalleryPicker()
-            }
+            AiMode.EXTRACT_TEXT -> aiMultiGalleryPicker()
+            AiMode.EXTRACT_PDF_TEXT -> aiMultiDocumentPicker()
+            else -> aiMultiGalleryPicker()
         }
     }
 
+    // UI
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
@@ -277,22 +209,22 @@ fun HomeScreen() {
                 },
                 actions = {
                     IconButton(onClick = { navController.navigate(Routes.SETTINGS) }) {
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = "Settings"
-                        )
+                        Icon(Icons.Default.Settings, contentDescription = "Settings")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    scrolledContainerColor = MaterialTheme.colorScheme.background
+                    containerColor = MaterialTheme.colorScheme.background
                 )
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             GamifiedAiFab(
-                scanViewModel = scanViewModel,
+                rateLimitState = RateLimitDisplayState(
+                    remainingSeconds = rateLimitState.remainingSeconds,
+                    progress = rateLimitState.progress,
+                    justBecameReady = rateLimitState.justBecameReady
+                ),
                 onClick = { onAiFabClick() }
             )
         },
@@ -321,7 +253,6 @@ fun HomeScreen() {
                 subtitle = "Scan text using camera",
                 onClick = { navController.navigate(Routes.CAMERA) }
             )
-
             Spacer(modifier = Modifier.height(16.dp))
 
             MainActionButton(
@@ -330,7 +261,6 @@ fun HomeScreen() {
                 subtitle = "Import image file",
                 onClick = { launchGalleryPicker() }
             )
-
             Spacer(modifier = Modifier.height(16.dp))
 
             MainActionButton(
@@ -339,7 +269,6 @@ fun HomeScreen() {
                 subtitle = "Import PDF document",
                 onClick = { pdfLauncher.launch(arrayOf("application/pdf")) }
             )
-
             Spacer(modifier = Modifier.height(16.dp))
 
             MainActionButton(
@@ -351,254 +280,30 @@ fun HomeScreen() {
 
             Spacer(modifier = Modifier.height(48.dp))
 
-            // History Link
             FilledTonalButton(
                 onClick = { navController.navigate(Routes.HISTORY) },
                 shape = MaterialTheme.shapes.medium
             ) {
-                Icon(
-                    imageVector = Icons.Default.History,
-                    contentDescription = "History",
-                    modifier = Modifier.size(18.dp)
-                )
+                Icon(Icons.Default.History, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.size(8.dp))
                 Text("View Previous Extracts")
             }
         }
     }
 
-    // AI Mode Selection Bottom Sheet
+    // Bottom Sheets
     if (showAiBottomSheet) {
-        ModalBottomSheet(
-            onDismissRequest = { showAiBottomSheet = false },
-            sheetState = aiSheetState
-        ) {
-            Column(
-                modifier = Modifier.padding(bottom = 32.dp)
-            ) {
-                Text(
-                    text = "AI Scan",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)
-                )
-
-                AiModeItem(
-                    icon = Icons.AutoMirrored.Filled.TextSnippet,
-                    title = "Extract Text",
-                    subtitle = "Extract visible text from image",
-                    onClick = { onAiModeSelected(AiMode.EXTRACT_TEXT) }
-                )
-
-                AiModeItem(
-                    icon = Icons.Outlined.PictureAsPdf,
-                    title = "Extract PDF",
-                    subtitle = "AI-powered PDF and text file extraction",
-                    onClick = { onAiModeSelected(AiMode.EXTRACT_PDF_TEXT) }
-                )
-            }
-        }
+        AiModeBottomSheet(
+            sheetState = aiSheetState,
+            onDismiss = { showAiBottomSheet = false },
+            onModeSelected = { onAiModeSelected(it) }
+        )
     }
 
-    // Rate Limit Sheet Modal
     if (showRateLimitSheet) {
         RateLimitSheet(
             remainingSeconds = rateLimitState.remainingSeconds,
             onDismiss = { scanViewModel.dismissRateLimitSheet() }
         )
-    }
-}
-
-@Composable
-private fun AiModeItem(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit
-) {
-    Card(
-        onClick = onClick,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        )
-    ) {
-        ListItem(
-            headlineContent = {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium
-                )
-            },
-            supportingContent = {
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            },
-            leadingContent = {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(28.dp)
-                )
-            }
-        )
-    }
-}
-
-@Composable
-private fun MainActionButton(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit,
-    enabled: Boolean = true,
-    countdownSeconds: Int = 0
-) {
-    val actualSubtitle = if (countdownSeconds > 0) {
-        "Wait ${countdownSeconds}s..."
-    } else {
-        subtitle
-    }
-    
-    Card(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        enabled = enabled,
-        colors = CardDefaults.cardColors(
-            containerColor = if (enabled) {
-                MaterialTheme.colorScheme.surfaceContainer
-            } else {
-                MaterialTheme.colorScheme.surfaceContainerLow
-            },
-            disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        ),
-        shape = MaterialTheme.shapes.large
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(32.dp),
-                tint = if (enabled) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.outline
-                }
-            )
-            Spacer(modifier = Modifier.size(20.dp))
-            Column {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = if (enabled) {
-                        MaterialTheme.colorScheme.onSurface
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    }
-                )
-                Text(
-                    text = actualSubtitle,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (countdownSeconds > 0) {
-                        MaterialTheme.colorScheme.error
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    }
-                )
-            }
-        }
-    }
-}
-
-/**
- * Gamified AI FAB with recharging animation.
- *
- * Deep Reasoning (ULTRATHINK):
- * - Psychological: "Recharging" feels active vs "Disabled" feels punitive
- * - CircularProgressIndicator around FAB shows time investment paying off
- * - Haptic feedback on ready creates Pavlovian positive association
- */
-@Composable
-private fun GamifiedAiFab(
-    scanViewModel: ScanViewModel,
-    onClick: () -> Unit
-) {
-    val view = LocalView.current
-    val rateLimitState by scanViewModel.rateLimitState.collectAsState()
-
-    val isRecharging = rateLimitState.remainingSeconds > 0
-    val progress = rateLimitState.progress
-
-    // Haptic feedback when becoming ready
-    LaunchedEffect(rateLimitState.justBecameReady) {
-        if (rateLimitState.justBecameReady) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-            } else {
-                view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-            }
-        }
-    }
-
-    // Gamified FAB with progress ring
-    Box(contentAlignment = Alignment.Center) {
-        // Progress ring (behind FAB)
-        if (isRecharging) {
-            CircularProgressIndicator(
-                progress = { progress },
-                modifier = Modifier.size(72.dp),
-                strokeWidth = 4.dp,
-                strokeCap = StrokeCap.Round,
-                trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                color = MaterialTheme.colorScheme.primary
-            )
-        }
-
-        // FAB
-        LargeFloatingActionButton(
-            onClick = {
-                if (!isRecharging) {
-                    onClick()
-                }
-            },
-            containerColor = if (isRecharging) {
-                MaterialTheme.colorScheme.surfaceContainerHigh
-            } else {
-                MaterialTheme.colorScheme.primaryContainer
-            },
-            contentColor = if (isRecharging) {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            } else {
-                MaterialTheme.colorScheme.onPrimaryContainer
-            },
-            modifier = Modifier.size(if (isRecharging) 56.dp else 64.dp)
-        ) {
-            if (isRecharging) {
-                Text(
-                    text = "${rateLimitState.remainingSeconds}",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-            } else {
-                Icon(
-                    imageVector = Icons.Default.AutoAwesome,
-                    contentDescription = "AI Scan",
-                    modifier = Modifier.size(28.dp)
-                )
-            }
-        }
     }
 }

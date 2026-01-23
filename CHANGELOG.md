@@ -1,5 +1,27 @@
 # Changelog
 
+## [3.0.0] - 2026-01-23
+### Major Architecture Refactoring
+This release represents a significant codebase modernization, reducing screen file sizes by 56% through component extraction.
+
+### Changed
+- **HomeScreen.kt**: 605 → 274 lines (55% reduction)
+- **ResultsScreen.kt**: 578 → 254 lines (56% reduction)
+- **BarcodeScannerScreen.kt**: 542 → 232 lines (57% reduction)
+
+### Added
+- **MainActionButton.kt**: Reusable card-style action button component
+- **GamifiedAiFab.kt**: AI FAB with progress ring and haptic feedback
+- **AiModeBottomSheet.kt**: AI mode selection bottom sheet
+- **LanguageChipRow.kt**: Translation language selection chips
+- **TextDisplayComponents.kt**: Shared text display states (Processing, Translating, Empty)
+- **BarcodeScannerComponents.kt**: Camera preview, overlay, and action sheets
+
+### Improved
+- **Build Performance**: Smaller compilation units for faster incremental builds
+- **Testability**: Decoupled state classes like `RateLimitDisplayState`
+- **Reusability**: All extracted components can be used across screens
+
 ## [2.9.2] - 2026-01-22
 ### Added
 - **Android 14+ Partial Photo Access**: Added `READ_MEDIA_VISUAL_USER_SELECTED` permission support.

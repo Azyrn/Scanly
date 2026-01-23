@@ -1,31 +1,28 @@
 # Scanly
 
-### AI Document Scanning
-- **Extract Text from Images:** Use Gemini AI to accurately extract text from photos.
-- **PDF & Document Support:** Extract text directly from PDF and text files.
-- **Translation:** Translate extracted text into 15+ languages instantly.
-- **Result Reading:** Clean, distraction-free reading mode for extracted results.
+A modern Android app for text extraction and barcode scanning.
 
-### Offline Capabilities
-- **Google ML Kit:** Built-in offline text recognition for when you don't have internet access.
+## Features
 
-### Barcode & QR Scanner
-- **Smart Actions:** Automatically detects content type and offers relevant actions:
-  - Copy text
-  - Open URLs in browser
-  - Dial phone numbers
-  - Send Emails and SMS
-  - Connect to WiFi networks
-  - Add contacts to address book
+- **AI Text Extraction** — Powered by Gemini AI
+- **Offline OCR** — Google ML Kit for offline use
+- **PDF Support** — Extract text from documents
+- **Translation** — 15+ languages
+- **Barcode & QR** — Smart actions (URLs, WiFi, contacts, etc.)
+- **Food Lookup** — Scan product barcodes for nutrition info
 
-### Modern Design
-- **Material 3:** Built with the latest Android design guidelines.
-- **Dark Mode:** Full support for system dark themes.
-- **Responsive UI:** Smooth, animated interface powered by Jetpack Compose.
+## Tech Stack
 
-## Installation
+- Kotlin + Jetpack Compose
+- Material 3 Design
+- Hilt DI
+- CameraX + ML Kit
+- Baseline Profiles for performance
 
-Download the latest `.apk` from the Releases section and install it on your Android device.
+## Install
 
+Download the latest APK from [Releases](https://github.com/Azyrn/Scanly/releases).
 
+## License
 
+MIT

@@ -32,23 +32,8 @@ Break language barriers. Translate any scanned text into over 15 languages, maki
 
 ---
 
-## Tech Stack
-
-Built with modern Android engineering:
-*   **Kotlin 2.0** & **Jetpack Compose** (Material 3)
-*   **Hilt** for dependency injection
-*   **CameraX** for high-performance capture
-*   **Room** for local history storage
-*   **Baseline Profiles** for instant app startup
-
----
 
 ## Download
 
 Get the latest APK from [**GitHub Releases**](https://github.com/Azyrn/Scanly/releases).
 
----
-
-## License
-
-MIT License

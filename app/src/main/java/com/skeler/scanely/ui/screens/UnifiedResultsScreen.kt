@@ -361,5 +361,6 @@ private fun getActionSubtitle(action: ScanAction): String {
         is ScanAction.SendSms -> action.number
         is ScanAction.AddContact -> action.name ?: "Contact"
         is ScanAction.ShowRaw -> action.text.take(50)
+        is ScanAction.LookupProduct -> "Barcode: ${action.barcode}"
     }
 }

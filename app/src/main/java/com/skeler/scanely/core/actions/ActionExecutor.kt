@@ -42,6 +42,7 @@ object ActionExecutor {
             is ScanAction.ConnectWifi -> connectWifi(context, action.ssid, action.password, action.type)
             is ScanAction.AddContact -> addContact(context, action)
             is ScanAction.ShowRaw -> copyText(context, action.text)
+            is ScanAction.LookupProduct -> { /* Handled separately in BarcodeScannerScreen */ }
         }
     }
 

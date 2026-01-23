@@ -1,5 +1,18 @@
 # Changelog
 
+## [3.1.0] - 2026-01-23
+### Added
+- **Food Product Lookup**: Scan product barcodes (EAN-13, UPC-A) to view product info
+- **Open Food Facts Integration**: Free API for nutrition data, Nutri-Score, ingredients
+- **FoodProductSheet**: Rich bottom sheet with product image, nutrition facts, and badges
+- **Retrofit Networking**: Added Retrofit 2.11 + OkHttp 4.12 + kotlinx-serialization converter
+
+### New Files
+- `FoodProduct.kt` — Product data model with API DTOs
+- `OpenFoodFactsApi.kt` — Retrofit interface
+- `FoodRepository.kt` — API wrapper with barcode validation
+- `FoodProductSheet.kt` — Material 3 product display sheet
+
 ## [3.0.0] - 2026-01-23
 ### Major Architecture Refactoring
 This release represents a significant codebase modernization, reducing screen file sizes by 56% through component extraction.

@@ -56,9 +56,12 @@ import com.google.accompanist.permissions.rememberPermissionState
 import com.skeler.scanely.core.actions.ActionExecutor
 import com.skeler.scanely.core.actions.ScanAction
 import com.skeler.scanely.core.barcode.BarcodeAnalyzer
+import com.skeler.scanely.core.food.FoodProduct
+import com.skeler.scanely.core.food.FoodRepository
 import com.skeler.scanely.navigation.LocalNavController
 import com.skeler.scanely.ui.components.BarcodeActionsSheet
 import com.skeler.scanely.ui.components.BarcodeCameraPreview
+import com.skeler.scanely.ui.components.FoodProductSheet
 import com.skeler.scanely.ui.components.ScanningOverlay
 import com.skeler.scanely.ui.components.TextDetailSheet
 import com.skeler.scanely.ui.components.rememberGalleryPicker
@@ -67,10 +70,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
- * Barcode Scanner Screen - Orchestration Layer Only
- * 
- * Components extracted to:
- * - BarcodeScannerComponents.kt (BarcodeCameraPreview, ScanningOverlay, etc.)
+ * Barcode Scanner Screen with Food Product Lookup
  */
 @OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -82,6 +82,9 @@ fun BarcodeScannerScreen() {
     val unifiedViewModel: UnifiedScanViewModel = hiltViewModel(activity)
     val scope = rememberCoroutineScope()
 
+    // Food repository (no Hilt injection for now)
+    val foodRepository = remember { FoodRepository() }
+
     // UI State
     var detectedActions by remember { mutableStateOf<List<ScanAction>>(emptyList()) }
     var showActionsSheet by remember { mutableStateOf(false) }
@@ -89,6 +92,13 @@ fun BarcodeScannerScreen() {
     var isProcessingGallery by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val textSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    // Food product state
+    var showFoodSheet by remember { mutableStateOf(false) }
+    var foodProduct by remember { mutableStateOf<FoodProduct?>(null) }
+    var foodLoading by remember { mutableStateOf(false) }
+    var foodError by remember { mutableStateOf<String?>(null) }
+    val foodSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     // Gallery picker for barcode-only mode
     val galleryPicker = rememberGalleryPicker { uri ->
@@ -108,10 +118,32 @@ fun BarcodeScannerScreen() {
         }
     }
 
+    // Handle product lookup
+    fun lookupProduct(barcode: String) {
+        showActionsSheet = false
+        showFoodSheet = true
+        foodLoading = true
+        foodProduct = null
+        foodError = null
+        
+        scope.launch {
+            val result = foodRepository.lookupProduct(barcode)
+            foodLoading = false
+            result.fold(
+                onSuccess = { product ->
+                    foodProduct = product
+                },
+                onFailure = { error ->
+                    foodError = error.message ?: "Unknown error"
+                }
+            )
+        }
+    }
+
     // Barcode analyzer
     val barcodeAnalyzer = remember {
         BarcodeAnalyzer { actions ->
-            if (actions.isNotEmpty() && !showActionsSheet && textToShow == null) {
+            if (actions.isNotEmpty() && !showActionsSheet && textToShow == null && !showFoodSheet) {
                 detectedActions = actions
                 showActionsSheet = true
             }
@@ -140,7 +172,7 @@ fun BarcodeScannerScreen() {
 
             // Hint text
             AnimatedVisibility(
-                visible = !showActionsSheet,
+                visible = !showActionsSheet && !showFoodSheet,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 120.dp),
@@ -223,11 +255,18 @@ fun BarcodeScannerScreen() {
             BarcodeActionsSheet(
                 actions = detectedActions,
                 onActionClick = { action ->
-                    showActionsSheet = false
-                    if (action is ScanAction.ShowRaw) {
-                        textToShow = action.text
-                    } else {
-                        ActionExecutor.execute(context, action)
+                    when (action) {
+                        is ScanAction.ShowRaw -> {
+                            showActionsSheet = false
+                            textToShow = action.text
+                        }
+                        is ScanAction.LookupProduct -> {
+                            lookupProduct(action.barcode)
+                        }
+                        else -> {
+                            showActionsSheet = false
+                            ActionExecutor.execute(context, action)
+                        }
                     }
                 }
             )
@@ -248,6 +287,24 @@ fun BarcodeScannerScreen() {
                     Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
                 },
                 onDismiss = { textToShow = null }
+            )
+        }
+    }
+
+    // Food Product Bottom Sheet
+    if (showFoodSheet) {
+        ModalBottomSheet(
+            onDismissRequest = {
+                showFoodSheet = false
+                foodProduct = null
+                foodError = null
+            },
+            sheetState = foodSheetState
+        ) {
+            FoodProductSheet(
+                product = foodProduct,
+                isLoading = foodLoading,
+                error = foodError
             )
         }
     }

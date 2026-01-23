@@ -195,6 +195,7 @@ object ScanActionDetector {
             is ScanAction.SendSms -> action.number
             is ScanAction.AddContact -> "${action.name}${action.phone}${action.email}"
             is ScanAction.ShowRaw -> action.text.take(50)
+            is ScanAction.LookupProduct -> action.barcode
         }
     }
     

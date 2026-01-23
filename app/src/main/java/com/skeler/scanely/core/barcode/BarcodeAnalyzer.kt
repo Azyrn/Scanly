@@ -172,7 +172,15 @@ class BarcodeAnalyzer(
             }
 
             else -> {
-                // Fallback: treat as raw text
+                // Check if this is a potential product barcode (EAN-13, UPC-A, etc.)
+                val isProductBarcode = rawValue.all { it.isDigit() } && rawValue.length in 8..13
+                
+                if (isProductBarcode) {
+                    // Add product lookup action for food/product barcodes
+                    actions.add(ScanAction.LookupProduct(rawValue))
+                }
+                
+                // Also add raw text option
                 actions.add(ScanAction.ShowRaw(rawValue))
             }
         }
@@ -195,6 +203,7 @@ class BarcodeAnalyzer(
             is ScanAction.SendSms -> action.number
             is ScanAction.AddContact -> "${action.name}${action.phone}${action.email}"
             is ScanAction.ShowRaw -> action.text.take(50)
+            is ScanAction.LookupProduct -> action.barcode
         }
     }
 

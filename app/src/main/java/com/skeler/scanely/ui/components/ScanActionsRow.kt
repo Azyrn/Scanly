@@ -258,6 +258,11 @@ private fun executeAction(
                 Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
             }
         }
+        
+        is ScanAction.LookupProduct -> {
+            // Product lookup is handled separately in BarcodeScannerScreen
+            Toast.makeText(context, "Use barcode scanner for product lookup", Toast.LENGTH_SHORT).show()
+        }
     }
 }
 

@@ -6,6 +6,7 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.RestaurantMenu
 import androidx.compose.material.icons.filled.Sms
 import androidx.compose.material.icons.automirrored.filled.TextSnippet
 import androidx.compose.material.icons.filled.Wifi
@@ -116,5 +117,14 @@ sealed class ScanAction {
     data class ShowRaw(val text: String) : ScanAction() {
         override val label: String = "View Text"
         override val icon: ImageVector = Icons.AutoMirrored.Filled.TextSnippet
+    }
+    
+    /**
+     * Lookup product information from barcode.
+     * Uses Open Food Facts API.
+     */
+    data class LookupProduct(val barcode: String) : ScanAction() {
+        override val label: String = "Product Info"
+        override val icon: ImageVector = Icons.Default.RestaurantMenu
     }
 }

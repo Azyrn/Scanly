@@ -20,7 +20,7 @@ android {
         minSdk = 24
         targetSdk = 36
         versionCode = 12
-        versionName = "3.0.0"
+        versionName = "3.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -144,6 +144,11 @@ dependencies {
     
     // Google ML Kit Text Recognition (On-Device)
     implementation(libs.mlkit.text.recognition)
+    
+    // Retrofit for network
+    implementation(libs.retrofit)
+    implementation(libs.okhttp)
+    implementation(libs.retrofit.kotlinx.serialization)
     
     // Testing
     testImplementation(libs.junit)

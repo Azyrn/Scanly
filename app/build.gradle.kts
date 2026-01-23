@@ -7,9 +7,11 @@ plugins {
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.baselineprofile)
     // alias(libs.plugins.google.services) // Disabled - no google-services.json
     // alias(libs.plugins.firebase.crashlytics) // Disabled - no google-services.json
 }
+
 
 android {
     namespace = "com.skeler.scanely"
@@ -150,6 +152,10 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.retrofit.kotlinx.serialization)
     
+    // Baseline Profile
+    implementation(libs.profileinstaller)
+    "baselineProfile"(project(":baselineprofile"))
+    
     // Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
@@ -158,4 +164,9 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+}
+
+baselineProfile {
+    automaticGenerationDuringBuild = false
+    dexLayoutOptimization = true
 }

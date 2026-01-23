@@ -1,5 +1,6 @@
 package com.skeler.scanely.ui.components
 
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
@@ -23,7 +25,7 @@ import androidx.compose.ui.unit.dp
  * 
  * Used for: Camera, Gallery, PDF, QR scan actions.
  * 
- * @param icon Leading icon
+ * @param icon Leading icon (ImageVector)
  * @param title Primary text
  * @param subtitle Secondary description
  * @param onClick Action callback
@@ -40,10 +42,82 @@ fun MainActionButton(
     enabled: Boolean = true,
     countdownSeconds: Int = 0
 ) {
+    MainActionButtonContent(
+        icon = { tint ->
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(32.dp),
+                tint = tint
+            )
+        },
+        title = title,
+        subtitle = subtitle,
+        onClick = onClick,
+        modifier = modifier,
+        enabled = enabled,
+        countdownSeconds = countdownSeconds
+    )
+}
+
+/**
+ * Main action button card with drawable resource icon.
+ * 
+ * @param iconRes Leading icon drawable resource
+ * @param title Primary text
+ * @param subtitle Secondary description
+ * @param onClick Action callback
+ * @param enabled Whether button is interactive
+ * @param countdownSeconds Shows countdown in subtitle when > 0
+ */
+@Composable
+fun MainActionButton(
+    @DrawableRes iconRes: Int,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    countdownSeconds: Int = 0
+) {
+    MainActionButtonContent(
+        icon = { tint ->
+            Icon(
+                painter = painterResource(id = iconRes),
+                contentDescription = null,
+                modifier = Modifier.size(32.dp),
+                tint = tint
+            )
+        },
+        title = title,
+        subtitle = subtitle,
+        onClick = onClick,
+        modifier = modifier,
+        enabled = enabled,
+        countdownSeconds = countdownSeconds
+    )
+}
+
+@Composable
+private fun MainActionButtonContent(
+    icon: @Composable (androidx.compose.ui.graphics.Color) -> Unit,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    countdownSeconds: Int = 0
+) {
     val actualSubtitle = if (countdownSeconds > 0) {
         "Wait ${countdownSeconds}s..."
     } else {
         subtitle
+    }
+    
+    val iconTint = if (enabled) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.outline
     }
     
     Card(
@@ -66,16 +140,7 @@ fun MainActionButton(
                 .padding(20.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(32.dp),
-                tint = if (enabled) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.outline
-                }
-            )
+            icon(iconTint)
             Spacer(modifier = Modifier.size(20.dp))
             Column {
                 Text(

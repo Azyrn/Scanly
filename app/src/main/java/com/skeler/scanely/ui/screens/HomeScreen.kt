@@ -23,10 +23,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.outlined.CameraAlt
-import androidx.compose.material.icons.outlined.PhotoLibrary
-import androidx.compose.material.icons.outlined.PictureAsPdf
-import androidx.compose.material.icons.outlined.QrCodeScanner
+import androidx.compose.material.icons.rounded.CameraAlt
+import androidx.compose.material.icons.rounded.Description
+import androidx.compose.material.icons.rounded.Image
+import androidx.compose.material.icons.rounded.QrCodeScanner
+
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
@@ -248,7 +249,7 @@ fun HomeScreen() {
             Spacer(modifier = Modifier.height(48.dp))
 
             MainActionButton(
-                icon = Icons.Outlined.CameraAlt,
+                icon = Icons.Rounded.CameraAlt,
                 title = "Capture Photo",
                 subtitle = "Scan text using camera",
                 onClick = { navController.navigate(Routes.CAMERA) }
@@ -256,7 +257,7 @@ fun HomeScreen() {
             Spacer(modifier = Modifier.height(16.dp))
 
             MainActionButton(
-                icon = Icons.Outlined.PhotoLibrary,
+                icon = Icons.Rounded.Image,
                 title = "From Gallery",
                 subtitle = "Import image file",
                 onClick = { launchGalleryPicker() }
@@ -264,7 +265,7 @@ fun HomeScreen() {
             Spacer(modifier = Modifier.height(16.dp))
 
             MainActionButton(
-                icon = Icons.Outlined.PictureAsPdf,
+                icon = Icons.Rounded.Description,
                 title = "Extract PDF",
                 subtitle = "Import PDF document",
                 onClick = { pdfLauncher.launch(arrayOf("application/pdf")) }
@@ -272,11 +273,12 @@ fun HomeScreen() {
             Spacer(modifier = Modifier.height(16.dp))
 
             MainActionButton(
-                icon = Icons.Outlined.QrCodeScanner,
+                icon = Icons.Rounded.QrCodeScanner,
                 title = "Scan Barcode/QR",
                 subtitle = "Scan QR, Barcodes & More",
                 onClick = { navController.navigate(Routes.BARCODE_SCANNER) }
             )
+
 
             Spacer(modifier = Modifier.height(48.dp))
 

@@ -1,0 +1,125 @@
+build:
+  maxIssues: 0
+  excludeCorrectable: false
+
+config:
+  validation: true
+  warningsAsErrors: true
+
+complexity:
+  active: true
+  LongMethod:
+    active: true
+    threshold: 40
+  LongParameterList:
+    active: true
+    functionThreshold: 8
+    constructorThreshold: 10
+    ignoreDefaultParameters: true
+    ignoreDataClasses: true
+    ignoreAnnotatedParameter: ["Composable"]
+  ComplexMethod:
+    active: true
+    threshold: 10
+  TooManyFunctions:
+    active: true
+    thresholdInFiles: 15
+    thresholdInClasses: 15
+    thresholdInInterfaces: 10
+    thresholdInObjects: 10
+    thresholdInEnums: 5
+    ignoreDeprecated: true
+    ignorePrivate: false
+    ignoreOverridden: true
+  LargeClass:
+    active: true
+    threshold: 300
+
+style:
+  active: true
+  MaxLineLength:
+    active: true
+    maxLineLength: 120
+    excludePackageStatements: true
+    excludeImportStatements: true
+    excludeCommentStatements: true
+  WildcardImport:
+    active: true
+  ReturnCount:
+    active: true
+    max: 3
+    excludedFunctions: "equals"
+    excludeGuardClauses: true
+  ForbiddenComment:
+    active: true
+    values: ["TODO:", "FIXME:", "STOPSHIP:"]
+    customMessage: "Use issue tracker for tracking todos"
+  MagicNumber:
+    active: true
+    excludes: ["**/test/**", "**/androidTest/**", "**/*.kts"]
+    ignoreNumbers: ["-1", "0", "1", "2", "60", "100", "1000"]
+    ignoreHashCodeFunction: true
+    ignorePropertyDeclaration: true
+    ignoreLocalVariableDeclaration: true
+    ignoreConstantDeclaration: true
+    ignoreCompanionObjectPropertyDeclaration: true
+    ignoreAnnotation: true
+    ignoreEnums: true
+    ignoreRanges: true
+
+empty-blocks:
+  active: true
+  EmptyCatchBlock:
+    active: true
+    allowedExceptionNameRegex: "_|(ignore|expected).*"
+  EmptyFunctionBlock:
+    active: true
+    ignoreOverridden: true
+
+naming:
+  active: true
+  FunctionNaming:
+    active: true
+    functionPattern: "[a-z][a-zA-Z0-9]*"
+    excludes: ["**/test/**", "**/androidTest/**"]
+    excludeClassPattern: ".*Composable.*"
+  TopLevelPropertyNaming:
+    active: true
+    constantPattern: "[A-Z][_A-Z0-9]*"
+  PackageNaming:
+    active: true
+    packagePattern: "[a-z]+(\\.[a-z][A-Za-z0-9]*)*"
+
+performance:
+  active: true
+  SpreadOperator:
+    active: false
+
+exceptions:
+  active: true
+  TooGenericExceptionCaught:
+    active: true
+    exceptionNames:
+      - ArrayIndexOutOfBoundsException
+      - Error
+      - IllegalMonitorStateException
+      - IndexOutOfBoundsException
+      - NullPointerException
+      - RuntimeException
+      - Throwable
+    allowedExceptionNameRegex: "(_|(ignore|expected).*)"
+  SwallowedException:
+    active: true
+    ignoredExceptionTypes:
+      - InterruptedException
+      - MalformedURLException
+      - NumberFormatException
+      - ParseException
+    allowedExceptionNameRegex: "(_|(ignore|expected).*)"
+
+# Compose-specific rules
+formatting:
+  active: true
+  MaximumLineLength:
+    active: true
+    maxLineLength: 120

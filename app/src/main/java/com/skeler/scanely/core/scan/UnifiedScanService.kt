@@ -66,7 +66,7 @@ class UnifiedScanService @Inject constructor(
 
     /**
      * Perform unified scan: Barcode detection first, OCR only if no barcodes.
-     * This prevents clutter when QR images are scanned.
+     * If both fail, retry with image preprocessing for difficult images.
      */
     suspend fun scanImage(uri: Uri): UnifiedScanResult = withContext(Dispatchers.IO) {
         val bitmap = loadBitmapFromUri(uri)
@@ -77,38 +77,63 @@ class UnifiedScanService @Inject constructor(
             )
 
         try {
-            val inputImage = InputImage.fromBitmap(bitmap, 0)
-
-            // Run barcode detection first
-            val barcodes = detectBarcodes(inputImage)
-
-            // If barcodes found, skip OCR (QR-only mode)
-            if (barcodes.isNotEmpty()) {
-                return@withContext UnifiedScanResult(
-                    textResult = null,
-                    barcodeActions = barcodes,
-                    textActions = emptyList()
-                )
+            // First attempt: scan original image
+            val result = scanBitmap(bitmap)
+            
+            // If scan found nothing, retry with preprocessing
+            if (result.isEmpty) {
+                Log.d(TAG, "Initial scan empty, retrying with preprocessing")
+                val preprocessed = com.skeler.scanely.core.image.ImagePreprocessor.preprocessForOcr(bitmap)
+                try {
+                    val retryResult = scanBitmap(preprocessed)
+                    if (!retryResult.isEmpty) {
+                        Log.d(TAG, "Preprocessing helped - found content on retry")
+                        return@withContext retryResult
+                    }
+                } finally {
+                    if (preprocessed != bitmap) preprocessed.recycle()
+                }
             }
-
-            // No barcodes - run OCR
-            val ocrResult = recognizeText(inputImage)
-
-            // Detect smart actions from OCR text (stricter validation)
-            val textActions = if (ocrResult is OcrResult.Success) {
-                ScanActionDetector.detectActions(ocrResult.text)
-            } else {
-                emptyList()
-            }
-
-            UnifiedScanResult(
-                textResult = ocrResult,
-                barcodeActions = emptyList(),
-                textActions = textActions
-            )
+            
+            result
         } finally {
             bitmap.recycle()
         }
+    }
+    
+    /**
+     * Internal scan helper for a bitmap.
+     */
+    private suspend fun scanBitmap(bitmap: Bitmap): UnifiedScanResult {
+        val inputImage = InputImage.fromBitmap(bitmap, 0)
+
+        // Run barcode detection first
+        val barcodes = detectBarcodes(inputImage)
+
+        // If barcodes found, skip OCR (QR-only mode)
+        if (barcodes.isNotEmpty()) {
+            return UnifiedScanResult(
+                textResult = null,
+                barcodeActions = barcodes,
+                textActions = emptyList()
+            )
+        }
+
+        // No barcodes - run OCR
+        val ocrResult = recognizeText(inputImage)
+
+        // Detect smart actions from OCR text (stricter validation)
+        val textActions = if (ocrResult is OcrResult.Success) {
+            ScanActionDetector.detectActions(ocrResult.text)
+        } else {
+            emptyList()
+        }
+
+        return UnifiedScanResult(
+            textResult = ocrResult,
+            barcodeActions = emptyList(),
+            textActions = textActions
+        )
     }
 
     /**

@@ -8,6 +8,7 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.baselineprofile)
+    // alias(libs.plugins.detekt) // Incompatible with AGP 8.13 - using CLI in CI
     // alias(libs.plugins.google.services) // Disabled - no google-services.json
     // alias(libs.plugins.firebase.crashlytics) // Disabled - no google-services.json
 }
@@ -45,6 +46,17 @@ android {
 
     ksp {
         arg("room.schemaLocation", "$projectDir/schemas")
+    }
+
+    // ABI splits - reduces APK size by ~50%
+    // Most devices are arm64-v8a (modern phones)
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "armeabi-v7a", "x86_64")
+            isUniversalApk = true // Also build universal APK for fallback
+        }
     }
 
     signingConfigs {

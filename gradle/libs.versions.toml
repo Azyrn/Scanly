@@ -35,6 +35,7 @@ retrofitKotlinxConverter = "1.0.0"
 benchmarkMacro = "1.3.4"
 uiautomator = "2.4.0"
 profileInstaller = "1.4.1"
+detekt = "1.23.7"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -106,4 +107,5 @@ baselineprofile = { id = "androidx.baselineprofile", version.ref = "benchmarkMac
 
 google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }
 firebase-crashlytics = { id = "com.google.firebase.crashlytics", version.ref = "crashlytics" }
+detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
 

@@ -1,28 +1,120 @@
 # Scanly
 
-A modern Android app for text extraction and barcode scanning.
+<p align="center">
+  <img src="app/src/main/res/drawable/ic_scanly.xml" width="120" alt="Scanly Logo"/>
+</p>
 
-## Features
+<p align="center">
+  <b>Modern Android app for AI-powered text extraction, document scanning, and barcode recognition.</b>
+</p>
 
-- **AI Text Extraction** — Powered by Gemini AI
-- **Offline OCR** — Google ML Kit for offline use
-- **PDF Support** — Extract text from documents
-- **Translation** — 15+ languages
-- **Barcode & QR** — Smart actions (URLs, WiFi, contacts, etc.)
-- **Food Lookup** — Scan product barcodes for nutrition info
+<p align="center">
+  <a href="https://github.com/Azyrn/Scanly/releases"><img src="https://img.shields.io/github/v/release/Azyrn/Scanly?style=flat-square" alt="Release"/></a>
+  <img src="https://img.shields.io/badge/Android-8.0%2B-brightgreen?style=flat-square" alt="Android 8.0+"/>
+  <img src="https://img.shields.io/badge/Kotlin-2.0-purple?style=flat-square" alt="Kotlin"/>
+  <img src="https://img.shields.io/badge/Jetpack%20Compose-Material%203-blue?style=flat-square" alt="Compose"/>
+</p>
 
-## Tech Stack
+---
 
-- Kotlin + Jetpack Compose
-- Material 3 Design
-- Hilt DI
-- CameraX + ML Kit
-- Baseline Profiles for performance
+## ✨ Features
 
-## Install
+### 📷 AI Text Extraction
+Extract text from images with high accuracy using **Google Gemini AI**. Simply capture a photo or select from your gallery, and Scanly will intelligently recognize and extract all text content.
 
-Download the latest APK from [Releases](https://github.com/Azyrn/Scanly/releases).
+### 📄 PDF Document Support  
+Import PDF documents and extract text from all pages. Perfect for digitizing printed documents, contracts, receipts, and more.
 
-## License
+### 🌐 Translation
+Translate extracted text into **15+ languages** instantly. Supports major languages including Spanish, French, German, Chinese, Japanese, Arabic, and more.
 
-MIT
+### 📶 Offline OCR
+When you don't have internet access, Scanly uses **Google ML Kit** for on-device text recognition. No data leaves your phone.
+
+### 📊 Barcode & QR Scanner
+Scan any barcode or QR code with smart action detection:
+- 🔗 **URLs** — Open in browser
+- 📞 **Phone numbers** — Dial directly  
+- 📧 **Email** — Compose message
+- 💬 **SMS** — Send text
+- 📶 **WiFi** — Connect to network
+- 👤 **Contacts** — Add to address book
+- 📍 **Location** — Open in maps
+
+### 🍎 Food Product Lookup
+Scan product barcodes (EAN-13, UPC-A) to get detailed nutrition information from the **Open Food Facts** database:
+- Product name and brand
+- Nutri-Score rating
+- NOVA food processing group
+- Full nutrition facts
+- Ingredients list
+
+### 📚 History
+All your scans are saved locally with timestamps. Easily revisit, copy, or share previous results.
+
+---
+
+## 🛠 Tech Stack
+
+| Component | Technology |
+|-----------|------------|
+| Language | Kotlin 2.0 |
+| UI | Jetpack Compose + Material 3 |
+| Architecture | MVVM + Clean Architecture |
+| DI | Hilt |
+| Camera | CameraX |
+| OCR | Google ML Kit (offline) |
+| AI | Google Gemini API |
+| Networking | Retrofit + OkHttp |
+| Image Loading | Coil |
+| Performance | Baseline Profiles |
+
+---
+
+## 📱 Requirements
+
+- Android 8.0 (API 26) or higher
+- Camera permission for scanning
+- Internet for AI features (offline OCR works without)
+
+---
+
+## 📥 Installation
+
+Download the latest APK from the [Releases](https://github.com/Azyrn/Scanly/releases) page.
+
+---
+
+## 🏗 Building from Source
+
+```bash
+git clone https://github.com/Azyrn/Scanly.git
+cd Scanly
+./gradlew assembleRelease
+```
+
+---
+
+## 📄 License
+
+```
+MIT License
+
+Copyright (c) 2024 Azyrn
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+```
+
+---
+
+<p align="center">
+  Made with ❤️ using Kotlin & Jetpack Compose
+</p>

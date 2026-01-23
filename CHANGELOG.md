@@ -1,5 +1,35 @@
 # Changelog
 
+## [3.2.0] - 2026-01-23
+### Added
+- **Multi-Source Product Lookup**: Books (Google Books, Open Library), Medicine (OpenFDA), Cosmetics (Open Beauty Facts), Pet Food
+- **Empty State Fallbacks**: All product categories now show helpful messages when data is missing
+- **Network Resilience**: 10s timeout per engine, exponential backoff retry (2 attempts)
+- **Image Preprocessing**: Auto-retry with contrast enhancement for faded documents
+- **Unified Error UI**: Consistent error states with retry buttons
+- **GitHub Actions CI**: Automated lint, tests, and build on push
+
+### Changed
+- **ProductDetailSheet.kt**: Refactored from 540 → 230 lines (57% reduction)
+- **ScanViewModel.kt**: Extracted RateLimitManager, reduced from 436 → 180 lines
+- **APK Size**: Added ABI splits for ~50% smaller per-device APKs
+
+### Fixed
+- **Cosmetics Empty Data**: Products now show allergens, categories, and labels (not just ingredients)
+- **Medicine Display**: Added manufacturer, recall warnings, contraindications, FDA approval date
+- **Book Display**: Added language and ISBN-10 fields
+
+### Performance
+- **Coil Optimization**: 25% heap memory cache, 100MB disk cache
+- **Resource Cleanup**: Removed 7 unused drawable resources
+
+### New Files
+- `RateLimitManager.kt` — Extracted rate limiting singleton
+- `RetryUtils.kt` — Exponential backoff utility
+- `ImagePreprocessor.kt` — OCR/barcode enhancement
+- `ErrorStateContent.kt` — Unified error component
+- `ui/components/product/` — Category-specific content sections
+
 ## [3.1.0] - 2026-01-23
 ### Added
 - **Food Product Lookup**: Scan product barcodes (EAN-13, UPC-A) to view product info

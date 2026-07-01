@@ -35,4 +35,4 @@ Requires Android SDK; minimum Android 7.0 (API 24).
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+Apache License 2.0 — see [LICENSE](LICENSE).

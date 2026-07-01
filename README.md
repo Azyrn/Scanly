@@ -1,90 +1,38 @@
+# Scanly
 
-<h1 align="center">Scanly</h1>
-
-<p align="center">
-  <b>The modern AI scanner for Android</b><br/>
-  Barcode lookup • OCR • AI text extraction • Translation
-</p>
-
-<p align="center">
-  <img src="https://img.shields.io/badge/Android-24%2B-green?logo=android" alt="Android 24+"/>
-  <img src="https://img.shields.io/badge/Kotlin-2.2-purple?logo=kotlin" alt="Kotlin"/>
-  <img src="https://img.shields.io/badge/Jetpack%20Compose-Material%203-blue?logo=jetpackcompose" alt="Compose"/>
-  <img src="https://img.shields.io/github/v/release/Azyrn/Scanly?include_prereleases" alt="Release"/>
-</p>
-
----
+A simple Android scanner app: scan barcodes and QR codes, look up products, and extract text from images and PDFs.
 
 ## Features
 
-### 📦 Product Lookup
-Scan any barcode (EAN-13, UPC-A, ISBN) to get instant product information:
+- **Barcode & QR scanning** — real-time scanning with CameraX + ML Kit, with smart actions for the content (open URL, connect to WiFi, save contact, add calendar event, send SMS/email, dial, copy).
+- **Product lookup** — scan a retail barcode (EAN/UPC) or ISBN to fetch product info from Open Food Facts, Open Beauty Facts, Open Pet Food Facts, Google Books, Open Library, and OpenFDA.
+- **Text recognition (OCR)** — on-device text extraction with ML Kit; works offline.
+- **AI text extraction** — optional cloud extraction for complex layouts and handwriting. Ships with Gemini; you can supply your own Claude, OpenAI, or OpenRouter key.
+- **Translation** — translate scanned text into other languages.
+- **Document scanner & PDF** — capture multi-page documents and import PDFs to extract text.
 
-| Category | Data Source | Information |
-|----------|-------------|-------------|
-| **Food** | Open Food Facts | Nutri-Score, NOVA, ingredients, allergens |
-| **Books** | Google Books, Open Library | Authors, publisher, ISBN, categories |
-| **Medicine** | OpenFDA | Active ingredients, warnings, recalls |
-| **Cosmetics** | Open Beauty Facts | Ingredients, allergens, labels |
-| **Pet Food** | Open Pet Food Facts | Nutrition, ingredients |
+## Tech stack
 
-### 🧠 AI Text Extraction
-Go beyond OCR. Cloud AI models understand context, preserve handwriting, and capture layouts from complex documents. Works out of the box with **Gemini**, and you can plug in your own **Claude**, **OpenAI**, or **OpenRouter** key.
-
-### ⚡ Offline Recognition
-No internet? **ML Kit** provides instant, on-device text recognition that never leaves your phone.
-
-### 📱 Smart Actions
-Barcodes automatically trigger helpful actions:
-- **WiFi QR** → Connect instantly
-- **vCard** → Save contact
-- **URL** → Open in browser
-- **Calendar** → Add event
-
-### 🌐 Translation
-Translate scanned text into 15+ languages.
-
-### 📄 PDF Extraction
-Import multi-page PDFs and extract editable text.
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| **UI** | Jetpack Compose, Material 3 |
-| **Architecture** | MVVM, Hilt DI |
-| **Networking** | Retrofit, OkHttp |
-| **ML** | ML Kit (OCR, Barcode), Gemini / Claude / OpenAI-compatible |
-| **Async** | Kotlin Coroutines, Flow |
-| **Image** | Coil, CameraX |
-| **Storage** | DataStore |
-
----
-
-## Download
-
-Get the latest APK from [**GitHub Releases**](https://github.com/Azyrn/Scanly/releases).
-
----
+- Kotlin, Jetpack Compose, Material 3
+- MVVM + Hilt
+- CameraX, ML Kit (barcode, text recognition, document scanner)
+- Retrofit / OkHttp, Kotlin Coroutines & Flow
+- Coil, DataStore
 
 ## Build
 
 ```bash
-# Clone
 git clone https://github.com/Azyrn/Scanly.git
 cd Scanly
 
-# Add API key (optional, for AI features)
+# Optional: add an AI key for cloud extraction
 echo "GEMINI_API_KEY=your_key_here" >> local.properties
 
-# Build
 ./gradlew assembleDebug
 ```
 
----
+Requires Android SDK; minimum Android 7.0 (API 24).
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
+MIT — see [LICENSE](LICENSE).

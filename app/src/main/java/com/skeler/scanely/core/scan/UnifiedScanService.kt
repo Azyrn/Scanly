@@ -275,6 +275,17 @@ class UnifiedScanService @Inject constructor(
             Barcode.TYPE_GEO -> {
                 ScanAction.OpenUrl("geo:${barcode.geoPoint?.lat},${barcode.geoPoint?.lng}")
             }
+            Barcode.TYPE_CALENDAR_EVENT -> {
+                barcode.calendarEvent?.let { event ->
+                    ScanAction.AddEvent(
+                        title = event.summary,
+                        location = event.location,
+                        description = event.description,
+                        startRaw = event.start?.rawValue,
+                        endRaw = event.end?.rawValue
+                    )
+                } ?: ScanAction.CopyText(rawValue, "Copy")
+            }
             else -> {
                 // For raw/unknown barcodes, just use Copy (cleaner than ShowRaw + Copy)
                 ScanAction.CopyText(rawValue, "Copy")

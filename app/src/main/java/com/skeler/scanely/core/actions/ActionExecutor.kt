@@ -8,9 +8,13 @@ import androidx.core.net.toUri
 import android.net.wifi.WifiManager
 import android.net.wifi.WifiNetworkSuggestion
 import android.os.Build
+import android.provider.CalendarContract
 import android.provider.ContactsContract
 import android.provider.Settings
 import android.widget.Toast
+import java.text.SimpleDateFormat
+import java.util.Locale
+import java.util.TimeZone
 
 /**
  * Utility object to execute ScanAction items.
@@ -41,6 +45,7 @@ object ActionExecutor {
             is ScanAction.SendSms -> sendSms(context, action.number, action.message)
             is ScanAction.ConnectWifi -> connectWifi(context, action.ssid, action.password, action.type)
             is ScanAction.AddContact -> addContact(context, action)
+            is ScanAction.AddEvent -> addEvent(context, action)
             is ScanAction.ShowRaw -> copyText(context, action.text)
             is ScanAction.LookupProduct -> { /* Handled separately in BarcodeScannerScreen */ }
         }
@@ -153,6 +158,51 @@ object ActionExecutor {
             context.startActivity(intent)
         } catch (e: Exception) {
             Toast.makeText(context, "Cannot open contacts", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun addEvent(context: Context, action: ScanAction.AddEvent) {
+        try {
+            val intent = Intent(Intent.ACTION_INSERT).apply {
+                data = CalendarContract.Events.CONTENT_URI
+                action.title?.let { putExtra(CalendarContract.Events.TITLE, it) }
+                action.location?.let { putExtra(CalendarContract.Events.EVENT_LOCATION, it) }
+                action.description?.let { putExtra(CalendarContract.Events.DESCRIPTION, it) }
+                parseEventMillis(action.startRaw)?.let {
+                    putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, it)
+                }
+                parseEventMillis(action.endRaw)?.let {
+                    putExtra(CalendarContract.EXTRA_EVENT_END_TIME, it)
+                }
+            }
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            Toast.makeText(context, "Cannot open calendar", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    /**
+     * Parse an ML Kit calendar-event date string into epoch millis.
+     * Handles the iCalendar basic formats "yyyyMMdd'T'HHmmss'Z'" (UTC),
+     * "yyyyMMdd'T'HHmmss" (local), and date-only "yyyyMMdd". Returns null if unparseable.
+     */
+    private fun parseEventMillis(raw: String?): Long? {
+        if (raw.isNullOrBlank()) return null
+        val value = raw.trim()
+        val (pattern, utc) = when {
+            value.endsWith("Z") -> "yyyyMMdd'T'HHmmss'Z'" to true
+            value.contains("T") -> "yyyyMMdd'T'HHmmss" to false
+            else -> "yyyyMMdd" to false
+        }
+        return try {
+            val format = SimpleDateFormat(pattern, Locale.US).apply {
+                isLenient = false
+                if (utc) timeZone = TimeZone.getTimeZone("UTC")
+            }
+            format.parse(value)?.time
+        } catch (e: Exception) {
+            null
         }
     }
 }

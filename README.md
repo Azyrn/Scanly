@@ -29,7 +29,7 @@ Scan any barcode (EAN-13, UPC-A, ISBN) to get instant product information:
 | **Pet Food** | Open Pet Food Facts | Nutrition, ingredients |
 
 ### 🧠 AI Text Extraction
-Go beyond OCR. **Google Gemini AI** understands context, preserves handwriting, and captures layouts from complex documents.
+Go beyond OCR. Cloud AI models understand context, preserve handwriting, and capture layouts from complex documents. Works out of the box with **Gemini**, and you can plug in your own **Claude**, **OpenAI**, or **OpenRouter** key.
 
 ### ⚡ Offline Recognition
 No internet? **ML Kit** provides instant, on-device text recognition that never leaves your phone.
@@ -56,10 +56,10 @@ Import multi-page PDFs and extract editable text.
 | **UI** | Jetpack Compose, Material 3 |
 | **Architecture** | MVVM, Hilt DI |
 | **Networking** | Retrofit, OkHttp |
-| **ML** | ML Kit (OCR, Barcode), Gemini AI |
+| **ML** | ML Kit (OCR, Barcode), Gemini / Claude / OpenAI-compatible |
 | **Async** | Kotlin Coroutines, Flow |
 | **Image** | Coil, CameraX |
-| **Storage** | DataStore, Room |
+| **Storage** | DataStore |
 
 ---
 

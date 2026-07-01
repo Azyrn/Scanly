@@ -42,6 +42,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import android.content.ClipData
 import androidx.compose.ui.platform.ClipEntry
+import com.skeler.scanely.core.actions.ActionExecutor
 import com.skeler.scanely.core.actions.ScanAction
 import com.skeler.scanely.core.actions.WifiType
 import kotlinx.coroutines.launch
@@ -247,6 +248,11 @@ private fun executeAction(
             }
         }
         
+        is ScanAction.AddEvent -> {
+            // Reuse the executor's calendar-insert logic (with date parsing).
+            ActionExecutor.execute(context, action)
+        }
+
         is ScanAction.ShowRaw -> {
             // Just copy for ShowRaw
             scope.launch {

@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.RestaurantMenu
 import androidx.compose.material.icons.filled.Sms
 import androidx.compose.material.icons.automirrored.filled.TextSnippet
 import androidx.compose.material.icons.filled.Wifi
+import androidx.compose.material.icons.rounded.Event
 import androidx.compose.ui.graphics.vector.ImageVector
 
 /**
@@ -119,6 +120,22 @@ sealed class ScanAction {
         override val icon: ImageVector = Icons.AutoMirrored.Filled.TextSnippet
     }
     
+    /**
+     * Add a calendar event.
+     * Parsed from a VEVENT / calendar-event QR code.
+     * Start/end are the raw ML Kit CalendarDateTime strings (e.g. "20240604T090000Z").
+     */
+    data class AddEvent(
+        val title: String?,
+        val location: String? = null,
+        val description: String? = null,
+        val startRaw: String? = null,
+        val endRaw: String? = null
+    ) : ScanAction() {
+        override val label: String = "Add to Calendar"
+        override val icon: ImageVector = Icons.Rounded.Event
+    }
+
     /**
      * Lookup product information from barcode.
      * Uses Open Food Facts API.

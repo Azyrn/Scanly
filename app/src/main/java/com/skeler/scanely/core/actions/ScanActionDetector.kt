@@ -194,6 +194,7 @@ object ScanActionDetector {
             is ScanAction.ConnectWifi -> action.ssid
             is ScanAction.SendSms -> action.number
             is ScanAction.AddContact -> "${action.name}${action.phone}${action.email}"
+            is ScanAction.AddEvent -> "${action.title}${action.startRaw}"
             is ScanAction.ShowRaw -> action.text.take(50)
             is ScanAction.LookupProduct -> action.barcode
         }

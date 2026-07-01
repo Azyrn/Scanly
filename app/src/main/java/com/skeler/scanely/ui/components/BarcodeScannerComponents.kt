@@ -4,6 +4,8 @@ import android.util.Log
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
+import androidx.camera.core.resolutionselector.ResolutionSelector
+import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.Canvas
@@ -66,7 +68,10 @@ fun BarcodeCameraPreview(
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
 
     DisposableEffect(Unit) {
-        onDispose { cameraExecutor.shutdown() }
+        onDispose {
+            barcodeAnalyzer.onZoomSuggested = null
+            cameraExecutor.shutdown()
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -78,19 +83,40 @@ fun BarcodeCameraPreview(
                 it.surfaceProvider = previewView.surfaceProvider
             }
 
+            // Target ~720p rather than the CameraX default (~640x480) so small/distant
+            // codes carry enough detail, while staying well under 2MP for low latency.
+            val resolutionSelector = ResolutionSelector.Builder()
+                .setResolutionStrategy(
+                    ResolutionStrategy(
+                        android.util.Size(1280, 720),
+                        ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER
+                    )
+                )
+                .build()
+
             val imageAnalysis = ImageAnalysis.Builder()
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                .setResolutionSelector(resolutionSelector)
                 .build()
                 .also { it.setAnalyzer(cameraExecutor, barcodeAnalyzer) }
 
             try {
                 cameraProvider.unbindAll()
-                cameraProvider.bindToLifecycle(
+                val camera = cameraProvider.bindToLifecycle(
                     lifecycleOwner,
                     CameraSelector.DEFAULT_BACK_CAMERA,
                     preview,
                     imageAnalysis
                 )
+
+                // Auto-zoom: apply ML Kit's zoom suggestions for small/distant codes,
+                // clamped to what the camera actually supports.
+                barcodeAnalyzer.onZoomSuggested = { suggestedRatio ->
+                    val maxZoom = camera.cameraInfo.zoomState.value?.maxZoomRatio ?: 1f
+                    val target = suggestedRatio.coerceIn(1f, maxZoom)
+                    camera.cameraControl.setZoomRatio(target)
+                    true
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "Camera binding failed", e)
             }
@@ -200,6 +226,7 @@ fun BarcodeActionsSheet(
                                 is ScanAction.ConnectWifi -> action.ssid
                                 is ScanAction.SendSms -> action.number
                                 is ScanAction.AddContact -> action.name ?: "Contact"
+                                is ScanAction.AddEvent -> action.title ?: "Event"
                                 is ScanAction.ShowRaw -> action.text.take(50)
                                 is ScanAction.LookupProduct -> "Barcode: ${action.barcode}"
                             }

@@ -12,6 +12,7 @@ local.properties
 *.jks
 *.keystore
 release_log*.txt
+/.kotlin
 
 # Firebase
 google-services.json

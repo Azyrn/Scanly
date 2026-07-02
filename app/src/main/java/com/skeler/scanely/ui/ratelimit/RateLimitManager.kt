@@ -6,6 +6,7 @@ import com.skeler.scanely.settings.data.datastore.SettingsDataStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -67,6 +68,13 @@ class RateLimitManager @Inject constructor(
 
     private var cooldownStartTimestamp: Long = 0L
     private var cooldownJob: Job? = null
+
+    /**
+     * Application-lifetime scope for fire-and-forget persistence. Uses a
+     * SupervisorJob so a single failed write can't cancel future ones.
+     * Preferred over GlobalScope: structured, testable, and IO-dispatched.
+     */
+    private val persistenceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     /**
      * Check if currently rate limited.
@@ -205,8 +213,8 @@ class RateLimitManager @Inject constructor(
     }
 
     private fun persistState(timestamp: Long, count: Int) {
-        // Fire-and-forget persistence
-        kotlinx.coroutines.GlobalScope.launch {
+        // Fire-and-forget persistence on a managed application-lifetime scope.
+        persistenceScope.launch {
             settingsDataStore.setLong(SettingsKeys.LAST_AI_REQUEST_TIMESTAMP, timestamp)
             settingsDataStore.setInt(SettingsKeys.AI_REQUEST_COUNT, count)
         }

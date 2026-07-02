@@ -2,8 +2,8 @@ package com.skeler.scanely.core.common
 
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.runtime.compositionLocalOf
-// OcrHelper import removed
 import com.skeler.scanely.settings.domain.model.SettingsState
+import com.skeler.scanely.ui.theme.SeedPalettes
 
 val LocalSettings = compositionLocalOf {
     SettingsState(
@@ -11,6 +11,6 @@ val LocalSettings = compositionLocalOf {
         isOledModeEnabled = false,
         ocrLanguages = emptySet(),
         useDynamicColors = true,
-        seedColorIndex = 5 // Default to Color06
+        seedColorIndex = SeedPalettes.DEFAULT_INDEX
     )
 }

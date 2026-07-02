@@ -1,21 +1,36 @@
+@file:OptIn(ExperimentalMaterial3ExpressiveApi::class)
+
 package com.skeler.scanely.ui.components
 
 import android.os.Build
 import android.view.HapticFeedbackConstants
-import androidx.compose.foundation.layout.Box
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material3.CircularWavyProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LargeFloatingActionButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -30,15 +45,16 @@ data class RateLimitDisplayState(
 )
 
 /**
- * Gamified AI FAB with recharging animation.
+ * AI scan entry point styled as a labeled pill in the same family as the home
+ * action cards: the same large squircle shape, flat tonal surface, and spring
+ * press-scale, with the primary-container tone marking it as the accent action.
  *
- * Deep Reasoning (ULTRATHINK):
- * - Psychological: "Recharging" feels active vs "Disabled" feels punitive
- * - CircularProgressIndicator around FAB shows time investment paying off
- * - Haptic feedback on ready creates Pavlovian positive association
- * 
+ * While rate-limited it recedes to a muted surface and shows a small wavy
+ * recharge indicator with a countdown; haptic feedback fires when it is ready
+ * again.
+ *
  * @param rateLimitState Current rate limit display state
- * @param onClick Callback when FAB is clicked (only fires when not recharging)
+ * @param onClick Callback when tapped (only fires when not recharging)
  */
 @Composable
 fun GamifiedAiFab(
@@ -51,6 +67,36 @@ fun GamifiedAiFab(
     val isRecharging = rateLimitState.remainingSeconds > 0
     val progress = rateLimitState.progress
 
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val pressScale by animateFloatAsState(
+        targetValue = if (isPressed && !isRecharging) 0.96f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "Fab Press Scale"
+    )
+
+    val containerColor by animateColorAsState(
+        targetValue = if (isRecharging) {
+            MaterialTheme.colorScheme.surfaceContainerHigh
+        } else {
+            MaterialTheme.colorScheme.primaryContainer
+        },
+        animationSpec = tween(220),
+        label = "Fab Container"
+    )
+    val contentColor by animateColorAsState(
+        targetValue = if (isRecharging) {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        } else {
+            MaterialTheme.colorScheme.onPrimaryContainer
+        },
+        animationSpec = tween(220),
+        label = "Fab Content"
+    )
+
     // Haptic feedback when becoming ready
     LaunchedEffect(rateLimitState.justBecameReady) {
         if (rateLimitState.justBecameReady) {
@@ -62,53 +108,43 @@ fun GamifiedAiFab(
         }
     }
 
-    // Gamified FAB with progress ring
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = modifier
+    Surface(
+        onClick = { if (!isRecharging) onClick() },
+        modifier = modifier.scale(pressScale),
+        shape = MaterialTheme.shapes.large,
+        color = containerColor,
+        contentColor = contentColor,
+        shadowElevation = 2.dp,
+        interactionSource = interactionSource
     ) {
-        // Progress ring (behind FAB)
-        if (isRecharging) {
-            CircularProgressIndicator(
-                progress = { progress },
-                modifier = Modifier.size(72.dp),
-                strokeWidth = 4.dp,
-                strokeCap = StrokeCap.Round,
-                trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                color = MaterialTheme.colorScheme.primary
-            )
-        }
-
-        // FAB
-        LargeFloatingActionButton(
-            onClick = {
-                if (!isRecharging) {
-                    onClick()
-                }
-            },
-            containerColor = if (isRecharging) {
-                MaterialTheme.colorScheme.surfaceContainerHigh
-            } else {
-                MaterialTheme.colorScheme.primaryContainer
-            },
-            contentColor = if (isRecharging) {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            } else {
-                MaterialTheme.colorScheme.onPrimaryContainer
-            },
-            modifier = Modifier.size(if (isRecharging) 56.dp else 64.dp)
+        Row(
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             if (isRecharging) {
+                CircularWavyProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier.size(22.dp),
+                    trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.width(10.dp))
                 Text(
-                    text = "${rateLimitState.remainingSeconds}",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    text = "${rateLimitState.remainingSeconds}s",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold
                 )
             } else {
                 Icon(
-                    imageVector = Icons.Default.AutoAwesome,
-                    contentDescription = "AI Scan",
-                    modifier = Modifier.size(28.dp)
+                    imageVector = Icons.Rounded.AutoAwesome,
+                    contentDescription = null,
+                    modifier = Modifier.size(22.dp)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = "AI Scan",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
         }

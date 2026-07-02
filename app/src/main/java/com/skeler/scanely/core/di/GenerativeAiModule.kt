@@ -1,48 +1,99 @@
 package com.skeler.scanely.core.di
 
-import com.google.ai.client.generativeai.GenerativeModel
-import com.google.ai.client.generativeai.type.content
-import com.google.ai.client.generativeai.type.generationConfig
-import com.skeler.scanely.BuildConfig
+import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
+import com.skeler.scanely.core.network.ClaudeApi
+import com.skeler.scanely.core.network.GeminiApi
+import com.skeler.scanely.core.network.MistralApi
+import com.skeler.scanely.core.network.OpenAiCompatApi
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import kotlinx.serialization.json.Json
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import retrofit2.Retrofit
+import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 
+/**
+ * Hilt module providing the chat/completions APIs used for AI text extraction
+ * and translation across all providers.
+ *
+ * API keys, endpoints and models are supplied per request from user settings
+ * (with a bundled default only for Gemini), so authentication is attached by
+ * the service layer rather than an interceptor. The OkHttpClients are built
+ * inline (not as separate @Provides) so they do not collide with the auth-less
+ * OkHttpClient provided by [LookupModule].
+ */
 @Module
 @InstallIn(SingletonComponent::class)
 object GenerativeAiModule {
 
-    private const val MODEL_NAME = "gemini-2.5-flash"
+    private val json = Json {
+        ignoreUnknownKeys = true
+        encodeDefaults = true
+        classDiscriminator = "type"
+    }
 
-    /**
-     * ULTRATHINK System Instruction Rationale:
-     * - Focuses model on OCR accuracy over creative interpretation
-     * - Explicit formatting preservation prevents unwanted summarization
-     * - Temperature 0.1 minimizes hallucination in text extraction
-     */
-    private const val SYSTEM_INSTRUCTION = """You are a precise document text extraction assistant.
-Your task is to extract text exactly as it appears in images and documents.
+    /** Claude/Gemini must omit null fields (e.g. `system`, or an image part's
+     * missing `text`) rather than sending explicit nulls the APIs would reject. */
+    private val claudeJson = Json {
+        ignoreUnknownKeys = true
+        encodeDefaults = true
+        explicitNulls = false
+        classDiscriminator = "type"
+    }
 
-Rules:
-1. Extract ALL visible text with 100% accuracy
-2. Preserve original formatting, line breaks, and structure
-3. Do NOT summarize, interpret, or modify any content
-4. Do NOT add any commentary or descriptions
-5. For tables, maintain column alignment using spaces
-6. For multi-language documents, preserve all languages as-is
-7. If text is unclear, mark it with [unclear] but attempt best guess"""
+    private val geminiJson = Json {
+        ignoreUnknownKeys = true
+        encodeDefaults = true
+        explicitNulls = false
+    }
+
+    private fun defaultClient(readTimeoutSeconds: Long = 60): OkHttpClient =
+        OkHttpClient.Builder()
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(readTimeoutSeconds, TimeUnit.SECONDS)
+            .build()
 
     @Provides
     @Singleton
-    fun provideGenerativeModel(): GenerativeModel = GenerativeModel(
-        modelName = MODEL_NAME,
-        apiKey = BuildConfig.GEMINI_API_KEY,
-        systemInstruction = content { text(SYSTEM_INSTRUCTION) },
-        generationConfig = generationConfig {
-            temperature = 0.1f
-        }
-    )
-}
+    fun provideOpenAiCompatApi(): OpenAiCompatApi =
+        Retrofit.Builder()
+            .baseUrl(OpenAiCompatApi.BASE_URL)
+            .client(defaultClient())
+            .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
+            .build()
+            .create(OpenAiCompatApi::class.java)
 
+    @Provides
+    @Singleton
+    fun provideClaudeApi(): ClaudeApi =
+        Retrofit.Builder()
+            .baseUrl(ClaudeApi.BASE_URL)
+            .client(defaultClient(90))
+            .addConverterFactory(claudeJson.asConverterFactory("application/json".toMediaType()))
+            .build()
+            .create(ClaudeApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideMistralApi(): MistralApi =
+        Retrofit.Builder()
+            .baseUrl(MistralApi.BASE_URL)
+            .client(defaultClient(90))
+            .addConverterFactory(geminiJson.asConverterFactory("application/json".toMediaType()))
+            .build()
+            .create(MistralApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideGeminiApi(): GeminiApi =
+        Retrofit.Builder()
+            .baseUrl(GeminiApi.BASE_URL)
+            .client(defaultClient(90))
+            .addConverterFactory(geminiJson.asConverterFactory("application/json".toMediaType()))
+            .build()
+            .create(GeminiApi::class.java)
+}

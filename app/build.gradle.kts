@@ -2,7 +2,6 @@ import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
@@ -35,8 +34,20 @@ android {
         }
         buildConfigField(
             "String",
+            "OPENROUTER_API_KEY",
+            "\"${localProperties.getProperty("OPENROUTER_API_KEY") ?: ""}\""
+        )
+        // Bundled default provider key so AI scans work without user setup.
+        buildConfigField(
+            "String",
             "GEMINI_API_KEY",
             "\"${localProperties.getProperty("GEMINI_API_KEY") ?: ""}\""
+        )
+        // Bundled free-tier Mistral OCR key.
+        buildConfigField(
+            "String",
+            "MISTRAL_API_KEY",
+            "\"${localProperties.getProperty("MISTRAL_API_KEY") ?: ""}\""
         )
     }
 
@@ -150,14 +161,14 @@ dependencies {
     // Accompanist Permissions
     implementation(libs.accompanist.permissions)
     
-    // Google Generative AI (Gemini)
-    implementation(libs.generativeai)
-    
     // Google ML Kit Barcode Scanning
     implementation(libs.mlkit.barcode)
     
     // Google ML Kit Text Recognition (On-Device)
     implementation(libs.mlkit.text.recognition)
+
+    // Google ML Kit Document Scanner (edge detection, perspective correction, auto-capture)
+    implementation(libs.mlkit.document.scanner)
     
     // Retrofit for network
     implementation(libs.retrofit)

@@ -22,7 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Icon
@@ -87,7 +87,7 @@ fun ScanActionsRow(
                 label = { Text("${urlActions.size} links found") },
                 leadingIcon = {
                     Icon(
-                        imageVector = Icons.Default.ExpandMore,
+                        imageVector = Icons.Rounded.ExpandMore,
                         contentDescription = null,
                         modifier = Modifier.size(AssistChipDefaults.IconSize)
                     )

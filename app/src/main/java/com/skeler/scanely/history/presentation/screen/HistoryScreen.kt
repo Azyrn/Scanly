@@ -21,9 +21,9 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -121,7 +121,7 @@ fun HistoryScreen() {
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                             contentDescription = "Back"
                         )
                     }
@@ -135,7 +135,7 @@ fun HistoryScreen() {
                     expanded = isFabExpanded,
                     icon = {
                         Icon(
-                            imageVector = Icons.Default.DeleteOutline,
+                            imageVector = Icons.Rounded.DeleteOutline,
                             contentDescription = "Clear History"
                         )
                     },
@@ -201,7 +201,7 @@ fun HistoryScreen() {
                                 contentAlignment = Alignment.CenterEnd
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Delete,
+                                    imageVector = Icons.Rounded.Delete,
                                     contentDescription = "Delete",
                                     tint = MaterialTheme.colorScheme.onErrorContainer
                                 )

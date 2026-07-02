@@ -3,12 +3,16 @@ package com.skeler.scanely.ui.viewmodel
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.skeler.scanely.core.ai.AiEvent
 import com.skeler.scanely.core.ai.AiMode
+import com.skeler.scanely.core.ai.AiProvider
 import com.skeler.scanely.core.ai.AiResult
+import com.skeler.scanely.core.ai.AiStage
 import com.skeler.scanely.core.ai.GenerativeAiService
 import com.skeler.scanely.history.data.HistoryManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -20,8 +24,16 @@ import javax.inject.Inject
  */
 data class AiScanState(
     val isProcessing: Boolean = false,
+    /** Current pipeline stage while processing (null when idle). */
+    val stage: AiStage? = null,
+    /** Human-readable stage note, e.g. a retry/fallback message. */
+    val stageMessage: String? = null,
+    /** Accumulated streamed text while the model is generating. */
+    val streamingText: String? = null,
     val result: AiResult? = null,
     val mode: AiMode? = null,
+    /** Provider used for this scan (for rescan + translation) */
+    val provider: AiProvider = AiProvider.DEFAULT,
     val originalText: String? = null,
     /** Cached translations: language name -> translated text */
     val translationCache: Map<String, String> = emptyMap(),
@@ -51,44 +63,84 @@ class AiScanViewModel @Inject constructor(
     private val _aiState = MutableStateFlow(AiScanState())
     val aiState: StateFlow<AiScanState> = _aiState.asStateFlow()
 
+    /** The in-flight processing job, so Cancel can abort it. */
+    private var processingJob: Job? = null
+
     /**
-     * Process an image with the specified AI mode.
+     * Process an image with the specified AI mode. Progress (stages and
+     * streamed text) is surfaced through [aiState] as it happens.
      */
-    fun processImage(imageUri: Uri, mode: AiMode) {
-        viewModelScope.launch {
+    fun processImage(imageUri: Uri, mode: AiMode, provider: AiProvider) {
+        processingJob?.cancel()
+        processingJob = viewModelScope.launch {
             _aiState.value = AiScanState(
                 isProcessing = true,
+                stage = AiStage.PREPARING,
                 mode = mode,
+                provider = provider,
                 lastImageUri = imageUri
             )
 
-            val result = aiService.processImage(imageUri, mode)
-            val originalText = if (result is AiResult.Success) result.text else null
+            var result: AiResult = AiResult.Error("Cancelled")
+            aiService.processImageEvents(imageUri, mode, provider).collect { event ->
+                when (event) {
+                    is AiEvent.Stage -> _aiState.value = _aiState.value.copy(
+                        stage = event.stage,
+                        stageMessage = event.message
+                    )
+                    is AiEvent.Delta -> _aiState.value = _aiState.value.copy(
+                        streamingText = event.textSoFar
+                    )
+                    is AiEvent.Finished -> result = event.result
+                }
+            }
 
+            val finalResult = result
+            val originalText = if (finalResult is AiResult.Success) finalResult.text else null
             _aiState.value = _aiState.value.copy(
                 isProcessing = false,
-                result = result,
+                stage = null,
+                stageMessage = null,
+                streamingText = null,
+                result = finalResult,
                 originalText = originalText
             )
 
             // Save to history on success
-            if (result is AiResult.Success && result.text.isNotBlank()) {
-                saveToHistory(result.text, imageUri)
+            if (finalResult is AiResult.Success && finalResult.text.isNotBlank()) {
+                saveToHistory(finalResult.text, imageUri)
             }
         }
+    }
+
+    /**
+     * Cancel the in-flight extraction and return to the idle state.
+     */
+    fun cancelProcessing() {
+        processingJob?.cancel()
+        processingJob = null
+        _aiState.value = _aiState.value.copy(
+            isProcessing = false,
+            stage = null,
+            stageMessage = null,
+            streamingText = null
+        )
     }
 
     /**
      * Process multiple files with the specified AI mode.
      * Results are combined with file separators.
      */
-    fun processMultipleFiles(uris: List<Uri>, mode: AiMode) {
+    fun processMultipleFiles(uris: List<Uri>, mode: AiMode, provider: AiProvider) {
         if (uris.isEmpty()) return
 
-        viewModelScope.launch {
+        processingJob?.cancel()
+        processingJob = viewModelScope.launch {
             _aiState.value = AiScanState(
                 isProcessing = true,
+                stage = AiStage.PREPARING,
                 mode = mode,
+                provider = provider,
                 totalFiles = uris.size,
                 currentFileIndex = 1,
                 allUris = uris,
@@ -103,20 +155,33 @@ class AiScanViewModel @Inject constructor(
                     lastImageUri = uri
                 )
 
-                val result = aiService.processImage(uri, mode)
+                var result: AiResult = AiResult.Error("Cancelled")
+                aiService.processImageEvents(uri, mode, provider).collect { event ->
+                    when (event) {
+                        is AiEvent.Stage -> _aiState.value = _aiState.value.copy(
+                            stage = event.stage,
+                            stageMessage = event.message
+                        )
+                        is AiEvent.Delta -> _aiState.value = _aiState.value.copy(
+                            streamingText = event.textSoFar
+                        )
+                        is AiEvent.Finished -> result = event.result
+                    }
+                }
+                _aiState.value = _aiState.value.copy(streamingText = null)
 
-                when (result) {
+                when (val fileResult = result) {
                     is AiResult.Success -> {
                         if (allResults.isNotEmpty()) {
                             allResults.append("\n\n--- File ${index + 1} ---\n\n")
                         }
-                        allResults.append(result.text)
+                        allResults.append(fileResult.text)
                     }
                     is AiResult.Error -> {
                         if (allResults.isNotEmpty()) {
                             allResults.append("\n\n--- File ${index + 1} (Error) ---\n\n")
                         }
-                        allResults.append("Error: ${result.message}")
+                        allResults.append("Error: ${fileResult.message}")
                     }
                     is AiResult.RateLimited -> {
                         allResults.append("\n\n--- Rate Limited ---\n")
@@ -132,6 +197,9 @@ class AiScanViewModel @Inject constructor(
 
             _aiState.value = _aiState.value.copy(
                 isProcessing = false,
+                stage = null,
+                stageMessage = null,
+                streamingText = null,
                 result = combinedResult,
                 originalText = if (combinedResult is AiResult.Success) combinedResult.text else null
             )
@@ -160,11 +228,11 @@ class AiScanViewModel @Inject constructor(
      * Rescan the last processed image with the same mode.
      * Returns the URI and mode for the caller to trigger with rate limit check.
      */
-    fun getRescanParams(): Pair<Uri, AiMode>? {
+    fun getRescanParams(): Triple<Uri, AiMode, AiProvider>? {
         val currentState = _aiState.value
         val imageUri = currentState.lastImageUri ?: return null
         val mode = currentState.mode ?: return null
-        return Pair(imageUri, mode)
+        return Triple(imageUri, mode, currentState.provider)
     }
 
     /**
@@ -177,7 +245,9 @@ class AiScanViewModel @Inject constructor(
         viewModelScope.launch {
             _aiState.value = _aiState.value.copy(isTranslating = true)
 
-            val translationResult = aiService.translateText(currentText, targetLanguage)
+            val translationResult = aiService.translateText(
+                currentText, targetLanguage, _aiState.value.provider
+            )
 
             when (translationResult) {
                 is AiResult.Success -> {

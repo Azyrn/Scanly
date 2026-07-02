@@ -18,24 +18,30 @@ import com.skeler.scanely.core.animation.gallerySlideExit
 import com.skeler.scanely.core.common.LocalSettings
 import com.skeler.scanely.core.lookup.LookupOrchestrator
 import com.skeler.scanely.history.presentation.screen.HistoryScreen
+import com.skeler.scanely.settings.presentation.screen.AiProvidersScreen
 import com.skeler.scanely.settings.presentation.screen.LookAndFeelScreen
 import com.skeler.scanely.settings.presentation.screen.SettingsScreen
 import com.skeler.scanely.ui.ScanViewModel
 import com.skeler.scanely.ui.screens.CameraScreen
+import com.skeler.scanely.ui.screens.DocumentScannerScreen
 import com.skeler.scanely.ui.screens.HomeScreen
 import com.skeler.scanely.ui.screens.ResultsScreen
 import com.skeler.scanely.ui.screens.BarcodeScannerScreen
+import com.skeler.scanely.ui.screens.ScanReviewScreen
 import com.skeler.scanely.ui.screens.UnifiedResultsScreen
 import dagger.hilt.android.EntryPointAccessors
 
 object Routes {
     const val HOME = "home"
     const val CAMERA = "camera"
+    const val DOCUMENT_SCANNER = "document_scanner"
+    const val SCAN_REVIEW = "scan_review"
     const val RESULTS = "results"
     const val UNIFIED_RESULTS = "unified_results"
     const val BARCODE_SCANNER = "barcode_scanner"
     const val SETTINGS = "settings"
     const val LOOK_AND_FEEL = "look_and_feel"
+    const val AI_PROVIDERS = "ai_providers"
     const val HISTORY = "history"
 }
 
@@ -65,7 +71,8 @@ fun ScanelyNavigation(
         NavHost(
             navController = navController,
             startDestination = Routes.HOME,
-            // Smooth fade+scale transitions (no jarring edge clipping)
+            // Shared-axis X transitions: forward slides in from the right,
+            // back returns from the left, with a fade-through between screens.
             enterTransition = { gallerySlideEnter() },
             exitTransition = { gallerySlideExit() },
             popEnterTransition = { galleryPopEnter() },
@@ -83,12 +90,24 @@ fun ScanelyNavigation(
                 LookAndFeelScreen()
             }
 
+            composable(Routes.AI_PROVIDERS) {
+                AiProvidersScreen()
+            }
+
             composable(Routes.HISTORY) {
                 HistoryScreen()
             }
 
             composable(Routes.CAMERA) {
                 CameraScreen()
+            }
+
+            composable(Routes.DOCUMENT_SCANNER) {
+                DocumentScannerScreen()
+            }
+
+            composable(Routes.SCAN_REVIEW) {
+                ScanReviewScreen()
             }
 
             composable(Routes.RESULTS) {

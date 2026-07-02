@@ -34,7 +34,12 @@ class MlKitOcrService @Inject constructor(
     private val pdfRendererHelper: PdfRendererHelper
 ) {
 
-    private val recognizer: TextRecognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+    // Created lazily so the ML Kit client isn't built on the main thread while
+    // the first screen composes (this service is injected into a ViewModel).
+    // First touch happens from recognizeFromBitmap on a background dispatcher.
+    private val recognizer: TextRecognizer by lazy {
+        TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+    }
 
     /**
      * Recognize text from an image URI.

@@ -26,11 +26,14 @@ import com.skeler.scanely.core.common.LocalSettings
 // SHAPES
 // =============================================================================
 
+// Material 3 Expressive leans into rounder, softer geometry. Bumping the scale
+// gives cards, chips, buttons and sheets a friendlier, more premium feel while
+// staying within the M3 token roles.
 val ScanelyShapes = Shapes(
-    extraSmall = RoundedCornerShape(4.dp),
-    small = RoundedCornerShape(8.dp),
-    medium = RoundedCornerShape(12.dp),
-    large = RoundedCornerShape(16.dp),
+    extraSmall = RoundedCornerShape(8.dp),
+    small = RoundedCornerShape(12.dp),
+    medium = RoundedCornerShape(16.dp),
+    large = RoundedCornerShape(24.dp),
     extraLarge = RoundedCornerShape(28.dp)
 )
 

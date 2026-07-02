@@ -30,6 +30,17 @@ class NetworkObserver @Inject constructor(
         context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
     /**
+     * Synchronous snapshot of connectivity for one-shot checks (e.g. deciding
+     * whether a failed request was rate-limiting or simply no network).
+     */
+    fun isCurrentlyOnline(): Boolean {
+        val network = connectivityManager.activeNetwork ?: return false
+        val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+            capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+    }
+
+    /**
      * Flow emitting current network availability.
      * Emits immediately with current state, then updates on changes.
      */

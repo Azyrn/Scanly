@@ -2,342 +2,142 @@
 
 package com.skeler.scanely.settings.presentation.screen
 
-import androidx.appcompat.app.AppCompatDelegate
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import coil.compose.AsyncImage
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.ColorLens
-import androidx.compose.material.icons.filled.Brush
-import androidx.compose.ui.res.painterResource
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
+import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.LargeTopAppBar
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.em
-import androidx.compose.ui.unit.lerp
-import androidx.compose.ui.unit.sp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import coil.compose.AsyncImage
+import com.skeler.scanely.BuildConfig
 import com.skeler.scanely.R
-import com.skeler.scanely.core.common.LocalSettings
 import com.skeler.scanely.navigation.LocalNavController
-// OcrHelper import removed
-import com.skeler.scanely.settings.data.SettingsKeys
-import com.skeler.scanely.settings.presentation.viewmodel.SettingsViewModel
+import com.skeler.scanely.navigation.Routes
+import com.skeler.scanely.ui.components.SettingsGroup
+import com.skeler.scanely.ui.components.SettingsNavTile
+import com.skeler.scanely.ui.components.SettingsSectionHeader
+import com.skeler.scanely.ui.components.SettingsTileDivider
 
+/**
+ * Settings hub. Groups related destinations onto shared tonal surfaces (the
+ * same idiom as the Look & Feel screen) so the whole settings area reads as
+ * one coherent, quiet system rather than a stack of floating cards.
+ */
 @Composable
-fun SettingsScreen(
-    settingsViewModel: SettingsViewModel = hiltViewModel()
-) {
+fun SettingsScreen() {
     val navController = LocalNavController.current
-    val topBarScrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
-    val listState = rememberLazyListState()
+    val uriHandler = LocalUriHandler.current
 
-    // Guard to prevent double-tap during exit animation
-    var navigatingBack by remember { mutableStateOf(false) }
-
+    // Compact bar: the content fits on one screen, so a large/collapsing bar
+    // would only waste vertical space above the first group.
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Text(
-                        text = "Settings",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                },
+            TopAppBar(
+                title = { Text("Settings", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    IconButton(onClick = {
-                        if (!navigatingBack) {
-                            navigatingBack = true
-                            navController.popBackStack()
-                        }
-                    }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
-                        )
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
                     }
                 },
-                actions = {
-                    // Profile Icon placeholder matching design
-                    Box(
-                        modifier = Modifier
-                            .padding(end = 16.dp)
-                            .size(32.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primaryContainer),
-                        contentAlignment = Alignment.Center
-                    ) {
-                         AsyncImage(
-                            model = "https://github.com/Azyrn.png", // Using Azyrn generally or a placeholder
-                            contentDescription = "Profile",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                    }
-                },
-                scrollBehavior = topBarScrollBehavior,
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
                     scrolledContainerColor = MaterialTheme.colorScheme.background
                 )
             )
-        },
-        containerColor = MaterialTheme.colorScheme.background
+        }
     ) { innerPadding ->
         LazyColumn(
-            state = listState,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 16.dp),
-            contentPadding = PaddingValues(top = 16.dp, bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
+                .padding(innerPadding),
+            contentPadding = PaddingValues(bottom = 48.dp)
         ) {
-
-            // --- APPEARANCE ---
             item {
-                SectionHeader(title = "APPEARANCE")
-                Spacer(modifier = Modifier.height(8.dp))
-                SettingsCard(
-                    onClick = { navController.navigate(com.skeler.scanely.navigation.Routes.LOOK_AND_FEEL) }
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .padding(16.dp)
-                            .fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Icon Container
-                        Box(
-                            modifier = Modifier
-                                .size(48.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Brush, // Changed to Brush
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.width(16.dp))
-
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Look & Feel",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = "Dynamic colors, Dark theme, Language",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
+                SettingsSectionHeader(
+                    text = "Customize",
+                    modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 8.dp)
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                SettingsGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    SettingsNavTile(
+                        title = "Look & Feel",
+                        subtitle = "Color palette, dark theme, pure black",
+                        icon = Icons.Rounded.Palette,
+                        onClick = { navController.navigate(Routes.LOOK_AND_FEEL) }
+                    )
+                    SettingsTileDivider()
+                    SettingsNavTile(
+                        title = "AI Providers",
+                        subtitle = "API keys for Gemini & OpenRouter",
+                        icon = Icons.Rounded.AutoAwesome,
+                        onClick = { navController.navigate(Routes.AI_PROVIDERS) }
+                    )
                 }
             }
 
-            // --- ABOUT ---
+            item { Spacer(modifier = Modifier.height(32.dp)) }
+
             item {
-                SectionHeader(title = "ABOUT")
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                val uriHandler = LocalUriHandler.current
-                SettingsCard(
-                    onClick = { uriHandler.openUri("https://github.com/Azyrn/Scanly") }
-                ) {
-                     Row(
-                        modifier = Modifier
-                            .padding(16.dp)
-                            .fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Icon Container
-                        Box(
-                            modifier = Modifier
-                                .size(48.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Code,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.width(16.dp))
-
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Source Code",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = "https://github.com/Azyrn/Scanly",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                        
-                        // GitHub Icon
-                         Icon(
-                            painter = painterResource(id = R.drawable.ic_github),
-                            contentDescription = "GitHub",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
+                SettingsSectionHeader(
+                    text = "About",
+                    modifier = Modifier.padding(horizontal = 24.dp)
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                SettingsGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    SettingsNavTile(
+                        title = "Source code",
+                        subtitle = "github.com/Azyrn/Scanly",
+                        iconPainter = painterResource(id = R.drawable.ic_github),
+                        trailingIcon = Icons.AutoMirrored.Rounded.OpenInNew,
+                        onClick = { uriHandler.openUri("https://github.com/Azyrn/Scanly") }
+                    )
+                    SettingsTileDivider()
+                    SettingsNavTile(
+                        title = "Telegram",
+                        subtitle = "Report bugs or request features",
+                        iconPainter = painterResource(id = R.drawable.ic_telegram),
+                        trailingIcon = Icons.AutoMirrored.Rounded.OpenInNew,
+                        onClick = { uriHandler.openUri("https://t.me/necotinx") }
+                    )
                 }
             }
 
-            // --- CONTACT ---
-            item {
-                SectionHeader(title = "CONTACT")
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                val uriHandler = LocalUriHandler.current
-                SettingsCard(
-                    onClick = { uriHandler.openUri("https://t.me/necotinx") }
-                ) {
-                     Row(
-                        modifier = Modifier
-                            .padding(16.dp)
-                            .fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Icon Container
-                        Box(
-                            modifier = Modifier
-                                .size(48.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_telegram),
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
+            item { Spacer(modifier = Modifier.height(32.dp)) }
 
-                        Spacer(modifier = Modifier.width(16.dp))
-
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Telegram",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = "Report bugs or issues",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                        
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-            }
-
-            // --- CONTRIBUTORS ---
             item {
                 val contributors = listOf(
                     Contributor("Azyrn", "Azyrn", "Developer"),
@@ -345,14 +145,14 @@ fun SettingsScreen(
                 )
 
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    SectionHeader(title = "CONTRIBUTORS")
-                    
-                    // Count Badge
-                     Box(
+                    SettingsSectionHeader(text = "Contributors")
+                    Box(
                         modifier = Modifier
                             .clip(CircleShape)
                             .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
@@ -366,26 +166,24 @@ fun SettingsScreen(
                         )
                     }
                 }
-                
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    contributors.forEach { contributor ->
-                         ContributorItem(contributor)
+                Spacer(modifier = Modifier.height(12.dp))
+                SettingsGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    contributors.forEachIndexed { index, contributor ->
+                        if (index > 0) SettingsTileDivider()
+                        ContributorTile(contributor)
                     }
                 }
             }
-            
-            // Footer
+
             item {
-                 Column(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 24.dp),
+                        .padding(top = 40.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "Scanly v${com.skeler.scanely.BuildConfig.VERSION_NAME} (Build ${com.skeler.scanely.BuildConfig.VERSION_CODE})",
+                        text = "Scanly ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                     )
@@ -395,85 +193,54 @@ fun SettingsScreen(
     }
 }
 
+/**
+ * One contributor row inside the contributors group: avatar, name and handle,
+ * with an external-link affordance since it opens their GitHub profile.
+ */
 @Composable
-private fun SectionHeader(title: String) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.labelLarge,
-        fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f), // Pinkish hue from primary
-        letterSpacing = 0.1.em
-    )
-}
-
-@Composable
-private fun SettingsCard(
-    onClick: () -> Unit,
-    content: @Composable () -> Unit
-) {
-     Card(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp), // More rounded as per design
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow // Light/Whiteish in light mode
-        ),
-        elevation = CardDefaults.cardElevation(0.dp)
-    ) {
-        content()
-    }
-}
-
-@Composable
-private fun ContributorItem(contributor: Contributor) {
+private fun ContributorTile(contributor: Contributor) {
     val uriHandler = LocalUriHandler.current
-    SettingsCard(
-        onClick = { uriHandler.openUri(contributor.githubUrl) }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { uriHandler.openUri(contributor.githubUrl) }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
+        AsyncImage(
+            model = contributor.avatarUrl,
+            contentDescription = null,
             modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            AsyncImage(
-                model = contributor.avatarUrl,
-                contentDescription = null,
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                contentScale = ContentScale.Crop
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+            contentScale = ContentScale.Crop
+        )
+
+        Spacer(modifier = Modifier.width(16.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = contributor.displayName,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface
             )
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = contributor.displayName,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "@${contributor.username}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Text(
-                    text = contributor.role,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                modifier = Modifier.size(20.dp)
+            Text(
+                text = "@${contributor.username} · ${contributor.role}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Icon(
+            imageVector = Icons.AutoMirrored.Rounded.OpenInNew,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
+            modifier = Modifier.size(18.dp)
+        )
     }
 }
 

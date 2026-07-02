@@ -1,16 +1,16 @@
 package com.skeler.scanely.core.actions
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Call
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Link
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.RestaurantMenu
-import androidx.compose.material.icons.filled.Sms
-import androidx.compose.material.icons.automirrored.filled.TextSnippet
-import androidx.compose.material.icons.filled.Wifi
+import androidx.compose.material.icons.rounded.Call
+import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.material.icons.rounded.Email
 import androidx.compose.material.icons.rounded.Event
+import androidx.compose.material.icons.rounded.Link
+import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.RestaurantMenu
+import androidx.compose.material.icons.rounded.Sms
+import androidx.compose.material.icons.automirrored.rounded.TextSnippet
+import androidx.compose.material.icons.rounded.Wifi
 import androidx.compose.ui.graphics.vector.ImageVector
 
 /**
@@ -41,7 +41,7 @@ sealed class ScanAction {
      */
     data class OpenUrl(val url: String) : ScanAction() {
         override val label: String = "Open Link"
-        override val icon: ImageVector = Icons.Default.Link
+        override val icon: ImageVector = Icons.Rounded.Link
     }
     
     /**
@@ -50,7 +50,7 @@ sealed class ScanAction {
      */
     data class CopyText(val text: String, val displayLabel: String = "Copy") : ScanAction() {
         override val label: String = displayLabel
-        override val icon: ImageVector = Icons.Default.ContentCopy
+        override val icon: ImageVector = Icons.Rounded.ContentCopy
     }
     
     /**
@@ -59,7 +59,7 @@ sealed class ScanAction {
      */
     data class CallPhone(val number: String) : ScanAction() {
         override val label: String = "Call"
-        override val icon: ImageVector = Icons.Default.Call
+        override val icon: ImageVector = Icons.Rounded.Call
     }
     
     /**
@@ -71,7 +71,7 @@ sealed class ScanAction {
         val body: String? = null
     ) : ScanAction() {
         override val label: String = "Send Email"
-        override val icon: ImageVector = Icons.Default.Email
+        override val icon: ImageVector = Icons.Rounded.Email
     }
     
     /**
@@ -84,7 +84,7 @@ sealed class ScanAction {
         val type: WifiType
     ) : ScanAction() {
         override val label: String = "Connect to WiFi"
-        override val icon: ImageVector = Icons.Default.Wifi
+        override val icon: ImageVector = Icons.Rounded.Wifi
     }
     
     /**
@@ -95,7 +95,7 @@ sealed class ScanAction {
         val message: String? = null
     ) : ScanAction() {
         override val label: String = "Send SMS"
-        override val icon: ImageVector = Icons.Default.Sms
+        override val icon: ImageVector = Icons.Rounded.Sms
     }
     
     /**
@@ -108,7 +108,7 @@ sealed class ScanAction {
         val organization: String? = null
     ) : ScanAction() {
         override val label: String = "Add Contact"
-        override val icon: ImageVector = Icons.Default.Person
+        override val icon: ImageVector = Icons.Rounded.Person
     }
     
     /**
@@ -117,7 +117,7 @@ sealed class ScanAction {
      */
     data class ShowRaw(val text: String) : ScanAction() {
         override val label: String = "View Text"
-        override val icon: ImageVector = Icons.AutoMirrored.Filled.TextSnippet
+        override val icon: ImageVector = Icons.AutoMirrored.Rounded.TextSnippet
     }
     
     /**
@@ -142,6 +142,6 @@ sealed class ScanAction {
      */
     data class LookupProduct(val barcode: String) : ScanAction() {
         override val label: String = "Product Info"
-        override val icon: ImageVector = Icons.Default.RestaurantMenu
+        override val icon: ImageVector = Icons.Rounded.RestaurantMenu
     }
 }

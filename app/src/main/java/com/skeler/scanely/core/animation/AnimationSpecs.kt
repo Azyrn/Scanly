@@ -3,14 +3,15 @@ package com.skeler.scanely.core.animation
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.Easing
+import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.FiniteAnimationSpec
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -30,70 +31,64 @@ val EaseOutExpo = Easing { fraction ->
     if (fraction == 1f) 1f else 1f - 2f.pow(-10f * fraction)
 }
 
-// --- Animation Duration Constants ---
-// ULTRATHINK Reasoning:
-// - Enter: 300ms allows eye to track the scale expansion
-// - Exit: 150ms feels "responsive" since user initiated the action
-// - Scale: 0.92→1.0 is subliminal yet creates depth perception
-private const val ENTER_DURATION_MS = 400
-private const val ENTER_DELAY_MS = 100
-private const val EXIT_DURATION_MS = 150
-private const val INITIAL_SCALE = 0.92f
-private const val EXIT_SCALE = 1.08f
+// Shared-axis X (Material 3 motion): screens travel along the horizontal
+// axis with a fade-through, so navigation reads as moving through space
+// instead of dissolving in place. The incoming fade is delayed so the two
+// screens never blend into an illegible double exposure.
+private const val AXIS_DURATION_MS = 350
+private const val FADE_IN_DURATION_MS = 250
+private const val FADE_IN_DELAY_MS = 60
+private const val FADE_OUT_DURATION_MS = 140
+
+// A fraction of the screen width, not the full width: the motion suggests
+// the edge without dragging content all the way across the viewport.
+private const val AXIS_DISTANCE_FRACTION = 0.30f
+
+private fun axisDistance(fullWidth: Int): Int =
+    (fullWidth * AXIS_DISTANCE_FRACTION).toInt()
 
 /**
- * Fade+Scale enter transition (forward navigation).
- *
- * ULTRATHINK Deep Reasoning:
- * - Full-width slides CLIP corners on rounded screens (20-40dp radii)
- * - FadeIn + ScaleIn keeps ALL 4 corners visible throughout animation
- * - Content emerges from CENTER, requiring no eye tracking across viewport
- * - 0.92f scale creates subtle "emerging from depth" effect
+ * Forward enter: new screen slides in from the trailing (right) edge and
+ * fades through, easing out to a gentle stop.
  */
-fun gallerySlideEnter(): EnterTransition = fadeIn(
-    animationSpec = tween(ENTER_DURATION_MS, easing = EaseOutExpo, delayMillis = ENTER_DELAY_MS)
-) + scaleIn(
-    initialScale = INITIAL_SCALE,
-    animationSpec = tween(ENTER_DURATION_MS, easing = EaseOutExpo, delayMillis = ENTER_DELAY_MS)
+fun gallerySlideEnter(): EnterTransition = slideInHorizontally(
+    animationSpec = tween(AXIS_DURATION_MS, easing = EaseOutExpo),
+    initialOffsetX = { axisDistance(it) }
+) + fadeIn(
+    animationSpec = tween(FADE_IN_DURATION_MS, delayMillis = FADE_IN_DELAY_MS, easing = LinearOutSlowInEasing)
 )
 
 /**
- * Fade+Scale exit transition (forward navigation).
- *
- * Exit scales UP slightly (1.08) to create "pushed back" parallax effect
- * while new content emerges in front.
+ * Forward exit: outgoing screen recedes toward the leading (left) edge with
+ * a quick fade so the incoming screen owns the frame almost immediately.
  */
-fun gallerySlideExit(): ExitTransition = fadeOut(
-    animationSpec = tween(durationMillis = EXIT_DURATION_MS, easing = FastOutSlowInEasing)
-) + scaleOut(
-    targetScale = EXIT_SCALE,
-    animationSpec = tween(durationMillis = EXIT_DURATION_MS, easing = FastOutSlowInEasing)
+fun gallerySlideExit(): ExitTransition = slideOutHorizontally(
+    animationSpec = tween(AXIS_DURATION_MS, easing = EaseOutExpo),
+    targetOffsetX = { -axisDistance(it) }
+) + fadeOut(
+    animationSpec = tween(FADE_OUT_DURATION_MS, easing = FastOutLinearInEasing)
 )
 
 /**
- * Pop enter transition (back navigation).
- *
- * When going BACK, content scales DOWN from 1.08 to 1.0 (reversing the exit).
- * This creates visual continuity: what "pushed back" now "pulls forward".
+ * Back enter: previous screen returns from the leading (left) edge,
+ * mirroring the forward exit for spatial continuity.
  */
-fun galleryPopEnter(): EnterTransition = fadeIn(
-    animationSpec = tween(ENTER_DURATION_MS, easing = EaseOutExpo, delayMillis = ENTER_DELAY_MS)
-) + scaleIn(
-    initialScale = EXIT_SCALE,
-    animationSpec = tween(ENTER_DURATION_MS, easing = EaseOutExpo, delayMillis = ENTER_DELAY_MS)
+fun galleryPopEnter(): EnterTransition = slideInHorizontally(
+    animationSpec = tween(AXIS_DURATION_MS, easing = EaseOutExpo),
+    initialOffsetX = { -axisDistance(it) }
+) + fadeIn(
+    animationSpec = tween(FADE_IN_DURATION_MS, delayMillis = FADE_IN_DELAY_MS, easing = LinearOutSlowInEasing)
 )
 
 /**
- * Pop exit transition (back navigation).
- *
- * Exiting screen scales DOWN and fades, as if "falling away" to reveal
- * the previous screen behind it.
+ * Back exit: dismissed screen slides off toward the trailing (right) edge,
+ * exactly reversing its entrance.
  */
-fun galleryPopExit(): ExitTransition = fadeOut(
-    animationSpec = tween(durationMillis = EXIT_DURATION_MS, easing = FastOutSlowInEasing)
-) + scaleOut(
-    targetScale = INITIAL_SCALE,
-    animationSpec = tween(durationMillis = EXIT_DURATION_MS, easing = FastOutSlowInEasing)
+fun galleryPopExit(): ExitTransition = slideOutHorizontally(
+    animationSpec = tween(AXIS_DURATION_MS, easing = EaseOutExpo),
+    targetOffsetX = { axisDistance(it) }
+) + fadeOut(
+    animationSpec = tween(FADE_OUT_DURATION_MS, easing = FastOutLinearInEasing)
 )
 
 /**

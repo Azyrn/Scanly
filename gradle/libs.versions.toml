@@ -1,6 +1,6 @@
 [versions]
-agp = "8.13.2"
-kotlin = "2.2.20"
+agp = "9.2.1"
+kotlin = "2.3.20"
 coreKtx = "1.17.0"
 junit = "4.13.2"
 junitVersion = "1.3.0"
@@ -16,14 +16,14 @@ accompanist = "0.37.3"
 # ML Kit
 mlkitBarcode = "17.3.0"
 mlkitTextRecognition = "16.0.1"
+mlkitDocumentScanner = "16.0.0-beta1"
 material3 = "1.5.0-alpha12"
 datastore = "1.2.0"
-hilt = "2.55"
+hilt = "2.60"
 hiltExt = "1.3.0"
-ksp = "2.2.20-2.0.3"
+ksp = "2.3.9"
 serialization = "1.10.0"
 work = "2.11.0"
-generativeai = "0.9.0"
 googleServices = "4.4.4"
 crashlytics = "3.0.6"
 firebaseBom = "34.8.0"
@@ -32,7 +32,7 @@ retrofit = "2.11.0"
 okhttp = "4.12.0"
 retrofitKotlinxConverter = "1.0.0"
 # Baseline Profile
-benchmarkMacro = "1.3.4"
+benchmarkMacro = "1.5.0-alpha06"
 uiautomator = "2.4.0"
 profileInstaller = "1.4.1"
 detekt = "1.23.7"
@@ -69,6 +69,7 @@ androidx-compose-material-icons-extended = { group = "androidx.compose.material"
 # ML Kit
 mlkit-barcode = { group = "com.google.mlkit", name = "barcode-scanning", version.ref = "mlkitBarcode" }
 mlkit-text-recognition = { group = "com.google.mlkit", name = "text-recognition", version.ref = "mlkitTextRecognition" }
+mlkit-document-scanner = { group = "com.google.android.gms", name = "play-services-mlkit-document-scanner", version.ref = "mlkitDocumentScanner" }
 # DataStore
 datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
@@ -79,9 +80,6 @@ serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serializ
 androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "work" }
 # Material Color Utilities for proper tonal palette generation
 material-color-utilities = { group = "com.google.android.material", name = "material", version.ref = "material" }
-# Google Generative AI (Gemini)
-generativeai = { group = "com.google.ai.client.generativeai", name = "generativeai", version.ref = "generativeai" }
-
 # Firebase
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
 firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics" }

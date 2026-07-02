@@ -25,37 +25,38 @@ val Typography = Typography(
         fontWeight = FontWeight.Bold,
         fontSize = 45.sp,
         lineHeight = 52.sp,
-        letterSpacing = 0.sp
+        letterSpacing = (-0.25).sp
     ),
     displaySmall = TextStyle(
         fontFamily = ScanelyFontFamily,
         fontWeight = FontWeight.SemiBold,
         fontSize = 36.sp,
         lineHeight = 44.sp,
-        letterSpacing = 0.sp
+        letterSpacing = (-0.2).sp
     ),
-    
-    // Headline styles - for section headers
+
+    // Headline styles - for section headers.
+    // Slight negative tracking tightens large text for a refined, premium look.
     headlineLarge = TextStyle(
         fontFamily = ScanelyFontFamily,
         fontWeight = FontWeight.Bold,
         fontSize = 32.sp,
         lineHeight = 40.sp,
-        letterSpacing = 0.sp
+        letterSpacing = (-0.2).sp
     ),
     headlineMedium = TextStyle(
         fontFamily = ScanelyFontFamily,
         fontWeight = FontWeight.SemiBold,
         fontSize = 28.sp,
         lineHeight = 36.sp,
-        letterSpacing = 0.sp
+        letterSpacing = (-0.15).sp
     ),
     headlineSmall = TextStyle(
         fontFamily = ScanelyFontFamily,
         fontWeight = FontWeight.SemiBold,
         fontSize = 24.sp,
         lineHeight = 32.sp,
-        letterSpacing = 0.sp
+        letterSpacing = (-0.1).sp
     ),
     
     // Title styles - for card titles and prominent UI elements

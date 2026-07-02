@@ -21,21 +21,18 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.QrCode2
-import androidx.compose.material.icons.automirrored.filled.TextSnippet
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.QrCode2
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -47,18 +44,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import coil.compose.AsyncImage
 import com.skeler.scanely.core.actions.ActionExecutor
 import com.skeler.scanely.core.actions.ScanAction
 import com.skeler.scanely.navigation.LocalNavController
-import com.skeler.scanely.ui.ScanViewModel
+import com.skeler.scanely.ui.components.ExtractedTextSection
+import com.skeler.scanely.ui.components.rememberTextExporter
 import com.skeler.scanely.ui.viewmodel.UnifiedScanViewModel
 
 /**
@@ -72,12 +68,11 @@ import com.skeler.scanely.ui.viewmodel.UnifiedScanViewModel
 fun UnifiedResultsScreen() {
     val context = LocalContext.current
     val activity = context as ComponentActivity
-    val scanViewModel: ScanViewModel = hiltViewModel(activity)
     val unifiedViewModel: UnifiedScanViewModel = hiltViewModel(activity)
     val navController = LocalNavController.current
 
     val uiState by unifiedViewModel.uiState.collectAsState()
-    val scanState by scanViewModel.uiState.collectAsState()
+    val exportText = rememberTextExporter()
 
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
 
@@ -90,7 +85,7 @@ fun UnifiedResultsScreen() {
                         unifiedViewModel.clearResult()
                         navController.popBackStack() 
                     }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
                     }
                 },
                 scrollBehavior = scrollBehavior
@@ -107,7 +102,7 @@ fun UnifiedResultsScreen() {
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        CircularProgressIndicator()
+                        LoadingIndicator()
                         Spacer(modifier = Modifier.height(16.dp))
                         Text("Scanning...", style = MaterialTheme.typography.bodyLarge)
                     }
@@ -137,32 +132,11 @@ fun UnifiedResultsScreen() {
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // Image preview
-                    scanState.selectedImageUri?.let { uri ->
-                        item {
-                            Card(
-                                shape = MaterialTheme.shapes.large,
-                                colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                                )
-                            ) {
-                                AsyncImage(
-                                    model = uri,
-                                    contentDescription = "Scanned image",
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(200.dp),
-                                    contentScale = ContentScale.Crop
-                                )
-                            }
-                        }
-                    }
-
                     // Barcode Results Section
                     if (uiState.hasBarcodes) {
                         item {
                             SectionHeader(
-                                icon = Icons.Default.QrCode2,
+                                icon = Icons.Rounded.QrCode2,
                                 title = "Barcodes Detected"
                             )
                         }
@@ -217,45 +191,19 @@ fun UnifiedResultsScreen() {
 
                     // Text Results Section
                     if (uiState.hasText) {
+                        val extracted = uiState.extractedText.orEmpty()
                         item {
-                            SectionHeader(
-                                icon = Icons.AutoMirrored.Filled.TextSnippet,
-                                title = "Extracted Text"
+                            ExtractedTextSection(
+                                text = extracted,
+                                onCopy = {
+                                    val clipboard = context.getSystemService(ClipboardManager::class.java)
+                                    clipboard.setPrimaryClip(
+                                        ClipData.newPlainText("Extracted Text", extracted)
+                                    )
+                                    Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
+                                },
+                                onExport = { format -> exportText(extracted, format) }
                             )
-                        }
-                        
-                        item {
-                            Card(
-                                colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                                ),
-                                shape = MaterialTheme.shapes.medium
-                            ) {
-                                Column(modifier = Modifier.padding(16.dp)) {
-                                    SelectionContainer {
-                                        Text(
-                                            text = uiState.extractedText ?: "",
-                                            style = MaterialTheme.typography.bodyLarge
-                                        )
-                                    }
-                                    
-                                    Spacer(modifier = Modifier.height(16.dp))
-                                    
-                                    FilledTonalButton(
-                                        onClick = {
-                                            val clipboard = context.getSystemService(ClipboardManager::class.java)
-                                            val clip = ClipData.newPlainText("Extracted Text", uiState.extractedText)
-                                            clipboard.setPrimaryClip(clip)
-                                            Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
-                                        },
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text("Copy All Text")
-                                    }
-                                }
-                            }
                         }
                     }
                 }

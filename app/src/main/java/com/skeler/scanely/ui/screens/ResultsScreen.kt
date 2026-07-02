@@ -3,6 +3,8 @@
 package com.skeler.scanely.ui.screens
 
 import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -18,12 +20,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -50,11 +53,12 @@ import com.skeler.scanely.core.ocr.OcrResult
 import com.skeler.scanely.navigation.LocalNavController
 import com.skeler.scanely.ui.ScanViewModel
 import com.skeler.scanely.ui.components.EmptyResultContent
+import com.skeler.scanely.ui.components.ExtractedTextSection
 import com.skeler.scanely.ui.components.LanguageChipRow
 import com.skeler.scanely.ui.components.ProcessingContent
 import com.skeler.scanely.ui.components.RateLimitSheet
-import com.skeler.scanely.ui.components.ReadableTextContent
 import com.skeler.scanely.ui.components.TranslatingContent
+import com.skeler.scanely.ui.components.rememberTextExporter
 import com.skeler.scanely.ui.viewmodel.AiScanViewModel
 import com.skeler.scanely.ui.viewmodel.OcrViewModel
 import kotlinx.coroutines.Dispatchers
@@ -78,6 +82,7 @@ fun ResultsScreen() {
     val ocrViewModel: OcrViewModel = hiltViewModel(activity)
     val navController = LocalNavController.current
     val scope = rememberCoroutineScope()
+    val exportText = rememberTextExporter()
 
     val scanState by scanViewModel.uiState.collectAsState()
     val aiState by aiViewModel.aiState.collectAsState()
@@ -169,7 +174,7 @@ fun ResultsScreen() {
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
@@ -187,31 +192,27 @@ fun ResultsScreen() {
                     if (isAiResult && aiState.lastImageUri != null) {
                         FloatingActionButton(
                             onClick = {
-                                aiViewModel.getRescanParams()?.let { (uri, mode) ->
+                                aiViewModel.getRescanParams()?.let { (uri, mode, provider) ->
                                     scanViewModel.triggerAiWithRateLimit {
-                                        aiViewModel.processImage(uri, mode)
+                                        aiViewModel.processImage(uri, mode, provider)
                                     }
                                 }
                             },
                             containerColor = MaterialTheme.colorScheme.secondaryContainer,
                             contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                         ) {
-                            Icon(Icons.Default.Refresh, contentDescription = "Rescan")
+                            Icon(Icons.Rounded.Refresh, contentDescription = "Rescan")
                         }
                     }
                     
-                    // Copy FAB
-                    FloatingActionButton(
-                        onClick = {
-                            val clipboard = context.getSystemService(android.content.ClipboardManager::class.java)
-                            clipboard.setPrimaryClip(ClipData.newPlainText("Extracted Text", displayText))
-                            Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
-                        },
+                    // Prominent, labeled copy action for one-tap copying.
+                    ExtendedFloatingActionButton(
+                        onClick = { copyToClipboard(context, displayText) },
+                        icon = { Icon(Icons.Rounded.ContentCopy, contentDescription = null) },
+                        text = { Text("Copy") },
                         containerColor = MaterialTheme.colorScheme.primaryContainer,
                         contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                    ) {
-                        Icon(Icons.Default.ContentCopy, contentDescription = "Copy All")
-                    }
+                    )
                 }
             }
         },
@@ -234,7 +235,18 @@ fun ResultsScreen() {
                     isProcessing -> {
                         ProcessingContent(
                             currentFile = aiState.currentFileIndex,
-                            totalFiles = aiState.totalFiles
+                            totalFiles = aiState.totalFiles,
+                            stage = aiState.stage,
+                            stageMessage = aiState.stageMessage,
+                            streamingText = aiState.streamingText,
+                            // Only the AI pipeline is cancellable; plain OCR
+                            // finishes in well under a second.
+                            onCancel = if (aiState.isProcessing) {
+                                {
+                                    aiViewModel.cancelProcessing()
+                                    onBack()
+                                }
+                            } else null
                         )
                     }
                     isTranslating -> {
@@ -260,7 +272,11 @@ fun ResultsScreen() {
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                         }
-                        ReadableTextContent(text = displayText)
+                        ExtractedTextSection(
+                            text = displayText,
+                            onCopy = { copyToClipboard(context, displayText) },
+                            onExport = { format -> exportText(displayText, format) }
+                        )
                     }
                     else -> {
                         EmptyResultContent()
@@ -271,4 +287,11 @@ fun ResultsScreen() {
             }
         }
     }
+}
+
+/** Copy [text] to the clipboard and show a confirmation toast. */
+private fun copyToClipboard(context: Context, text: String) {
+    val clipboard = context.getSystemService(ClipboardManager::class.java)
+    clipboard.setPrimaryClip(ClipData.newPlainText("Extracted Text", text))
+    Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
 }

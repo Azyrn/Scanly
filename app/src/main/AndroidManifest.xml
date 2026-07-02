@@ -8,12 +8,26 @@
     
     <!-- Storage for gallery access -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <!-- Legacy gallery write for saving scans on pre-Q devices (scoped storage handles Q+) -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <!-- Android 14+ partial photo access -->
     <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
     
     <!-- WiFi for QR code WiFi connection -->
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+
+    <!-- Package visibility (Android 11+): so exported PDFs can resolve viewers -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:mimeType="application/pdf" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SEND" />
+            <data android:mimeType="application/pdf" />
+        </intent>
+    </queries>
 
     <application
         android:name=".App"

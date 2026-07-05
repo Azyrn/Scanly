@@ -11,8 +11,10 @@ import com.skeler.scanely.core.ai.AiStage
 import com.skeler.scanely.core.ai.GenerativeAiService
 import com.skeler.scanely.history.data.HistoryManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -47,7 +49,9 @@ data class AiScanState(
     /** Current file index being processed (1-indexed for display) */
     val currentFileIndex: Int = 0,
     /** All URIs being processed (for multi-file) */
-    val allUris: List<Uri> = emptyList()
+    val allUris: List<Uri> = emptyList(),
+    /** One-shot user-facing message (e.g. a translation failure). */
+    val message: String? = null
 )
 
 /**
@@ -66,6 +70,11 @@ class AiScanViewModel @Inject constructor(
     /** The in-flight processing job, so Cancel can abort it. */
     private var processingJob: Job? = null
 
+    /** Pending history save for the current result, so edits update it in place.
+     * Deferred (not a plain id) so an edit fired before the save completes can
+     * await the row id instead of silently missing it. */
+    private var savedHistoryId: Deferred<String?>? = null
+
     /**
      * Process an image with the specified AI mode. Progress (stages and
      * streamed text) is surfaced through [aiState] as it happens.
@@ -81,35 +90,40 @@ class AiScanViewModel @Inject constructor(
                 lastImageUri = imageUri
             )
 
-            var result: AiResult = AiResult.Error("Cancelled")
-            aiService.processImageEvents(imageUri, mode, provider).collect { event ->
-                when (event) {
-                    is AiEvent.Stage -> _aiState.value = _aiState.value.copy(
-                        stage = event.stage,
-                        stageMessage = event.message
-                    )
-                    is AiEvent.Delta -> _aiState.value = _aiState.value.copy(
-                        streamingText = event.textSoFar
-                    )
-                    is AiEvent.Finished -> result = event.result
-                }
-            }
+            val result = collectPipeline(imageUri, mode, provider)
+            publishFinalResult(result, imageUri)
+        }
+    }
 
-            val finalResult = result
-            val originalText = if (finalResult is AiResult.Success) finalResult.text else null
-            _aiState.value = _aiState.value.copy(
-                isProcessing = false,
-                stage = null,
-                stageMessage = null,
-                streamingText = null,
-                result = finalResult,
-                originalText = originalText
-            )
-
-            // Save to history on success
-            if (finalResult is AiResult.Success && finalResult.text.isNotBlank()) {
-                saveToHistory(finalResult.text, imageUri)
+    /** Runs the AI pipeline for one file, mirroring its events into [aiState]. */
+    private suspend fun collectPipeline(uri: Uri, mode: AiMode, provider: AiProvider): AiResult {
+        var result: AiResult = AiResult.Error("Cancelled")
+        aiService.processImageEvents(uri, mode, provider).collect { event ->
+            when (event) {
+                is AiEvent.Stage -> _aiState.value = _aiState.value.copy(
+                    stage = event.stage,
+                    stageMessage = event.message
+                )
+                is AiEvent.Delta -> _aiState.value = _aiState.value.copy(
+                    streamingText = event.textSoFar
+                )
+                is AiEvent.Finished -> result = event.result
             }
+        }
+        return result
+    }
+
+    private fun publishFinalResult(result: AiResult, historyUri: Uri) {
+        _aiState.value = _aiState.value.copy(
+            isProcessing = false,
+            stage = null,
+            stageMessage = null,
+            streamingText = null,
+            result = result,
+            originalText = (result as? AiResult.Success)?.text
+        )
+        if (result is AiResult.Success && result.text.isNotBlank()) {
+            saveToHistory(result.text, historyUri)
         }
     }
 
@@ -155,38 +169,17 @@ class AiScanViewModel @Inject constructor(
                     lastImageUri = uri
                 )
 
-                var result: AiResult = AiResult.Error("Cancelled")
-                aiService.processImageEvents(uri, mode, provider).collect { event ->
-                    when (event) {
-                        is AiEvent.Stage -> _aiState.value = _aiState.value.copy(
-                            stage = event.stage,
-                            stageMessage = event.message
-                        )
-                        is AiEvent.Delta -> _aiState.value = _aiState.value.copy(
-                            streamingText = event.textSoFar
-                        )
-                        is AiEvent.Finished -> result = event.result
-                    }
-                }
+                val result = collectPipeline(uri, mode, provider)
                 _aiState.value = _aiState.value.copy(streamingText = null)
 
-                when (val fileResult = result) {
-                    is AiResult.Success -> {
-                        if (allResults.isNotEmpty()) {
-                            allResults.append("\n\n--- File ${index + 1} ---\n\n")
-                        }
-                        allResults.append(fileResult.text)
-                    }
-                    is AiResult.Error -> {
-                        if (allResults.isNotEmpty()) {
-                            allResults.append("\n\n--- File ${index + 1} (Error) ---\n\n")
-                        }
-                        allResults.append("Error: ${fileResult.message}")
-                    }
-                    is AiResult.RateLimited -> {
-                        allResults.append("\n\n--- Rate Limited ---\n")
-                    }
+                val (label, body) = when (result) {
+                    is AiResult.Success -> "" to result.text
+                    is AiResult.Error -> " (Error)" to "Error: ${result.message}"
                 }
+                if (allResults.isNotEmpty()) {
+                    allResults.append("\n\n--- File ${index + 1}$label ---\n\n")
+                }
+                allResults.append(body)
             }
 
             val combinedResult = if (allResults.isNotEmpty()) {
@@ -195,19 +188,8 @@ class AiScanViewModel @Inject constructor(
                 AiResult.Error("No text extracted from any file")
             }
 
-            _aiState.value = _aiState.value.copy(
-                isProcessing = false,
-                stage = null,
-                stageMessage = null,
-                streamingText = null,
-                result = combinedResult,
-                originalText = if (combinedResult is AiResult.Success) combinedResult.text else null
-            )
-
-            // Save combined result to history (using first file as reference)
-            if (combinedResult is AiResult.Success && combinedResult.text.isNotBlank()) {
-                saveToHistory(combinedResult.text, uris.first())
-            }
+            // Combined result saves to history keyed on the first file.
+            publishFinalResult(combinedResult, uris.first())
         }
     }
 
@@ -215,13 +197,48 @@ class AiScanViewModel @Inject constructor(
      * Save extraction result to history.
      */
     private fun saveToHistory(text: String, uri: Uri) {
-        viewModelScope.launch(Dispatchers.IO) {
+        savedHistoryId = viewModelScope.async(Dispatchers.IO) {
             try {
-                historyManager.saveItem(text, uri.toString())
+                historyManager.saveItem(text, uri.toString()).id
             } catch (e: Exception) {
-                // Silent fail - don't interrupt user flow
+                null // Silent fail - don't interrupt user flow
             }
         }
+    }
+
+    /**
+     * Replace the extracted text with a user correction. Updates the in-memory
+     * result and the persisted history row so the corrected version is what gets
+     * exported now and what re-opens from history later.
+     */
+    fun updateText(newText: String) {
+        val state = _aiState.value
+        val language = state.currentLanguage
+        if (language != null) {
+            // Editing a translation edits that cached translation, not the source.
+            _aiState.value = state.copy(
+                translationCache = state.translationCache + (language to newText)
+            )
+            return
+        }
+        _aiState.value = state.copy(
+            result = AiResult.Success(newText),
+            originalText = newText
+        )
+        val pendingId = savedHistoryId ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val id = pendingId.await() ?: return@launch
+                historyManager.updateItemText(id, newText)
+            } catch (e: Exception) {
+                // Persistence failure shouldn't disrupt the in-memory correction.
+            }
+        }
+    }
+
+    /** Consume the one-shot [AiScanState.message] after it has been shown. */
+    fun consumeMessage() {
+        _aiState.value = _aiState.value.copy(message = null)
     }
 
     /**
@@ -259,13 +276,13 @@ class AiScanViewModel @Inject constructor(
                         currentLanguage = targetLanguage
                     )
                 }
-                is AiResult.RateLimited -> {
-                    _aiState.value = _aiState.value.copy(isTranslating = false)
-                    // Rate limit handled by ScanViewModel - don't update state further
-                }
                 is AiResult.Error -> {
-                    _aiState.value = _aiState.value.copy(isTranslating = false)
-                    // Could show error toast via state if needed
+                    // Surface the failure instead of silently snapping back to the
+                    // original text, which reads as "nothing happened".
+                    _aiState.value = _aiState.value.copy(
+                        isTranslating = false,
+                        message = "Translation failed. Please try again."
+                    )
                 }
             }
         }
@@ -291,6 +308,7 @@ class AiScanViewModel @Inject constructor(
      * Clear the current AI result.
      */
     fun clearResult() {
+        savedHistoryId = null
         _aiState.value = AiScanState()
     }
 }

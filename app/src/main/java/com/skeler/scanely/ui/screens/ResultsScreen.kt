@@ -40,7 +40,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,9 +47,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.lifecycleScope
 import com.skeler.scanely.core.ai.AiResult
 import com.skeler.scanely.core.ocr.OcrResult
 import com.skeler.scanely.navigation.LocalNavController
+import com.skeler.scanely.navigation.Routes
 import com.skeler.scanely.ui.ScanViewModel
 import com.skeler.scanely.ui.components.EmptyResultContent
 import com.skeler.scanely.ui.components.ExtractedTextSection
@@ -58,10 +59,10 @@ import com.skeler.scanely.ui.components.LanguageChipRow
 import com.skeler.scanely.ui.components.ProcessingContent
 import com.skeler.scanely.ui.components.RateLimitSheet
 import com.skeler.scanely.ui.components.TranslatingContent
+import com.skeler.scanely.ui.components.TranslationLanguages
 import com.skeler.scanely.ui.components.rememberTextExporter
 import com.skeler.scanely.ui.viewmodel.AiScanViewModel
 import com.skeler.scanely.ui.viewmodel.OcrViewModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -81,7 +82,6 @@ fun ResultsScreen() {
     val aiViewModel: AiScanViewModel = hiltViewModel(activity)
     val ocrViewModel: OcrViewModel = hiltViewModel(activity)
     val navController = LocalNavController.current
-    val scope = rememberCoroutineScope()
     val exportText = rememberTextExporter()
 
     val scanState by scanViewModel.uiState.collectAsState()
@@ -89,7 +89,7 @@ fun ResultsScreen() {
     val ocrState by ocrViewModel.uiState.collectAsState()
     
     // Processing state
-    val isProcessing = scanState.isProcessing || aiState.isProcessing || ocrState.isProcessing
+    val isProcessing = aiState.isProcessing || ocrState.isProcessing
     val isTranslating = aiState.isTranslating
     
     // Text priority: History > AI > OCR
@@ -97,7 +97,6 @@ fun ResultsScreen() {
     val aiResultText = when (val result = aiState.result) {
         is AiResult.Success -> result.text
         is AiResult.Error -> "Error: ${result.message}"
-        is AiResult.RateLimited -> "Rate limited. Wait ${result.remainingMs / 1000}s"
         null -> null
     }
     val ocrResultText = when (val result = ocrState.result) {
@@ -115,22 +114,12 @@ fun ResultsScreen() {
     // Rate Limit & Network State
     val rateLimitState by scanViewModel.rateLimitState.collectAsState()
     val showRateLimitSheet by scanViewModel.showRateLimitSheet.collectAsState()
+    val isRewardedAdAvailable by scanViewModel.isRewardedAdAvailable.collectAsState()
     val isOnline by scanViewModel.isOnline.collectAsState()
     
     // Language menu state
     var showLanguageMenu by remember { mutableStateOf(false) }
-    val languages = listOf(
-        "English", "Spanish", "French", "German", "Italian", 
-        "Portuguese", "Russian", "Japanese", "Korean", "Chinese",
-        "Arabic", "Hindi", "Turkish", "Dutch", "Polish"
-    )
-
-    // Auto-dismiss rate limit sheet
-    LaunchedEffect(rateLimitState.remainingSeconds, rateLimitState.justBecameReady) {
-        if (rateLimitState.remainingSeconds == 0 && rateLimitState.justBecameReady) {
-            scanViewModel.dismissRateLimitSheet()
-        }
-    }
+    val languages = TranslationLanguages.ALL
 
     var showContent by remember { mutableStateOf(false) }
     var navigatingUp by remember { mutableStateOf(false) }
@@ -139,7 +128,9 @@ fun ResultsScreen() {
         if (!navigatingUp) {
             navigatingUp = true
             navController.popBackStack()
-            scope.launch(Dispatchers.Default) {
+            // Activity scope: outlives this composable, so the cleanup still runs
+            // after the pop animation instead of dying with the composition.
+            activity.lifecycleScope.launch {
                 delay(600)
                 scanViewModel.clearState()
                 aiViewModel.clearResult()
@@ -153,12 +144,22 @@ fun ResultsScreen() {
         showContent = true
     }
 
+    // Surface one-shot messages (e.g. a translation failure) as a toast.
+    LaunchedEffect(aiState.message) {
+        aiState.message?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            aiViewModel.consumeMessage()
+        }
+    }
+
     BackHandler { onBack() }
 
     if (showRateLimitSheet) {
         RateLimitSheet(
             remainingSeconds = rateLimitState.remainingSeconds,
-            onDismiss = { scanViewModel.dismissRateLimitSheet() }
+            onDismiss = { scanViewModel.dismissRateLimitSheet() },
+            adAvailable = isRewardedAdAvailable,
+            onWatchAd = { scanViewModel.showRewardedAdForExtraScan(activity) }
         )
     }
 
@@ -193,7 +194,7 @@ fun ResultsScreen() {
                         FloatingActionButton(
                             onClick = {
                                 aiViewModel.getRescanParams()?.let { (uri, mode, provider) ->
-                                    scanViewModel.triggerAiWithRateLimit {
+                                    scanViewModel.triggerAiWithRateLimit(provider) {
                                         aiViewModel.processImage(uri, mode, provider)
                                     }
                                 }
@@ -265,17 +266,28 @@ fun ResultsScreen() {
                                 allLanguages = languages,
                                 onNewLanguageSelected = { language ->
                                     showLanguageMenu = false
-                                    scanViewModel.triggerAiWithRateLimit {
+                                    scanViewModel.triggerAiWithRateLimit(aiState.provider) {
                                         aiViewModel.translateResult(language)
                                     }
-                                }
+                                },
+                                onComposeText = { navController.navigate(Routes.TEXT_COMPOSE) }
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                         }
                         ExtractedTextSection(
                             text = displayText,
                             onCopy = { copyToClipboard(context, displayText) },
-                            onExport = { format -> exportText(displayText, format) }
+                            onExport = { format -> exportText(displayText, format) },
+                            onSaveEdit = { edited ->
+                                when {
+                                    // Editing a shown translation corrects that translation.
+                                    currentLanguage != null -> aiViewModel.updateText(edited)
+                                    // Reopened-from-history text persists to its row.
+                                    historyText != null -> scanViewModel.updateHistoryText(edited)
+                                    isAiResult -> aiViewModel.updateText(edited)
+                                    else -> ocrViewModel.updateText(edited)
+                                }
+                            }
                         )
                     }
                     else -> {

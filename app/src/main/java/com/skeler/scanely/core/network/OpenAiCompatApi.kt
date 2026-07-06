@@ -2,6 +2,9 @@ package com.skeler.scanely.core.network
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.intOrNull
 import okhttp3.ResponseBody
 import retrofit2.http.Body
 import retrofit2.http.Header
@@ -109,8 +112,14 @@ data class ResponseMessage(
 @Serializable
 data class ApiError(
     val message: String? = null,
-    val code: Int? = null
+    // Some OpenAI-compatible providers send `code` as a string ("rate_limit_exceeded")
+    // rather than an int, so decode it loosely and normalize via [codeInt].
+    val code: JsonElement? = null
 )
+
+/** Numeric error code when the provider sent one as a JSON number, else null. */
+val ApiError.codeInt: Int?
+    get() = (code as? JsonPrimitive)?.intOrNull
 
 // --- Streaming response models ---
 

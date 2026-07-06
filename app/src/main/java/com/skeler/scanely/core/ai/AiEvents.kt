@@ -10,7 +10,6 @@ enum class AiMode {
 /** Terminal result of an AI operation. */
 sealed class AiResult {
     data class Success(val text: String) : AiResult()
-    data class RateLimited(val remainingMs: Long) : AiResult()
     data class Error(val message: String) : AiResult()
 }
 

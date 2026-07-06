@@ -97,7 +97,6 @@ fun ResultsScreen() {
     val aiResultText = when (val result = aiState.result) {
         is AiResult.Success -> result.text
         is AiResult.Error -> "Error: ${result.message}"
-        is AiResult.RateLimited -> "Rate limited. Wait ${result.remainingMs / 1000}s"
         null -> null
     }
     val ocrResultText = when (val result = ocrState.result) {

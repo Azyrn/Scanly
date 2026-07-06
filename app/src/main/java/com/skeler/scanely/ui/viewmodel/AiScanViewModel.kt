@@ -175,7 +175,6 @@ class AiScanViewModel @Inject constructor(
                 val (label, body) = when (result) {
                     is AiResult.Success -> "" to result.text
                     is AiResult.Error -> " (Error)" to "Error: ${result.message}"
-                    is AiResult.RateLimited -> " (Rate limited)" to "Rate limited — try again later."
                 }
                 if (allResults.isNotEmpty()) {
                     allResults.append("\n\n--- File ${index + 1}$label ---\n\n")
@@ -276,10 +275,6 @@ class AiScanViewModel @Inject constructor(
                         translationCache = updatedCache,
                         currentLanguage = targetLanguage
                     )
-                }
-                is AiResult.RateLimited -> {
-                    _aiState.value = _aiState.value.copy(isTranslating = false)
-                    // Rate limit handled by ScanViewModel - don't update state further
                 }
                 is AiResult.Error -> {
                     // Surface the failure instead of silently snapping back to the

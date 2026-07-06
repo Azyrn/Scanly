@@ -2,7 +2,6 @@
 
 package com.skeler.scanely.ui.components
 
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -126,25 +125,16 @@ fun SettingSwitchTile(
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // The icon chip warms up to the primary tone when the setting is active.
-    val iconContainer by animateColorAsState(
-        targetValue = if (checked) {
-            MaterialTheme.colorScheme.primaryContainer
-        } else {
-            MaterialTheme.colorScheme.surfaceContainerHighest
-        },
-        animationSpec = tween(220),
-        label = "iconContainer"
-    )
-    val iconTint by animateColorAsState(
-        targetValue = if (checked) {
-            MaterialTheme.colorScheme.onPrimaryContainer
-        } else {
-            MaterialTheme.colorScheme.onSurfaceVariant
-        },
-        animationSpec = tween(220),
-        label = "iconTint"
-    )
+    val iconContainer = if (checked) {
+        MaterialTheme.colorScheme.primaryContainer
+    } else {
+        MaterialTheme.colorScheme.surfaceContainerHighest
+    }
+    val iconTint = if (checked) {
+        MaterialTheme.colorScheme.onPrimaryContainer
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
 
     Row(
         modifier = modifier
@@ -292,26 +282,14 @@ fun PaletteChip(
 ) {
     val scheme = MaterialTheme.colorScheme
 
-    val container by animateColorAsState(
-        targetValue = if (isSelected) scheme.primaryContainer else scheme.surfaceContainerHigh,
-        animationSpec = tween(220),
-        label = "chipContainer"
-    )
-    val contentColor by animateColorAsState(
-        targetValue = if (isSelected) scheme.onPrimaryContainer else scheme.onSurfaceVariant,
-        animationSpec = tween(220),
-        label = "chipContent"
-    )
+    val container = if (isSelected) scheme.primaryContainer else scheme.surfaceContainerHigh
+    val contentColor = if (isSelected) scheme.onPrimaryContainer else scheme.onSurfaceVariant
     val borderWidth by animateDpAsState(
         targetValue = if (isSelected) 2.dp else 1.dp,
         animationSpec = tween(220),
         label = "chipBorder"
     )
-    val borderColor by animateColorAsState(
-        targetValue = if (isSelected) scheme.primary else scheme.onSurface.copy(alpha = 0.08f),
-        animationSpec = tween(220),
-        label = "chipBorderColor"
-    )
+    val borderColor = if (isSelected) scheme.primary else scheme.onSurface.copy(alpha = 0.08f)
 
     // Sweep of theme tones used for the "Dynamic" swatch.
     val dynamicBrush = Brush.sweepGradient(

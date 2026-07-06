@@ -41,8 +41,8 @@ class BaselineProfileGenerator {
             // Wait for home screen to load
             device.waitForIdle()
             
-            // Scroll through home screen options
-            device.wait(Until.hasObject(By.text("Capture Photo")), 5000)
+            // Wait for the action list to appear
+            device.wait(Until.hasObject(By.text("Scan Document")), 5000)
             
             // Navigate to Gallery flow (most common path)
             device.findObject(By.text("From Gallery"))?.click()

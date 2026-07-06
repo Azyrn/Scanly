@@ -52,7 +52,10 @@ data class ChatRequest(
     val model: String,
     val messages: List<ChatMessage>,
     val temperature: Double = 0.1,
-    val stream: Boolean = false
+    val stream: Boolean = false,
+    // Groq-only: "none" disables Qwen3 thinking so <think> blocks don't pollute
+    // the extracted text. Omitted (null) for every other provider/model.
+    @SerialName("reasoning_effort") val reasoningEffort: String? = null
 )
 
 @Serializable

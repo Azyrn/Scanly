@@ -3,7 +3,6 @@ package com.skeler.scanely.core.lookup
 import android.util.Log
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withTimeout
 import javax.inject.Inject
@@ -17,9 +16,9 @@ private const val ENGINE_TIMEOUT_MS = 10_000L
  * 
  * Strategy:
  * 1. Filter engines that support the barcode format
- * 2. Query engines in priority order (lower priority number = higher precedence)
- * 3. Return first Found result, or aggregate NotFound/Errors
- * 4. Retry transient failures with exponential backoff
+ * 2. Query all supporting engines concurrently (each with timeout + retry)
+ * 3. Await in priority order; return the highest-priority Found and cancel the rest
+ * 4. If none found, aggregate NotFound/Errors
  */
 @Singleton
 class LookupOrchestrator @Inject constructor(
@@ -37,45 +36,41 @@ class LookupOrchestrator @Inject constructor(
      * @param barcode The barcode to look up
      * @return LookupResult from the first engine that finds data, or aggregated failure
      */
-    suspend fun lookup(barcode: String): LookupResult {
+    suspend fun lookup(barcode: String): LookupResult = coroutineScope {
         val supportingEngines = engines
             .filter { it.supports(barcode) }
             .sortedBy { it.priority }
-        
+
         if (supportingEngines.isEmpty()) {
             Log.d(TAG, "No engines support barcode: $barcode")
-            return LookupResult.NotFound("No compatible engines")
+            return@coroutineScope LookupResult.NotFound("No compatible engines")
         }
-        
+
         Log.d(TAG, "Looking up $barcode with ${supportingEngines.size} engines: " +
                 supportingEngines.joinToString { it.name })
-        
+
+        // Fire all engines concurrently; each carries its own timeout + retry.
+        val jobs = supportingEngines.map { engine ->
+            async { lookupWithRetry(engine, barcode) }
+        }
+
         val errors = mutableListOf<String>()
-        
-        // Query engines sequentially in priority order
-        for (engine in supportingEngines) {
-            Log.d(TAG, "Trying engine: ${engine.name}")
-            
-            val result = lookupWithRetry(engine, barcode)
-            
-            when (result) {
+
+        // Await in priority order so the highest-priority Found always wins.
+        jobs.forEachIndexed { index, job ->
+            when (val result = job.await()) {
                 is LookupResult.Found -> {
-                    Log.d(TAG, "Found in ${engine.name}: ${result.product.name}")
-                    return result
+                    Log.d(TAG, "Found in ${supportingEngines[index].name}: ${result.product.name}")
+                    jobs.forEach { it.cancel() }
+                    return@coroutineScope result
                 }
-                is LookupResult.NotFound -> {
-                    Log.d(TAG, "Not found in ${engine.name}, trying next...")
-                    continue
-                }
-                is LookupResult.Error -> {
-                    Log.w(TAG, "Error in ${engine.name}: ${result.exception.message}")
-                    errors.add("${engine.name}: ${result.exception.message}")
-                    continue
-                }
+                is LookupResult.NotFound -> Unit
+                is LookupResult.Error ->
+                    errors.add("${supportingEngines[index].name}: ${result.exception.message}")
             }
         }
-        
-        return if (errors.isNotEmpty()) {
+
+        if (errors.isNotEmpty()) {
             LookupResult.NotFound("Searched ${supportingEngines.size} sources. Errors: ${errors.joinToString("; ")}")
         } else {
             LookupResult.NotFound("Searched ${supportingEngines.size} sources")
@@ -100,39 +95,4 @@ class LookupOrchestrator @Inject constructor(
             LookupResult.Error(engine.name, e)
         }
     }
-    
-    /**
-     * Look up a barcode with parallel queries to all supporting engines.
-     * Returns the first successful result.
-     * 
-     * Use this for faster lookups when network latency is a concern.
-     */
-    suspend fun lookupParallel(barcode: String): LookupResult = coroutineScope {
-        val supportingEngines = engines
-            .filter { it.supports(barcode) }
-            .sortedBy { it.priority }
-        
-        if (supportingEngines.isEmpty()) {
-            return@coroutineScope LookupResult.NotFound("No compatible engines")
-        }
-        
-        Log.d(TAG, "Parallel lookup of $barcode with ${supportingEngines.size} engines")
-        
-        val results = supportingEngines.map { engine ->
-            async {
-                lookupWithRetry(engine, barcode)
-            }
-        }.awaitAll()
-        
-        // Return first Found result (respecting priority order)
-        results.firstOrNull { it is LookupResult.Found }
-            ?: results.firstOrNull { it is LookupResult.NotFound }
-            ?: results.firstOrNull()
-            ?: LookupResult.NotFound("No results")
-    }
-    
-    /**
-     * Get list of all registered engine names for debugging.
-     */
-    fun getRegisteredEngines(): List<String> = engines.map { it.name }
 }

@@ -31,8 +31,6 @@ class UnifiedScanViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(UnifiedScanUiState())
     val uiState: StateFlow<UnifiedScanUiState> = _uiState.asStateFlow()
 
-    private var currentImageUri: Uri? = null
-    
     /** Current scan job - cancelled before starting new scan */
     private var currentScanJob: Job? = null
 
@@ -41,10 +39,7 @@ class UnifiedScanViewModel @Inject constructor(
      * Cancels any previous ongoing scan before starting.
      */
     fun processImage(uri: Uri) {
-        // Cancel previous scan to prevent race conditions
         currentScanJob?.cancel()
-        
-        currentImageUri = uri
         _uiState.value = UnifiedScanUiState(isLoading = true)
 
         currentScanJob = viewModelScope.launch {
@@ -77,10 +72,7 @@ class UnifiedScanViewModel @Inject constructor(
      * Cancels any previous ongoing scan before starting.
      */
     fun processBarcodeOnly(uri: Uri) {
-        // Cancel previous scan to prevent race conditions
         currentScanJob?.cancel()
-        
-        currentImageUri = uri
         _uiState.value = UnifiedScanUiState(isLoading = true)
 
         currentScanJob = viewModelScope.launch {
@@ -99,10 +91,7 @@ class UnifiedScanViewModel @Inject constructor(
         currentScanJob?.cancel()
         currentScanJob = null
         _uiState.value = UnifiedScanUiState()
-        currentImageUri = null
     }
-
-    fun getImageUri(): Uri? = currentImageUri
 }
 
 /**
@@ -115,6 +104,5 @@ data class UnifiedScanUiState(
     val textActions: List<ScanAction> = emptyList(),
     val hasText: Boolean = false,
     val hasBarcodes: Boolean = false,
-    val isEmpty: Boolean = true,
-    val error: String? = null
+    val isEmpty: Boolean = true
 )

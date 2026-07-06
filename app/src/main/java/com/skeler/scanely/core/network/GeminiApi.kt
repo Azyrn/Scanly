@@ -4,9 +4,9 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import okhttp3.ResponseBody
 import retrofit2.http.Body
+import retrofit2.http.Header
 import retrofit2.http.POST
 import retrofit2.http.Path
-import retrofit2.http.Query
 import retrofit2.http.Streaming
 
 /**
@@ -15,10 +15,11 @@ import retrofit2.http.Streaming
  * Used as an alternative provider to OpenRouter for text extraction and
  * translation. Images are sent inline as base64 in `inline_data` parts.
  *
- * The API key is supplied per request as a `?key=` query parameter (the user
- * enters it in Settings). Gemma models "think" by default and return their
- * reasoning as separate parts flagged with `thought = true`; callers must keep
- * only the non-thought parts to get the clean answer.
+ * The API key is supplied per request via the `x-goog-api-key` header (never as
+ * a `?key=` query parameter, so it can't leak into logged/thrown request URLs).
+ * Gemma models "think" by default and return their reasoning as separate parts
+ * flagged with `thought = true`; callers must keep only the non-thought parts to
+ * get the clean answer.
  *
  * API docs: https://ai.google.dev/api/generate-content
  */
@@ -27,7 +28,7 @@ interface GeminiApi {
     @POST("v1beta/models/{model}:generateContent")
     suspend fun generateContent(
         @Path("model") model: String,
-        @Query("key") apiKey: String,
+        @Header("x-goog-api-key") apiKey: String,
         @Body request: GeminiRequest
     ): GeminiResponse
 
@@ -40,7 +41,7 @@ interface GeminiApi {
     @POST("v1beta/models/{model}:streamGenerateContent?alt=sse")
     suspend fun streamGenerateContent(
         @Path("model") model: String,
-        @Query("key") apiKey: String,
+        @Header("x-goog-api-key") apiKey: String,
         @Body request: GeminiRequest
     ): ResponseBody
 

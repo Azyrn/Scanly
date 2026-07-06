@@ -1,7 +1,10 @@
 package com.skeler.scanely.core.scan
 
 import android.app.Activity
+import android.content.Context
 import android.content.IntentSender
+import com.google.android.gms.common.ConnectionResult
+import com.google.android.gms.common.GoogleApiAvailability
 import com.google.android.gms.tasks.Task
 import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanning
@@ -39,6 +42,16 @@ enum class DocumentScanMode(
  * Expressive review / filter / export flow (see DocumentScanViewModel).
  */
 object DocumentScannerManager {
+
+    /**
+     * Whether Google Play services is present and usable on this device. The ML
+     * Kit document scanner is a GMS module, so on degoogled / GMS-less builds it
+     * can never open — callers use this to route to the CameraX capture fallback
+     * instead of trapping the user behind a "get Play services" wall.
+     */
+    fun isScannerAvailable(context: Context): Boolean =
+        GoogleApiAvailability.getInstance()
+            .isGooglePlayServicesAvailable(context) == ConnectionResult.SUCCESS
 
     /**
      * Build a start-scan intent for the given [mode].

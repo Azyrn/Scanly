@@ -2,13 +2,13 @@ package com.skeler.scanely.core.lookup.engines
 
 import android.util.Log
 import com.skeler.scanely.core.lookup.LookupEngine
+import com.skeler.scanely.core.lookup.LookupJson
 import com.skeler.scanely.core.lookup.LookupResult
 import com.skeler.scanely.core.lookup.MedicineData
 import com.skeler.scanely.core.lookup.ProductCategory
 import com.skeler.scanely.core.lookup.ProductInfo
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import javax.inject.Inject
@@ -34,9 +34,7 @@ class OpenFDAEngine @Inject constructor(
     override val name = "OpenFDA"
     override val priority = 3  // After food, before cosmetics
     override val category = ProductCategory.MEDICINE
-    
-    private val json = Json { ignoreUnknownKeys = true }
-    
+
     override fun supports(barcode: String): Boolean {
         // Try all numeric barcodes - OpenFDA will return not found if no match
         val digits = barcode.filter { it.isDigit() }
@@ -55,20 +53,15 @@ class OpenFDAEngine @Inject constructor(
             
             for (url in urls) {
                 Log.d(TAG, "Trying: $url")
-                
-                val request = Request.Builder()
-                    .url(url)
-                    .header("User-Agent", "Scanly Android App")
-                    .build()
-                
-                val response = okHttpClient.newCall(request).execute()
-                if (!response.isSuccessful) continue
-                
-                val body = response.body?.string() ?: continue
-                
+
+                val request = Request.Builder().url(url).build()
+                val body = okHttpClient.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) null else response.body?.string()
+                } ?: continue
+
                 try {
-                    val fdaResponse = json.decodeFromString<OpenFDAResponse>(body)
-                    
+                    val fdaResponse = LookupJson.decodeFromString<OpenFDAResponse>(body)
+
                     if (fdaResponse.results?.isNotEmpty() == true) {
                         val result = fdaResponse.results.first()
                         val product = mapToProductInfo(barcode, result)

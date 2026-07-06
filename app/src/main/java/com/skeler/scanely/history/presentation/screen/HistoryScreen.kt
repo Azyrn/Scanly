@@ -3,7 +3,6 @@
 package com.skeler.scanely.history.presentation.screen
 
 import androidx.activity.ComponentActivity
-import androidx.core.net.toUri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.Arrangement
@@ -216,9 +215,7 @@ fun HistoryScreen() {
                             item = item,
                             onClick = {
                                 // Navigate to results with saved text (no re-extraction)
-                                scanViewModel.onImageSelected(item.imageUri.toUri())
-                                // Pass saved text via shared state
-                                scanViewModel.setHistoryText(item.text)
+                                scanViewModel.setHistoryText(item.text, item.id)
                                 navController.navigate(Routes.RESULTS)
                             }
                         )

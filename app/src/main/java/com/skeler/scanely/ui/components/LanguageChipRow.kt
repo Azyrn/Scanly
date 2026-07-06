@@ -5,10 +5,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.PostAdd
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -28,6 +33,7 @@ import androidx.compose.ui.unit.dp
  * @param onSelectCached Switches to a cached translation
  * @param allLanguages All available target languages
  * @param onNewLanguageSelected Called when user selects a new language to translate
+ * @param onComposeText Opens the blank-canvas text-to-PDF composer
  */
 @Composable
 fun LanguageChipRow(
@@ -40,6 +46,7 @@ fun LanguageChipRow(
     onSelectCached: (String) -> Unit,
     allLanguages: List<String>,
     onNewLanguageSelected: (String) -> Unit,
+    onComposeText: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -85,5 +92,18 @@ fun LanguageChipRow(
                 }
             }
         }
+
+        // Blank-canvas text → PDF/CSV composer, wired to the same exporter.
+        AssistChip(
+            onClick = onComposeText,
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Rounded.PostAdd,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+            },
+            label = { Text("Text to PDF") }
+        )
     }
 }

@@ -43,6 +43,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.skeler.scanely.core.common.LocalDarkMode
 import com.skeler.scanely.core.common.LocalSettings
 import com.skeler.scanely.navigation.LocalNavController
 import com.skeler.scanely.settings.data.SettingsKeys
@@ -65,6 +66,7 @@ fun LookAndFeelScreen(
     val useDynamicColors = settings.useDynamicColors
     val seedColorIndex = settings.seedColorIndex
     val isOledMode = settings.isOledModeEnabled
+    val isDark = LocalDarkMode.current
 
     val selectedName = when {
         useDynamicColors -> "Wallpaper colors"
@@ -74,7 +76,7 @@ fun LookAndFeelScreen(
     // Compact bar: the content fits on one screen, so a large/collapsing bar
     // would only waste vertical space above the palette showcase.
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
                 title = { Text("Look & Feel", fontWeight = FontWeight.Bold) },
@@ -84,8 +86,8 @@ fun LookAndFeelScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    scrolledContainerColor = MaterialTheme.colorScheme.background
+                    containerColor = Color.Transparent,
+                    scrolledContainerColor = Color.Transparent
                 )
             )
         }
@@ -191,7 +193,6 @@ fun LookAndFeelScreen(
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 SettingsGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
-                    val isDark = settings.themeMode != AppCompatDelegate.MODE_NIGHT_NO
                     SettingSwitchTile(
                         title = "Dark theme",
                         subtitle = if (isDark) "On" else "Off",

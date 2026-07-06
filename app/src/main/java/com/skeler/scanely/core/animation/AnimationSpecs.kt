@@ -21,12 +21,7 @@ import androidx.compose.runtime.setValue
 import kotlinx.coroutines.delay
 import kotlin.math.pow
 
-/**
- * Google Gallery-style EaseOutExpo easing function.
- *
- * This creates an initial burst of speed followed by a gradual, almost imperceptible slowdown.
- * Mimics real-world physics (objects decelerating due to friction) for a "buttery" feel.
- */
+
 val EaseOutExpo = Easing { fraction ->
     if (fraction == 1f) 1f else 1f - 2f.pow(-10f * fraction)
 }

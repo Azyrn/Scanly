@@ -98,14 +98,20 @@ fun DocumentScannerScreen() {
     }
 
     fun startScan() {
+        // On degoogled / GMS-less devices the ML Kit scanner can never open, so
+        // route straight to the CameraX capture fallback instead of failing.
+        if (!DocumentScannerManager.isScannerAvailable(context)) {
+            navController.navigate(Routes.DOCUMENT_CAPTURE)
+            return
+        }
         DocumentScannerManager.getStartScanIntent(activity, selectedMode)
             .addOnSuccessListener { intentSender ->
                 scannerLauncher.launch(IntentSenderRequest.Builder(intentSender).build())
             }
             .addOnFailureListener {
-                scope.launch {
-                    snackbarHostState.showSnackbar("Scanner unavailable. Update Google Play services.")
-                }
+                // Even when GMS reports present, the scanner module can fail to
+                // materialise — fall back rather than dead-end the user.
+                navController.navigate(Routes.DOCUMENT_CAPTURE)
             }
     }
 

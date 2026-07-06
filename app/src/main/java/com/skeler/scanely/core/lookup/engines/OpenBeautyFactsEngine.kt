@@ -3,12 +3,13 @@ package com.skeler.scanely.core.lookup.engines
 import android.util.Log
 import com.skeler.scanely.core.lookup.CosmeticsData
 import com.skeler.scanely.core.lookup.LookupEngine
+import com.skeler.scanely.core.lookup.LookupJson
 import com.skeler.scanely.core.lookup.LookupResult
 import com.skeler.scanely.core.lookup.ProductCategory
 import com.skeler.scanely.core.lookup.ProductInfo
+import com.skeler.scanely.core.lookup.isEanUpc
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import javax.inject.Inject
@@ -17,10 +18,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 private const val TAG = "OpenBeautyFactsEngine"
+private const val FIELDS =
+    "product_name,brands,image_front_url,ingredients_text,allergens_tags,labels_tags,categories_tags"
 
 /**
  * Lookup engine for cosmetics/beauty products using Open Beauty Facts API.
- * 
+ *
  * Supports: EAN-8, EAN-13, UPC-A barcodes
  * Data: Ingredients, allergens, labels, categories
  */
@@ -28,33 +31,26 @@ private const val TAG = "OpenBeautyFactsEngine"
 class OpenBeautyFactsEngine @Inject constructor(
     private val okHttpClient: OkHttpClient
 ) : LookupEngine {
-    
+
     override val name = "Open Beauty Facts"
-    override val priority = 5  // Lower priority, fallback after food
+    override val priority = 5
     override val category = ProductCategory.COSMETICS
-    
-    private val json = Json { ignoreUnknownKeys = true }
-    
-    override fun supports(barcode: String): Boolean {
-        return barcode.all { it.isDigit() } && barcode.length in 8..13
-    }
-    
+
+    override fun supports(barcode: String): Boolean = isEanUpc(barcode)
+
     override suspend fun lookup(barcode: String): LookupResult = withContext(Dispatchers.IO) {
         try {
-            val url = "https://world.openbeautyfacts.org/api/v0/product/$barcode.json"
-            
+            val url = "https://world.openbeautyfacts.org/api/v2/product/$barcode.json?fields=$FIELDS"
             Log.d(TAG, "Looking up: $barcode")
-            
-            val request = Request.Builder()
-                .url(url)
-                .header("User-Agent", "Scanly Android App - https://github.com/Azyrn/Scanly")
-                .build()
-            
-            val response = okHttpClient.newCall(request).execute()
-            val body = response.body?.string() ?: return@withContext LookupResult.NotFound(name)
-            
-            val productResponse = json.decodeFromString<BeautyProductResponse>(body)
-            
+
+            val request = Request.Builder().url(url).build()
+            val body = okHttpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@withContext LookupResult.NotFound(name)
+                response.body?.string()
+            } ?: return@withContext LookupResult.NotFound(name)
+
+            val productResponse = LookupJson.decodeFromString<BeautyProductResponse>(body)
+
             if (productResponse.status == 1 && productResponse.product != null) {
                 val product = mapToProductInfo(barcode, productResponse.product)
                 Log.d(TAG, "Found: ${product.name}")
@@ -68,7 +64,7 @@ class OpenBeautyFactsEngine @Inject constructor(
             LookupResult.Error(name, e)
         }
     }
-    
+
     private fun mapToProductInfo(barcode: String, product: BeautyProduct): ProductInfo {
         return ProductInfo(
             barcode = barcode,

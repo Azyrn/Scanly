@@ -1,5 +1,9 @@
 import java.util.Properties
 
+// Google's public test IDs — safe for development, never serve real ads.
+val admobTestAppId = "ca-app-pub-3940256099942544~3347511713"
+val admobTestRewardedUnitId = "ca-app-pub-3940256099942544/5224354917"
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -49,6 +53,12 @@ android {
             "MISTRAL_API_KEY",
             "\"${localProperties.getProperty("MISTRAL_API_KEY") ?: ""}\""
         )
+        // Bundled free-tier Hugging Face token for LightOnOCR.
+        buildConfigField(
+            "String",
+            "HUGGINGFACE_API_KEY",
+            "\"${localProperties.getProperty("HUGGINGFACE_API_KEY") ?: ""}\""
+        )
     }
 
     lint {
@@ -88,6 +98,10 @@ android {
     buildTypes {
         debug {
             isDebuggable = true
+            // Own id so debug installs alongside the release-signed production app.
+            applicationIdSuffix = ".debug"
+            manifestPlaceholders["admobAppId"] = admobTestAppId
+            buildConfigField("String", "ADMOB_REWARDED_AD_UNIT_ID", "\"$admobTestRewardedUnitId\"")
         }
         release {
             isMinifyEnabled = true
@@ -98,6 +112,19 @@ android {
                 "proguard-rules.pro"
             )
 
+            // Real AdMob IDs live in local.properties (gitignored); test IDs as fallback.
+            val localProperties = Properties()
+            val localPropertiesFile = rootProject.file("local.properties")
+            if (localPropertiesFile.exists()) {
+                localPropertiesFile.inputStream().use { localProperties.load(it) }
+            }
+            manifestPlaceholders["admobAppId"] =
+                localProperties.getProperty("ADMOB_APP_ID") ?: admobTestAppId
+            buildConfigField(
+                "String",
+                "ADMOB_REWARDED_AD_UNIT_ID",
+                "\"${localProperties.getProperty("ADMOB_REWARDED_AD_UNIT_ID") ?: admobTestRewardedUnitId}\""
+            )
         }
     }
     compileOptions {
@@ -118,6 +145,7 @@ android {
 dependencies {
     // Core Android
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
@@ -161,6 +189,9 @@ dependencies {
     // Accompanist Permissions
     implementation(libs.accompanist.permissions)
     
+    // Google Mobile Ads (rewarded ads for extra AI scans)
+    implementation(libs.play.services.ads)
+
     // Google ML Kit Barcode Scanning
     implementation(libs.mlkit.barcode)
     
@@ -187,6 +218,8 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+    // Leak detection in debug builds only; never ships in release.
+    debugImplementation(libs.leakcanary)
 }
 
 baselineProfile {

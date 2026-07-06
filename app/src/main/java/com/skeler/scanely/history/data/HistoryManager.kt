@@ -43,19 +43,35 @@ class HistoryManager @Inject constructor(
      * @param text The extracted/translated text
      * @param imageUri Original content URI of the image
      */
-    fun saveItem(text: String, imageUri: String) {
+    fun saveItem(text: String, imageUri: String): HistoryItem {
         // Copy image to internal storage for persistence
         val persistentUri = copyImageToInternalStorage(imageUri)
-        
+
+        val item = HistoryItem(text = text, imageUri = persistentUri)
         val currentList = getHistory().toMutableList()
-        currentList.add(0, HistoryItem(text = text, imageUri = persistentUri))
+        currentList.add(0, item)
         // Keep only last 50 items (delete old images too)
         if (currentList.size > 50) {
             val removed = currentList.drop(50)
-            removed.forEach { item -> deleteImage(item.imageUri) }
+            removed.forEach { old -> deleteImage(old.imageUri) }
         }
         val trimmedList = currentList.take(50)
         saveHistory(trimmedList)
+        return item
+    }
+
+    /**
+     * Replace the stored text of the item with [id] (used when the user corrects
+     * imperfect OCR). No-op if the item is no longer in history. The image and
+     * timestamp are left untouched.
+     */
+    fun updateItemText(id: String, text: String) {
+        if (id.isBlank()) return
+        val currentList = getHistory().toMutableList()
+        val index = currentList.indexOfFirst { it.id == id }
+        if (index == -1) return
+        currentList[index] = currentList[index].copy(text = text)
+        saveHistory(currentList)
     }
 
     /**

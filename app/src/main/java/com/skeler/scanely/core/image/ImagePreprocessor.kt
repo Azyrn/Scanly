@@ -147,7 +147,7 @@ object ImagePreprocessor {
 
     /**
      * Apply full preprocessing pipeline optimized for barcode detection.
-     * 
+     *
      * Pipeline:
      * 1. Convert to grayscale (barcodes are B&W)
      * 2. High contrast enhancement
@@ -155,6 +155,22 @@ object ImagePreprocessor {
     fun preprocessForBarcode(bitmap: Bitmap): Bitmap {
         var processed = toGrayscale(bitmap)
         processed = enhanceContrast(processed, 1.6f)
+        return processed
+    }
+
+    /**
+     * Document pipeline for the CameraX capture fallback (used when Google Play
+     * services / the ML Kit document scanner is unavailable). Edge detection,
+     * auto-crop and perspective straightening are GMS-only features with no
+     * reliable non-GMS equivalent, so the fallback deliberately does NOT fake a
+     * crop — it only lifts contrast/brightness and ensures enough resolution for
+     * OCR. The capture screen tells the user to frame the page themselves, and
+     * the user-selectable ScanFilter (DocumentFilters) runs afterwards in review.
+     */
+    fun preprocessForDocument(bitmap: Bitmap): Bitmap {
+        var processed = scaleToMinDimension(bitmap, 1400)
+        processed = enhanceContrast(processed, 1.25f)
+        processed = adjustBrightness(processed, 10f)
         return processed
     }
 }

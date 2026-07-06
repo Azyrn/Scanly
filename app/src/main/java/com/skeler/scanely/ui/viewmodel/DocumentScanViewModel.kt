@@ -8,11 +8,13 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.skeler.scanely.core.image.DocumentFilters
+import com.skeler.scanely.core.image.ImagePreprocessor
 import com.skeler.scanely.core.image.ScanFilter
 import com.skeler.scanely.core.pdf.ScanExporter
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -53,12 +55,31 @@ class DocumentScanViewModel @Inject constructor(
     /** Untouched scanner output kept so filters are always re-derived from source. */
     private var originals: List<Bitmap> = emptyList()
 
-    fun loadPages(uris: List<Uri>) {
+    // Cancelled on re-entry so an older load/filter can't finish after a newer one.
+    private var workJob: Job? = null
+
+    /** Load already-straightened pages from the ML Kit document scanner. */
+    fun loadPages(uris: List<Uri>) = load(uris, preprocess = false)
+
+    /**
+     * Load raw CameraX frames from the fallback capture path. Each frame is
+     * auto-cropped and enhanced by [ImagePreprocessor] first so the fallback
+     * still lands in review looking like a real scan, not a plain photo.
+     */
+    fun loadCapturedPages(uris: List<Uri>) = load(uris, preprocess = true)
+
+    private fun load(uris: List<Uri>, preprocess: Boolean) {
         if (uris.isEmpty()) return
+        workJob?.cancel()
         _uiState.update { it.copy(isLoading = true, exportedPdf = null) }
-        viewModelScope.launch {
+        workJob = viewModelScope.launch {
             val loaded = withContext(Dispatchers.IO) {
-                uris.mapNotNull { runCatching { decodeScaled(it) }.getOrNull() }
+                uris.mapNotNull {
+                    runCatching {
+                        val bitmap = decodeScaled(it)
+                        if (preprocess) ImagePreprocessor.preprocessForDocument(bitmap) else bitmap
+                    }.getOrNull()
+                }
             }
             originals = loaded
             val filter = _uiState.value.filter
@@ -71,8 +92,9 @@ class DocumentScanViewModel @Inject constructor(
 
     fun setFilter(filter: ScanFilter) {
         if (filter == _uiState.value.filter && _uiState.value.pages.isNotEmpty()) return
+        workJob?.cancel()
         _uiState.update { it.copy(filter = filter, isLoading = true) }
-        viewModelScope.launch {
+        workJob = viewModelScope.launch {
             val filtered = withContext(Dispatchers.Default) { applyFilter(originals, filter) }
             _uiState.update { it.copy(pages = filtered, isLoading = false) }
         }
@@ -124,6 +146,7 @@ class DocumentScanViewModel @Inject constructor(
     fun consumeMessage() = _uiState.update { it.copy(message = null) }
 
     fun clear() {
+        workJob?.cancel()
         originals = emptyList()
         _uiState.value = DocumentScanUiState()
     }

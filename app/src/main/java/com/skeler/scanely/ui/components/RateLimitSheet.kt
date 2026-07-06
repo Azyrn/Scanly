@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -30,22 +31,15 @@ import androidx.compose.ui.unit.dp
 
 private const val RATE_LIMIT_SECONDS = 60
 
-/**
- * Modal bottom sheet explaining rate limit to users.
- *
- * Deep Reasoning (ULTRATHINK):
- * - "Please Wait" is neutral; "Error" or "Rate Limited" feels punitive
- * - Progress bar fills (not depletes) for faster perceived wait time
- * - "Developer is using limited API" humanizes the constraint
- * - Dismiss button respects user agency vs auto-dismiss
- * - Semantics for TalkBack accessibility
- * - Smooth progress animation (1s tween) for fluid bar movement
- */
+// Explains the shared free-tier limit and the bring-your-own-key bypass.
+// The bar fills (not depletes) for a faster perceived wait.
 @Composable
 fun RateLimitSheet(
     remainingSeconds: Int,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    adAvailable: Boolean = false,
+    onWatchAd: (() -> Unit)? = null,
     sheetState: SheetState = rememberModalBottomSheetState()
 ) {
     val targetProgress = 1f - (remainingSeconds.toFloat() / RATE_LIMIT_SECONDS)
@@ -69,37 +63,38 @@ fun RateLimitSheet(
                 .padding(bottom = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Title
             Text(
-                text = "Please Wait",
+                text = "Free scans need a breather",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center
             )
-            
+
             Spacer(modifier = Modifier.height(16.dp))
-            
-            // Explanation
+
             Text(
-                text = "You are using a free tier. Please wait a full minute before using advanced AI features.",
+                text = "Scanly's AI runs on the developer's free-tier keys — shared " +
+                    "across Gemini, Mistral OCR, OpenRouter and Hugging Face — " +
+                    "so scans pause for a moment when they get busy.",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            // Developer note
+
+            Spacer(modifier = Modifier.height(12.dp))
+
             Text(
-                text = "Developer is using limited API",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.outline,
+                text = "Add your own key for any provider in Settings → AI Providers to " +
+                    "remove this limit entirely. Even a free tier works — it just runs " +
+                    "on your quota instead of the shared one.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
-            
+
             Spacer(modifier = Modifier.height(24.dp))
-            
-            // Progress indicator (fills from 0 to 1)
+
             LinearWavyProgressIndicator(
                 progress = { animatedProgress },
                 modifier = Modifier
@@ -112,8 +107,7 @@ fun RateLimitSheet(
             )
             
             Spacer(modifier = Modifier.height(8.dp))
-            
-            // Countdown text
+
             Text(
                 text = "${remainingSeconds}s remaining",
                 style = MaterialTheme.typography.labelLarge,
@@ -122,8 +116,19 @@ fun RateLimitSheet(
             )
             
             Spacer(modifier = Modifier.height(24.dp))
-            
-            // Dismiss button
+
+            if (onWatchAd != null) {
+                FilledTonalButton(
+                    onClick = onWatchAd,
+                    enabled = adAvailable,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(if (adAvailable) "Watch an ad for 1 extra scan" else "No ad available right now")
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
             Button(
                 onClick = onDismiss,
                 modifier = Modifier.fillMaxWidth()

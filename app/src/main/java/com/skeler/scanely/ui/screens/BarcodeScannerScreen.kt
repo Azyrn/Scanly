@@ -68,7 +68,6 @@ import com.skeler.scanely.ui.components.rememberGalleryPicker
 import com.skeler.scanely.ui.viewmodel.UnifiedScanViewModel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /**
  * Barcode Scanner Screen with Multi-Engine Product Lookup

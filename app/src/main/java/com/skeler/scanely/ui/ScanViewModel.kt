@@ -1,18 +1,18 @@
 package com.skeler.scanely.ui
 
-import android.content.Context
-import android.graphics.Bitmap
-import android.net.Uri
+import android.app.Activity
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.skeler.scanely.core.ads.RewardedAdManager
+import com.skeler.scanely.core.ai.AiProvider
+import com.skeler.scanely.core.ai.GenerativeAiService
 import com.skeler.scanely.core.network.NetworkObserver
-import com.skeler.scanely.core.ocr.PdfRendererHelper
+import com.skeler.scanely.history.data.HistoryManager
 import com.skeler.scanely.ui.ratelimit.RateLimitManager
 import com.skeler.scanely.ui.ratelimit.RateLimitState
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.Job
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -25,21 +25,11 @@ import javax.inject.Singleton
 
 private const val TAG = "ScanViewModel"
 
-/**
- * UI State for scanning operations.
- */
 data class ScanUiState(
-    val currentLanguages: List<String> = emptyList(),
-    val isProcessing: Boolean = false,
-    val progressMessage: String = "",
-    val progressPercent: Float = 0f,
-    val selectedImageUri: Uri? = null,
-    val pdfThumbnail: Bitmap? = null,
-    val error: String? = null,
-    /** Text restored from history (no re-extraction needed) */
-    val historyText: String? = null
+    val historyText: String? = null // restored from history; no re-extraction
 )
 
+// Singleton so restored-history state survives the activity's ViewModel store.
 @Singleton
 class ScanStateHolder @Inject constructor() {
     private val _uiState = MutableStateFlow(ScanUiState())
@@ -54,26 +44,20 @@ class ScanStateHolder @Inject constructor() {
     }
 }
 
-/**
- * ViewModel for scanning operations.
- *
- * Features:
- * - Delegates rate limiting to RateLimitManager
- * - StateFlow-based reactive UI
- * - Network awareness for hiding offline-dependent actions
- */
 @HiltViewModel
 class ScanViewModel @Inject constructor(
-    @ApplicationContext private val context: Context,
     private val stateHolder: ScanStateHolder,
     private val networkObserver: NetworkObserver,
-    private val pdfRendererHelper: PdfRendererHelper,
-    private val rateLimitManager: RateLimitManager
+    private val rateLimitManager: RateLimitManager,
+    private val rewardedAdManager: RewardedAdManager,
+    private val historyManager: HistoryManager,
+    private val generativeAiService: GenerativeAiService
 ) : ViewModel() {
 
     val uiState: StateFlow<ScanUiState> = stateHolder.uiState
 
-    // ========== Network State ==========
+    // Source history row for historyText, so edits can be persisted back.
+    private var historyItemId: String? = null
 
     val isOnline: StateFlow<Boolean> = networkObserver.isOnline
         .stateIn(
@@ -82,17 +66,30 @@ class ScanViewModel @Inject constructor(
             initialValue = true
         )
 
-    // ========== Rate Limiting (delegated to RateLimitManager) ==========
-
     val rateLimitState: StateFlow<RateLimitState> = rateLimitManager.rateLimitState
     val showRateLimitSheet: StateFlow<Boolean> = rateLimitManager.showRateLimitSheet
-    val isRateLimited: Boolean get() = rateLimitManager.isRateLimited
 
-    private var currentProcessingJob: Job? = null
+    // Eager so triggerAiWithRateLimit reads a fresh snapshot synchronously; seeded
+    // with the bundled-capable set so the limit still applies before settings load.
+    private val bundledKeyProviders: StateFlow<Set<AiProvider>> =
+        generativeAiService.bundledKeyProviders()
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.Eagerly,
+                initialValue = generativeAiService.bundledCapableProviders
+            )
+
+    val isRewardedAdAvailable: StateFlow<Boolean> = rewardedAdManager.isAdAvailable
 
     init {
-        viewModelScope.launch {
-            rateLimitManager.restoreState()
+        rateLimitManager.restoreState(viewModelScope)
+        rewardedAdManager.preload()
+    }
+
+    // Reward granted only via AdMob's OnUserEarnedRewardListener.
+    fun showRewardedAdForExtraScan(activity: Activity) {
+        rewardedAdManager.show(activity) {
+            rateLimitManager.grantExtraScan()
         }
     }
 
@@ -100,88 +97,50 @@ class ScanViewModel @Inject constructor(
         rateLimitManager.dismissRateLimitSheet()
     }
 
-    /**
-     * Execute an AI request with rate limiting.
-     * @param onAllowed Callback executed only if rate limit allows
-     * @return true if request was allowed, false if rate limited
-     */
-    fun triggerAiWithRateLimit(onAllowed: () -> Unit): Boolean {
+    // Rate-limits only bundled-key providers; a user's own key bypasses the limiter.
+    // Returns false if rate limited.
+    fun triggerAiWithRateLimit(provider: AiProvider, onAllowed: () -> Unit): Boolean {
+        if (provider !in bundledKeyProviders.value) {
+            onAllowed()
+            return true
+        }
         return rateLimitManager.triggerWithRateLimit(viewModelScope, onAllowed)
     }
 
-    // ========== Image/PDF Selection ==========
-
-    fun updateLanguages(languages: Set<String>) {
-        if (languages.isEmpty()) return
-        stateHolder.update {
-            it.copy(currentLanguages = languages.toList())
-        }
+    // Drops any restored-history text before a fresh scan takes over the screen.
+    fun onNewScanSelected() {
+        historyItemId = null
+        stateHolder.reset()
     }
 
-    fun onImageSelected(uri: Uri) {
-        currentProcessingJob?.cancel()
-        stateHolder.update {
-            it.copy(
-                selectedImageUri = uri,
-                pdfThumbnail = null,
-                isProcessing = false,
-                progressMessage = "",
-                historyText = null
-            )
-        }
-    }
-
-    /**
-     * Set text from history (skips re-extraction).
-     */
-    fun setHistoryText(text: String) {
+    // [id] identifies the source history row so a later correction persists back to it.
+    fun setHistoryText(text: String, id: String? = null) {
+        historyItemId = id
         stateHolder.update {
             it.copy(historyText = text)
         }
     }
 
-    fun onPdfSelected(uri: Uri) {
-        currentProcessingJob?.cancel()
-        stateHolder.update {
-            it.copy(
-                selectedImageUri = uri,
-                isProcessing = true,
-                progressMessage = "Opening PDF...",
-                historyText = null
-            )
-        }
-        
-        viewModelScope.launch {
-            val thumbnail = pdfRendererHelper.renderPage(uri, 0)
-            stateHolder.update {
-                it.copy(
-                    pdfThumbnail = thumbnail,
-                    isProcessing = false
-                )
+    // Persists the correction to its history row so the edit survives re-opening.
+    fun updateHistoryText(newText: String) {
+        stateHolder.update { it.copy(historyText = newText) }
+        val id = historyItemId ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                historyManager.updateItemText(id, newText)
+            } catch (e: Exception) {
+                Log.w(TAG, "History edit persist failed", e)
             }
         }
     }
 
-    fun cancelProcessing() {
-        currentProcessingJob?.cancel()
-        stateHolder.update {
-            it.copy(
-                isProcessing = false,
-                progressMessage = "",
-                error = "Processing cancelled"
-            )
-        }
-    }
-
     fun clearState() {
-        cancelProcessing()
+        historyItemId = null
         stateHolder.reset()
     }
 
     override fun onCleared() {
         super.onCleared()
-        cancelProcessing()
         rateLimitManager.cancelCooldown()
-        Log.d(TAG, "ScanViewModel cleared")
     }
 }

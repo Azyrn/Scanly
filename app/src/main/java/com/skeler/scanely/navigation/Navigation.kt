@@ -1,12 +1,9 @@
 package com.skeler.scanely.navigation
 
-import androidx.activity.ComponentActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -15,27 +12,27 @@ import com.skeler.scanely.core.animation.galleryPopEnter
 import com.skeler.scanely.core.animation.galleryPopExit
 import com.skeler.scanely.core.animation.gallerySlideEnter
 import com.skeler.scanely.core.animation.gallerySlideExit
-import com.skeler.scanely.core.common.LocalSettings
 import com.skeler.scanely.core.lookup.LookupOrchestrator
 import com.skeler.scanely.history.presentation.screen.HistoryScreen
 import com.skeler.scanely.settings.presentation.screen.AiProvidersScreen
 import com.skeler.scanely.settings.presentation.screen.LookAndFeelScreen
 import com.skeler.scanely.settings.presentation.screen.SettingsScreen
-import com.skeler.scanely.ui.ScanViewModel
-import com.skeler.scanely.ui.screens.CameraScreen
+import com.skeler.scanely.ui.screens.DocumentCaptureScreen
 import com.skeler.scanely.ui.screens.DocumentScannerScreen
 import com.skeler.scanely.ui.screens.HomeScreen
 import com.skeler.scanely.ui.screens.ResultsScreen
 import com.skeler.scanely.ui.screens.BarcodeScannerScreen
 import com.skeler.scanely.ui.screens.ScanReviewScreen
+import com.skeler.scanely.ui.screens.TextComposeScreen
 import com.skeler.scanely.ui.screens.UnifiedResultsScreen
 import dagger.hilt.android.EntryPointAccessors
 
 object Routes {
     const val HOME = "home"
-    const val CAMERA = "camera"
     const val DOCUMENT_SCANNER = "document_scanner"
+    const val DOCUMENT_CAPTURE = "document_capture"
     const val SCAN_REVIEW = "scan_review"
+    const val TEXT_COMPOSE = "text_compose"
     const val RESULTS = "results"
     const val UNIFIED_RESULTS = "unified_results"
     const val BARCODE_SCANNER = "barcode_scanner"
@@ -50,21 +47,12 @@ fun ScanelyNavigation(
     navController: NavHostController = rememberNavController(),
 ) {
     val context = LocalContext.current
-    val activity = context as ComponentActivity
-    val scanViewModel: ScanViewModel = hiltViewModel(activity)
 
-    val ocrLanguages = LocalSettings.current.ocrLanguages
-    
-    // Get LookupOrchestrator from Hilt
     val lookupOrchestrator = remember {
         EntryPointAccessors.fromApplication(
             context.applicationContext,
             LookupOrchestratorEntryPoint::class.java
         ).lookupOrchestrator()
-    }
-
-    LaunchedEffect(Unit, ocrLanguages) {
-        scanViewModel.updateLanguages(ocrLanguages)
     }
 
     CompositionLocalProvider(LocalNavController provides navController) {
@@ -98,16 +86,20 @@ fun ScanelyNavigation(
                 HistoryScreen()
             }
 
-            composable(Routes.CAMERA) {
-                CameraScreen()
-            }
-
             composable(Routes.DOCUMENT_SCANNER) {
                 DocumentScannerScreen()
             }
 
+            composable(Routes.DOCUMENT_CAPTURE) {
+                DocumentCaptureScreen()
+            }
+
             composable(Routes.SCAN_REVIEW) {
                 ScanReviewScreen()
+            }
+
+            composable(Routes.TEXT_COMPOSE) {
+                TextComposeScreen()
             }
 
             composable(Routes.RESULTS) {

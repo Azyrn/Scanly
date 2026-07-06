@@ -41,6 +41,7 @@ import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -124,6 +125,25 @@ fun UnifiedResultsScreen() {
                 }
             }
             else -> {
+                // Smart actions from OCR text (no Copy/ShowRaw, unique only, max 3);
+                // remembered so it isn't re-derived on every scroll recomposition.
+                val filteredActions = remember(uiState.textActions) {
+                    uiState.textActions
+                        .filter { it !is ScanAction.CopyText && it !is ScanAction.ShowRaw }
+                        .distinctBy { action ->
+                            when (action) {
+                                is ScanAction.OpenUrl -> "url:${action.url}"
+                                is ScanAction.CallPhone -> "call:${action.number}"
+                                is ScanAction.SendEmail -> "email:${action.email}"
+                                is ScanAction.SendSms -> "sms:${action.number}"
+                                is ScanAction.ConnectWifi -> "wifi:${action.ssid}"
+                                is ScanAction.AddContact -> "contact:${action.name}"
+                                else -> action.label
+                            }
+                        }
+                        .take(3)
+                }
+
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
@@ -149,22 +169,6 @@ fun UnifiedResultsScreen() {
                         }
                     }
 
-                    // Smart Actions from Text (filtered: no Copy, unique only, max 3)
-                    val filteredActions = uiState.textActions
-                        .filter { it !is ScanAction.CopyText && it !is ScanAction.ShowRaw }
-                        .distinctBy { action ->
-                            when (action) {
-                                is ScanAction.OpenUrl -> "url:${action.url}"
-                                is ScanAction.CallPhone -> "call:${action.number}"
-                                is ScanAction.SendEmail -> "email:${action.email}"
-                                is ScanAction.SendSms -> "sms:${action.number}"
-                                is ScanAction.ConnectWifi -> "wifi:${action.ssid}"
-                                is ScanAction.AddContact -> "contact:${action.name}"
-                                else -> action.label
-                            }
-                        }
-                        .take(3)
-                    
                     if (filteredActions.isNotEmpty()) {
                         item {
                             Text(

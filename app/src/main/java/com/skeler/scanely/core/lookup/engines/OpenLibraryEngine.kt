@@ -3,11 +3,11 @@ package com.skeler.scanely.core.lookup.engines
 import android.util.Log
 import com.skeler.scanely.core.lookup.BookData
 import com.skeler.scanely.core.lookup.LookupEngine
+import com.skeler.scanely.core.lookup.LookupJson
 import com.skeler.scanely.core.lookup.LookupResult
 import com.skeler.scanely.core.lookup.ProductCategory
 import com.skeler.scanely.core.lookup.ProductInfo
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
+import com.skeler.scanely.core.lookup.isIsbn
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
@@ -40,36 +40,23 @@ class OpenLibraryEngine @Inject constructor(
     override val name = "Open Library"
     override val priority = 2
     override val category = ProductCategory.BOOK
-    
-    private val json = Json { ignoreUnknownKeys = true }
-    
-    override fun supports(barcode: String): Boolean {
-        val cleaned = barcode.replace("-", "").uppercase()
-        return when {
-            cleaned.length == 10 && cleaned.take(9).all { it.isDigit() } && 
-                (cleaned.last().isDigit() || cleaned.last() == 'X') -> true
-            cleaned.length == 13 && cleaned.all { it.isDigit() } && 
-                (cleaned.startsWith("978") || cleaned.startsWith("979")) -> true
-            else -> false
-        }
-    }
-    
+
+    override fun supports(barcode: String): Boolean = isIsbn(barcode)
+
     override suspend fun lookup(barcode: String): LookupResult = withContext(Dispatchers.IO) {
         try {
             val cleaned = barcode.replace("-", "")
             val url = "https://openlibrary.org/api/books?bibkeys=ISBN:$cleaned&format=json&jscmd=data"
-            
+
             Log.d(TAG, "Looking up: $cleaned")
-            
-            val request = Request.Builder()
-                .url(url)
-                .header("User-Agent", "Scanly Android App")
-                .build()
-            
-            val response = okHttpClient.newCall(request).execute()
-            val body = response.body?.string() ?: return@withContext LookupResult.NotFound(name)
-            
-            val jsonObject = json.parseToJsonElement(body).jsonObject
+
+            val request = Request.Builder().url(url).build()
+            val body = okHttpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@withContext LookupResult.NotFound(name)
+                response.body?.string()
+            } ?: return@withContext LookupResult.NotFound(name)
+
+            val jsonObject = LookupJson.parseToJsonElement(body).jsonObject
             val key = "ISBN:$cleaned"
             
             if (jsonObject.containsKey(key)) {

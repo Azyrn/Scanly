@@ -29,13 +29,11 @@
 # TextRecognition.getClient(...) the first time an ML Kit client is built.
 # Keep the registrars and ML Kit internals so on-device vision works in
 # release builds.
+# (The named registrars — CommonComponentRegistrar, BarcodeRegistrar, etc. —
+# are already covered by the two wildcard rules below.)
 -keep class com.google.mlkit.** { *; }
 -keep class com.google.android.gms.internal.mlkit_** { *; }
 -keep class * implements com.google.firebase.components.ComponentRegistrar { *; }
--keep class com.google.mlkit.common.internal.CommonComponentRegistrar { *; }
--keep class com.google.mlkit.vision.barcode.internal.BarcodeRegistrar { *; }
--keep class com.google.mlkit.vision.common.internal.VisionCommonRegistrar { *; }
--keep class com.google.mlkit.vision.text.internal.TextRegistrar { *; }
 -dontwarn com.google.mlkit.**
 
 # ---------------------------------------------------------------------------
@@ -44,7 +42,8 @@
 # classes and @Serializable members can be stripped/renamed, causing runtime
 # SerializationExceptions when an AI request or product lookup runs.
 -keepattributes RuntimeVisibleAnnotations,AnnotationDefault
--keepclassmembers class **$$serializer { *; }
+# keepclasseswithmembers keeps the $$serializer classes AND their members,
+# subsuming the narrower keepclassmembers variant.
 -keepclasseswithmembers class **$$serializer { *; }
 -keepclassmembers @kotlinx.serialization.Serializable class ** {
     *** Companion;

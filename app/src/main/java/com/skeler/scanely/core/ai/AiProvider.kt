@@ -24,6 +24,9 @@ enum class AiProvider(val displayName: String, val kind: ProviderKind) {
     GEMINI("Gemini", ProviderKind.GEMINI),
     MISTRAL("Mistral OCR", ProviderKind.MISTRAL_OCR),
     OPENROUTER("OpenRouter", ProviderKind.OPENAI_COMPAT),
+    HUGGINGFACE("Hugging Face", ProviderKind.OPENAI_COMPAT),
+    NVIDIA("NVIDIA", ProviderKind.OPENAI_COMPAT),
+    GROQ("Groq", ProviderKind.OPENAI_COMPAT),
     OPENAI("OpenAI", ProviderKind.OPENAI_COMPAT),
     CLAUDE("Claude", ProviderKind.ANTHROPIC),
     CUSTOM("Custom", ProviderKind.OPENAI_COMPAT);
@@ -31,5 +34,19 @@ enum class AiProvider(val displayName: String, val kind: ProviderKind) {
     companion object {
         /** Default provider — backed by the bundled key. */
         val DEFAULT = GEMINI
+    }
+}
+
+/**
+ * OCR model for the Hugging Face provider — a Qwen vision LLM served through HF
+ * Inference Providers. Folded into the Hugging Face request when no manual model
+ * override is set.
+ */
+enum class OcrEngine(val id: String, val displayName: String, val model: String) {
+    QWEN("qwen", "Qwen OCR", "Qwen/Qwen3-VL-30B-A3B-Instruct");
+
+    companion object {
+        val DEFAULT = QWEN
+        fun fromId(id: String?): OcrEngine = entries.firstOrNull { it.id == id } ?: DEFAULT
     }
 }

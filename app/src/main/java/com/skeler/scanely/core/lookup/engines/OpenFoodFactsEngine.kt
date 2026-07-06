@@ -9,6 +9,7 @@ import com.skeler.scanely.core.lookup.LookupEngine
 import com.skeler.scanely.core.lookup.LookupResult
 import com.skeler.scanely.core.lookup.ProductCategory
 import com.skeler.scanely.core.lookup.ProductInfo
+import com.skeler.scanely.core.lookup.isEanUpc
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -29,10 +30,7 @@ class OpenFoodFactsEngine @Inject constructor(
     override val priority = 0  // Highest priority for food products
     override val category = ProductCategory.FOOD
     
-    override fun supports(barcode: String): Boolean {
-        // Food barcodes are typically 8-13 digit EAN/UPC codes
-        return barcode.all { it.isDigit() } && barcode.length in 8..13
-    }
+    override fun supports(barcode: String): Boolean = isEanUpc(barcode)
     
     override suspend fun lookup(barcode: String): LookupResult {
         return try {

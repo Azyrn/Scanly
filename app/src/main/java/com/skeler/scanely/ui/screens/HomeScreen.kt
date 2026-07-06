@@ -19,8 +19,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Settings
 
@@ -36,7 +34,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -55,6 +52,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.skeler.scanely.R
 import com.skeler.scanely.core.ai.AiMode
 import com.skeler.scanely.core.ai.AiProvider
+import com.skeler.scanely.core.common.LocalDarkMode
 import com.skeler.scanely.navigation.LocalNavController
 import com.skeler.scanely.navigation.Routes
 import com.skeler.scanely.ui.ScanViewModel
@@ -94,13 +92,7 @@ fun HomeScreen() {
     // Rate Limit state
     val showRateLimitSheet by scanViewModel.showRateLimitSheet.collectAsState()
     val rateLimitState by scanViewModel.rateLimitState.collectAsState()
-
-    // Auto-dismiss rate limit sheet when cooldown completes
-    LaunchedEffect(rateLimitState.remainingSeconds, rateLimitState.justBecameReady) {
-        if (rateLimitState.remainingSeconds == 0 && rateLimitState.justBecameReady) {
-            scanViewModel.dismissRateLimitSheet()
-        }
-    }
+    val isRewardedAdAvailable by scanViewModel.isRewardedAdAvailable.collectAsState()
 
     // Camera permission launcher
     val cameraPermissionLauncher = rememberLauncherForActivityResult(
@@ -120,8 +112,8 @@ fun HomeScreen() {
             val mode = pendingAiMode!!
             val provider = pendingAiProvider
             pendingAiMode = null
-            if (scanViewModel.triggerAiWithRateLimit {
-                scanViewModel.onImageSelected(uris.first())
+            if (scanViewModel.triggerAiWithRateLimit(provider) {
+                scanViewModel.onNewScanSelected()
                 aiViewModel.processMultipleFiles(uris, mode, provider)
             }) {
                 navController.navigate(Routes.RESULTS)
@@ -143,8 +135,8 @@ fun HomeScreen() {
                     )
                 } catch (_: Exception) { }
             }
-            if (scanViewModel.triggerAiWithRateLimit {
-                scanViewModel.onPdfSelected(uris.first())
+            if (scanViewModel.triggerAiWithRateLimit(provider) {
+                scanViewModel.onNewScanSelected()
                 aiViewModel.processMultipleFiles(uris, mode, provider)
             }) {
                 navController.navigate(Routes.RESULTS)
@@ -156,7 +148,7 @@ fun HomeScreen() {
         if (uri != null) {
             aiViewModel.clearResult()
             ocrViewModel.clearResult()
-            scanViewModel.onImageSelected(uri)
+            scanViewModel.onNewScanSelected()
             unifiedViewModel.processImage(uri)
             navController.navigate(Routes.UNIFIED_RESULTS)
         }
@@ -173,7 +165,7 @@ fun HomeScreen() {
             } catch (_: Exception) { }
             aiViewModel.clearResult()
             ocrViewModel.clearResult()
-            scanViewModel.onPdfSelected(uri)
+            scanViewModel.onNewScanSelected()
             ocrViewModel.processPdf(uri)
             navController.navigate(Routes.RESULTS)
         }
@@ -309,7 +301,9 @@ fun HomeScreen() {
     if (showRateLimitSheet) {
         RateLimitSheet(
             remainingSeconds = rateLimitState.remainingSeconds,
-            onDismiss = { scanViewModel.dismissRateLimitSheet() }
+            onDismiss = { scanViewModel.dismissRateLimitSheet() },
+            adAvailable = isRewardedAdAvailable,
+            onWatchAd = { scanViewModel.showRewardedAdForExtraScan(activity) }
         )
     }
 }
@@ -329,7 +323,7 @@ private data class ActionAccents(
 
 @Composable
 private fun rememberActionAccents(): ActionAccents {
-    return if (isSystemInDarkTheme()) {
+    return if (LocalDarkMode.current) {
         ActionAccents(
             document = Color(0xFFB6A9DC), // muted lavender
             gallery = Color(0xFFD8B878),  // muted ochre

@@ -1,17 +1,12 @@
 package com.skeler.scanely.core.common
 
-import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import com.skeler.scanely.settings.data.SettingsKeys
-import com.skeler.scanely.settings.domain.model.SettingsState
 import com.skeler.scanely.settings.presentation.viewmodel.SettingsViewModel
 
 val LocalDarkMode = staticCompositionLocalOf<Boolean> {
@@ -30,11 +25,7 @@ fun CompositionLocals(
     // Return early to render nothing (or a splash background) until data is ready.
     val state = uiState ?: return
 
-    val isDarkTheme = when (state.themeMode) {
-        AppCompatDelegate.MODE_NIGHT_YES -> true
-        AppCompatDelegate.MODE_NIGHT_NO -> false
-        else -> isSystemInDarkTheme()
-    }
+    val isDarkTheme = state.resolvedDarkTheme(isSystemInDarkTheme())
 
     CompositionLocalProvider(
         LocalSettings provides state,
@@ -43,5 +34,3 @@ fun CompositionLocals(
         content()
     }
 }
-
-

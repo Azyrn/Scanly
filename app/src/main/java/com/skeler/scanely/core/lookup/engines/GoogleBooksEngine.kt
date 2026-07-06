@@ -3,12 +3,13 @@ package com.skeler.scanely.core.lookup.engines
 import android.util.Log
 import com.skeler.scanely.core.lookup.BookData
 import com.skeler.scanely.core.lookup.LookupEngine
+import com.skeler.scanely.core.lookup.LookupJson
 import com.skeler.scanely.core.lookup.LookupResult
 import com.skeler.scanely.core.lookup.ProductCategory
 import com.skeler.scanely.core.lookup.ProductInfo
+import com.skeler.scanely.core.lookup.isIsbn
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import javax.inject.Inject
@@ -34,38 +35,23 @@ class GoogleBooksEngine @Inject constructor(
     override val name = "Google Books"
     override val priority = 1
     override val category = ProductCategory.BOOK
-    
-    private val json = Json { ignoreUnknownKeys = true }
-    
-    override fun supports(barcode: String): Boolean {
-        // ISBN-10: 10 digits (may include X at end)
-        // ISBN-13: 13 digits starting with 978 or 979
-        val cleaned = barcode.replace("-", "").uppercase()
-        return when {
-            cleaned.length == 10 && cleaned.take(9).all { it.isDigit() } && 
-                (cleaned.last().isDigit() || cleaned.last() == 'X') -> true
-            cleaned.length == 13 && cleaned.all { it.isDigit() } && 
-                (cleaned.startsWith("978") || cleaned.startsWith("979")) -> true
-            else -> false
-        }
-    }
-    
+
+    override fun supports(barcode: String): Boolean = isIsbn(barcode)
+
     override suspend fun lookup(barcode: String): LookupResult = withContext(Dispatchers.IO) {
         try {
             val cleaned = barcode.replace("-", "")
             val url = "https://www.googleapis.com/books/v1/volumes?q=isbn:$cleaned"
-            
+
             Log.d(TAG, "Looking up: $cleaned")
-            
-            val request = Request.Builder()
-                .url(url)
-                .header("User-Agent", "Scanly Android App")
-                .build()
-            
-            val response = okHttpClient.newCall(request).execute()
-            val body = response.body?.string() ?: return@withContext LookupResult.NotFound(name)
-            
-            val booksResponse = json.decodeFromString<GoogleBooksResponse>(body)
+
+            val request = Request.Builder().url(url).build()
+            val body = okHttpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@withContext LookupResult.NotFound(name)
+                response.body?.string()
+            } ?: return@withContext LookupResult.NotFound(name)
+
+            val booksResponse = LookupJson.decodeFromString<GoogleBooksResponse>(body)
             
             if (booksResponse.totalItems > 0 && booksResponse.items?.isNotEmpty() == true) {
                 val volume = booksResponse.items.first().volumeInfo

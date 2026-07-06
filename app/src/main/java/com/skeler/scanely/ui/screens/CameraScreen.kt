@@ -5,53 +5,55 @@ package com.skeler.scanely.ui.screens
 import android.Manifest
 import android.content.Context
 import android.net.Uri
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
-import androidx.camera.core.Camera
-import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
+import androidx.camera.core.CameraSelector
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.rounded.CameraAlt
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LargeFloatingActionButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -61,83 +63,44 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
-import com.skeler.scanely.R
 import com.skeler.scanely.navigation.LocalNavController
 import com.skeler.scanely.navigation.Routes
-import com.skeler.scanely.ui.ScanViewModel
+import com.skeler.scanely.ui.viewmodel.DocumentScanViewModel
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Locale
 import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
 
 private const val TAG = "CameraScreen"
-private const val FLASH_OFF = 0
-private const val FLASH_ON = 1
-private const val FLASH_AUTO = 2
 
+/**
+ * CameraX capture fallback for the Smart Document Scanner, used when Google Play
+ * services (and therefore the ML Kit document scanner) is unavailable — e.g. on
+ * degoogled / GMS-less devices. Captures a frame, enhances it via
+ * [DocumentScanViewModel.loadCapturedPages], then drops into the same review /
+ * filter / export flow the ML Kit path uses.
+ *
+ * Edge detection, auto-crop and straightening are GMS-only, so a header banner
+ * tells the user to frame the page themselves rather than pretending a crop that
+ * cannot happen here.
+ */
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
-fun CameraScreen(){
+fun DocumentCaptureScreen() {
     val context = LocalContext.current
     val activity = context as ComponentActivity
-    val scanViewModel: ScanViewModel = hiltViewModel(activity)
+    val vm: DocumentScanViewModel = hiltViewModel(activity)
     val navController = LocalNavController.current
     val cameraPermissionState = rememberPermissionState(Manifest.permission.CAMERA)
-    var camera by remember { mutableStateOf<Camera?>(null) }
 
     var isCapturing by remember { mutableStateOf(false) }
     var imageCapture by remember { mutableStateOf<ImageCapture?>(null) }
-    var flashMode by rememberSaveable { mutableIntStateOf(FLASH_OFF) }
-
-    val flashIcon = when (flashMode) {
-        FLASH_OFF -> painterResource(R.drawable.ic_flash_off)
-        FLASH_ON -> painterResource(R.drawable.ic_flash_on)
-        FLASH_AUTO -> painterResource(R.drawable.ic_flash_auto)
-        else -> null
-    }
-
-    val cycleFlashModes: () -> Unit = {
-        when (flashMode) {
-            FLASH_OFF -> {
-                flashMode = FLASH_ON
-            }
-
-            FLASH_ON -> {
-                flashMode = FLASH_AUTO
-            }
-
-            FLASH_AUTO -> {
-                flashMode = FLASH_OFF
-            }
-
-            else -> {}
-        }
-    }
 
     LaunchedEffect(Unit) {
         if (!cameraPermissionState.status.isGranted) {
             cameraPermissionState.launchPermissionRequest()
-        }
-    }
-
-    LaunchedEffect(flashMode, camera, imageCapture) {
-        when (flashMode) {
-            FLASH_OFF -> {
-                camera?.cameraControl?.enableTorch(false)
-                imageCapture?.flashMode = ImageCapture.FLASH_MODE_OFF
-            }
-
-            FLASH_ON -> {
-                camera?.cameraControl?.enableTorch(true)
-                imageCapture?.flashMode = ImageCapture.FLASH_MODE_ON
-            }
-
-            FLASH_AUTO -> {
-                // Torch stays off; let ImageCapture handle auto flash
-                camera?.cameraControl?.enableTorch(false)
-                imageCapture?.flashMode = ImageCapture.FLASH_MODE_AUTO
-            }
         }
     }
 
@@ -147,92 +110,115 @@ fun CameraScreen(){
             .background(Color.Black)
     ) {
         if (cameraPermissionState.status.isGranted) {
-            // 1. Camera Preview (Full Screen)
-            CameraPreviewContent { cam, capture ->
-                camera = cam
-                imageCapture = capture
-            }
+            CameraPreviewContent { capture -> imageCapture = capture }
 
-
-            // 2. Framing Guide Overlay
             FramingOverlay()
 
-            // 3. Shutter Button (Centered at Bottom)
-            Row(
+            // ---- Top: scrim + close + auto-crop-unavailable notice ----
+            Column(
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
+                    .align(Alignment.TopCenter)
                     .fillMaxWidth()
-                    .padding(bottom = 64.dp), // Check padding to avoid nav bar overlap,
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(Color.Black.copy(alpha = 0.6f), Color.Transparent)
+                        )
+                    )
+                    .statusBarsPadding()
+                    .padding(horizontal = 16.dp)
+                    .padding(top = 8.dp, bottom = 28.dp)
             ) {
-
-                Spacer(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                )
-
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    ShutterButton(
-                        modifier = Modifier.size(84.dp),
-                        isCapturing = isCapturing,
-                        onClick = {
-                            if (!isCapturing && imageCapture != null) {
-                                isCapturing = true
-                                captureImage(
-                                    context,
-                                    imageCapture!!,
-                                    onImageCaptured = { uri ->
-                                        isCapturing = false
-                                        scanViewModel.onImageSelected(uri)
-                                        navController.navigate(Routes.RESULTS) {
-                                            popUpTo(Routes.HOME)
-                                        }
-                                    },
-                                    onError = { exc ->
-                                        isCapturing = false
-                                        Log.e(TAG, "Capture failed", exc)
-                                    }
-                                )
-                            }
-                        }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    FilledIconButton(
+                        onClick = { navController.popBackStack() },
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = Color.White.copy(alpha = 0.15f),
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Icon(Icons.Rounded.Close, contentDescription = "Close")
+                    }
+                    Spacer(Modifier.size(12.dp))
+                    Text(
+                        text = "Capture document",
+                        color = Color.White,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
 
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth(),
-                    contentAlignment = Alignment.CenterStart
+                Spacer(Modifier.height(16.dp))
+
+                Surface(
+                    color = MaterialTheme.colorScheme.tertiaryContainer,
+                    shape = MaterialTheme.shapes.large,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    flashIcon?.let { icon ->
-                        IconButton(
-                            onClick = cycleFlashModes,
-                            modifier = Modifier.size(48.dp),
-                            colors = IconButtonDefaults.iconButtonColors(
-                                containerColor = Color.Black.copy(
-                                    alpha = 0.3f
-                                )
-                            )
-                        ) {
-                            Icon(
-                                painter = icon,
-                                tint = Color.White,
-                                contentDescription = "camera flash",
-                                modifier = Modifier.size(32.dp)
-                            )
-                        }
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Info,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(Modifier.size(12.dp))
+                        Text(
+                            text = "Auto-crop and straightening need Google Play services. " +
+                                "Line the page up with the frame for the cleanest scan.",
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                            style = MaterialTheme.typography.bodySmall
+                        )
                     }
                 }
             }
+
+            // ---- Bottom: scrim + shutter ----
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f))
+                        )
+                    )
+                    .navigationBarsPadding()
+                    .padding(top = 40.dp, bottom = 36.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                ShutterButton(
+                    modifier = Modifier.size(84.dp),
+                    isCapturing = isCapturing,
+                    onClick = {
+                        val capture = imageCapture
+                        if (!isCapturing && capture != null) {
+                            isCapturing = true
+                            captureImage(
+                                context,
+                                capture,
+                                onImageCaptured = { uri ->
+                                    isCapturing = false
+                                    vm.loadCapturedPages(listOf(uri))
+                                    navController.navigate(Routes.SCAN_REVIEW)
+                                },
+                                onError = { exc ->
+                                    isCapturing = false
+                                    Log.e(TAG, "Document capture failed", exc)
+                                    Toast.makeText(
+                                        context,
+                                        "Couldn't capture — try again",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            )
+                        }
+                    }
+                )
+            }
         } else {
-            // Permission Denied State
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -248,19 +234,16 @@ fun CameraScreen(){
 }
 
 @Composable
-fun ShutterButton(
+private fun ShutterButton(
     modifier: Modifier = Modifier,
     isCapturing: Boolean,
     onClick: () -> Unit
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
-
     LargeFloatingActionButton(
         onClick = onClick,
         shape = CircleShape,
         containerColor = if (isCapturing) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.primary,
         contentColor = if (isCapturing) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onPrimary,
-        interactionSource = interactionSource,
         modifier = modifier
     ) {
         if (isCapturing) {
@@ -281,87 +264,56 @@ private fun FramingOverlay() {
         val strokeWidth = 2.dp.toPx()
         val color = Color.White.copy(alpha = 0.5f)
         val cornerLength = 40.dp.toPx()
-        val margin = 48.dp.toPx() // Margin from edges
+        val margin = 48.dp.toPx()
+        val right = size.width - margin
+        val bottom = size.height - margin
 
         // Top Left
         drawLine(color, Offset(margin, margin), Offset(margin + cornerLength, margin), strokeWidth)
         drawLine(color, Offset(margin, margin), Offset(margin, margin + cornerLength), strokeWidth)
-
         // Top Right
-        drawLine(
-            color,
-            Offset(size.width - margin, margin),
-            Offset(size.width - margin - cornerLength, margin),
-            strokeWidth
-        )
-        drawLine(
-            color,
-            Offset(size.width - margin, margin),
-            Offset(size.width - margin, margin + cornerLength),
-            strokeWidth
-        )
-
+        drawLine(color, Offset(right, margin), Offset(right - cornerLength, margin), strokeWidth)
+        drawLine(color, Offset(right, margin), Offset(right, margin + cornerLength), strokeWidth)
         // Bottom Left
-        drawLine(
-            color,
-            Offset(margin, size.height - margin),
-            Offset(margin + cornerLength, size.height - margin),
-            strokeWidth
-        )
-        drawLine(
-            color,
-            Offset(margin, size.height - margin),
-            Offset(margin, size.height - margin - cornerLength),
-            strokeWidth
-        )
-
+        drawLine(color, Offset(margin, bottom), Offset(margin + cornerLength, bottom), strokeWidth)
+        drawLine(color, Offset(margin, bottom), Offset(margin, bottom - cornerLength), strokeWidth)
         // Bottom Right
-        drawLine(
-            color,
-            Offset(size.width - margin, size.height - margin),
-            Offset(size.width - margin - cornerLength, size.height - margin),
-            strokeWidth
-        )
-        drawLine(
-            color,
-            Offset(size.width - margin, size.height - margin),
-            Offset(size.width - margin, size.height - margin - cornerLength),
-            strokeWidth
-        )
+        drawLine(color, Offset(right, bottom), Offset(right - cornerLength, bottom), strokeWidth)
+        drawLine(color, Offset(right, bottom), Offset(right, bottom - cornerLength), strokeWidth)
     }
 }
 
 @Composable
 private fun CameraPreviewContent(
-    onCameraReady: (camera: Camera, imageCapture: ImageCapture) -> Unit
+    onCameraReady: (imageCapture: ImageCapture) -> Unit
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val previewView = remember { PreviewView(context) }
-    previewView.scaleType = PreviewView.ScaleType.FILL_CENTER
+    val previewView = remember {
+        PreviewView(context).apply { scaleType = PreviewView.ScaleType.FILL_CENTER }
+    }
 
     LaunchedEffect(Unit) {
-        val cameraProvider = context.getCameraProvider()
-
-        val preview = Preview.Builder().build().also {
-            it.surfaceProvider = previewView.surfaceProvider
-        }
-
-        val imageCapture = ImageCapture.Builder()
-            .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
-            .build()
-
         try {
+            val cameraProvider = context.getCameraProvider()
+
+            val preview = Preview.Builder().build().also {
+                it.surfaceProvider = previewView.surfaceProvider
+            }
+
+            val imageCapture = ImageCapture.Builder()
+                .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
+                .build()
+
             cameraProvider.unbindAll()
-            val camera = cameraProvider.bindToLifecycle(
+            cameraProvider.bindToLifecycle(
                 lifecycleOwner,
                 CameraSelector.DEFAULT_BACK_CAMERA,
                 preview,
                 imageCapture
             )
 
-            onCameraReady(camera, imageCapture)
-
+            onCameraReady(imageCapture)
         } catch (e: Exception) {
             Log.e(TAG, "Camera binding failed", e)
         }
@@ -389,10 +341,7 @@ private fun captureImage(
         ContextCompat.getMainExecutor(context),
         object : ImageCapture.OnImageSavedCallback {
             override fun onImageSaved(output: ImageCapture.OutputFileResults) {
-                // Return URI on main thread just in case, though usually callback is on main executor
-                Handler(Looper.getMainLooper()).post {
-                    onImageCaptured(Uri.fromFile(photoFile))
-                }
+                onImageCaptured(Uri.fromFile(photoFile))
             }
 
             override fun onError(exception: ImageCaptureException) {
@@ -406,9 +355,14 @@ private suspend fun Context.getCameraProvider(): ProcessCameraProvider =
     suspendCoroutine { continuation ->
         ProcessCameraProvider.getInstance(this).also { future ->
             future.addListener(
-                { continuation.resume(future.get()) },
+                {
+                    try {
+                        continuation.resume(future.get())
+                    } catch (e: Exception) {
+                        continuation.resumeWithException(e)
+                    }
+                },
                 ContextCompat.getMainExecutor(this)
             )
         }
     }
-

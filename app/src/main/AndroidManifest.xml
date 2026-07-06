@@ -40,11 +40,16 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Scanely"
         tools:targetApi="36">
+
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="${admobAppId}" />
+
         <activity
             android:name=".MainActivity"
             android:enableOnBackInvokedCallback="true"
             android:exported="true"
-            android:theme="@style/Theme.Scanely">
+            android:theme="@style/Theme.Scanely.Splash">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

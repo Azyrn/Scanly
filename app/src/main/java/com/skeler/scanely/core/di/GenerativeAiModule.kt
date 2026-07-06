@@ -3,6 +3,7 @@ package com.skeler.scanely.core.di
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import com.skeler.scanely.core.network.ClaudeApi
 import com.skeler.scanely.core.network.GeminiApi
+import com.skeler.scanely.core.network.KeyValidationApi
 import com.skeler.scanely.core.network.MistralApi
 import com.skeler.scanely.core.network.OpenAiCompatApi
 import dagger.Module
@@ -33,6 +34,7 @@ object GenerativeAiModule {
     private val json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
+        explicitNulls = false // omit null request fields (e.g. reasoning_effort) OpenAI-compat servers may reject
         classDiscriminator = "type"
     }
 
@@ -86,6 +88,16 @@ object GenerativeAiModule {
             .addConverterFactory(geminiJson.asConverterFactory("application/json".toMediaType()))
             .build()
             .create(MistralApi::class.java)
+
+    /** Short-timeout, converter-less client for read-only key validation. */
+    @Provides
+    @Singleton
+    fun provideKeyValidationApi(): KeyValidationApi =
+        Retrofit.Builder()
+            .baseUrl(KeyValidationApi.BASE_URL)
+            .client(defaultClient(20))
+            .build()
+            .create(KeyValidationApi::class.java)
 
     @Provides
     @Singleton

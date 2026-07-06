@@ -4,6 +4,7 @@ package com.skeler.scanely.ui.components
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.text.selection.TextSelectionColors
@@ -30,6 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
@@ -94,6 +97,40 @@ fun ReadableTextContent(
             }
         }
     }
+}
+
+/**
+ * Editable twin of [ReadableTextContent] for correcting imperfect OCR. Keeps the
+ * exact reading typography (17sp / 28sp, onSurface) so switching into edit mode
+ * doesn't reflow or restyle the text; only the caret and a subtle field
+ * background appear. Edits are staged locally — the caller commits them on Save.
+ */
+@Composable
+fun EditableReadableText(
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val readingStyle = MaterialTheme.typography.bodyLarge.copy(
+        fontSize = 17.sp,
+        lineHeight = 28.sp,
+        letterSpacing = 0.015.sp,
+        textDirection = TextDirection.Content,
+        color = MaterialTheme.colorScheme.onSurface
+    )
+
+    BasicTextField(
+        value = value,
+        onValueChange = onValueChange,
+        textStyle = readingStyle,
+        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp, bottom = 16.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .padding(12.dp)
+    )
 }
 
 /**

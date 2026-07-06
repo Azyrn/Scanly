@@ -254,21 +254,24 @@ internal class ProviderClient @Inject constructor(
         }
 
         val auth = "Bearer ${config.apiKey}"
+        // Remembered across images so a rejected default model isn't re-tried per page.
+        var model = config.model
         val results = images.map { base64 ->
             val document = MistralDocument(
                 type = "image_url",
                 image_url = "data:image/jpeg;base64,$base64"
             )
             val response = try {
-                mistralApi.ocr(auth, MistralOcrRequest(config.model, document))
+                mistralApi.ocr(auth, MistralOcrRequest(model, document))
             } catch (e: HttpException) {
                 // Only the app default is eligible for the older-model retry; a
                 // user-chosen model is never silently swapped.
-                if (config.model == ProviderConfig.MISTRAL_OCR_DEFAULT &&
+                if (model == ProviderConfig.MISTRAL_OCR_DEFAULT &&
                     e.code() in 400..499 && e.code() != 429
                 ) {
-                    aiDebug { "Mistral ${config.model} rejected (HTTP ${e.code()}), trying $MISTRAL_OCR_FALLBACK_MODEL" }
-                    mistralApi.ocr(auth, MistralOcrRequest(MISTRAL_OCR_FALLBACK_MODEL, document))
+                    aiDebug { "Mistral $model rejected (HTTP ${e.code()}), trying $MISTRAL_OCR_FALLBACK_MODEL" }
+                    model = MISTRAL_OCR_FALLBACK_MODEL
+                    mistralApi.ocr(auth, MistralOcrRequest(model, document))
                 } else throw e
             }
             response.pages
@@ -286,7 +289,8 @@ internal class ProviderClient @Inject constructor(
         /** Minimum interval between streamed [AiEvent.Delta] emissions. */
         private const val DELTA_THROTTLE_MS = 100L
 
-        /** Inline reasoning block emitted by some models; stripped from output. */
-        private val THINK_BLOCK = Regex("(?s)<think>.*?</think>\\s*")
+        /** Inline reasoning block emitted by some models; stripped from output.
+         * Also matches an unterminated block (response truncated mid-thought). */
+        private val THINK_BLOCK = Regex("(?s)<think>.*?(?:</think>\\s*|$)")
     }
 }

@@ -56,13 +56,36 @@ internal class ProviderConfigResolver @Inject constructor(
             val model = settingValue(SettingsKeys.HUGGINGFACE_MODEL) ?: engineModel
             key?.let { ProviderConfig(ProviderKind.OPENAI_COMPAT, model, it, HUGGINGFACE_URL, usesBundledKey = userKey == null) }
         }
-        AiProvider.NVIDIA -> settingValue(SettingsKeys.NVIDIA_API_KEY)?.let {
+        AiProvider.NVIDIA -> {
+            val userKey = settingValue(SettingsKeys.NVIDIA_API_KEY)
+            val key = userKey ?: BuildConfig.NVIDIA_API_KEY.trim().ifBlank { null }
             val model = settingValue(SettingsKeys.NVIDIA_MODEL) ?: NVIDIA_MODEL
-            ProviderConfig(ProviderKind.OPENAI_COMPAT, model, it, NVIDIA_URL)
+            key?.let { ProviderConfig(ProviderKind.OPENAI_COMPAT, model, it, NVIDIA_URL, usesBundledKey = userKey == null) }
         }
         AiProvider.GROQ -> settingValue(SettingsKeys.GROQ_API_KEY)?.let {
             val model = settingValue(SettingsKeys.GROQ_MODEL) ?: GROQ_MODEL
             ProviderConfig(ProviderKind.OPENAI_COMPAT, model, it, GROQ_URL)
+        }
+        AiProvider.CEREBRAS -> settingValue(SettingsKeys.CEREBRAS_API_KEY)?.let {
+            val model = settingValue(SettingsKeys.CEREBRAS_MODEL) ?: CEREBRAS_MODEL
+            ProviderConfig(ProviderKind.OPENAI_COMPAT, model, it, CEREBRAS_URL)
+        }
+        AiProvider.CLOUDFLARE -> {
+            // A token is bound to its account, so key + account id travel as a pair:
+            // use the user's pair when both are set, else fall back to the bundled pair.
+            val userKey = settingValue(SettingsKeys.CLOUDFLARE_API_KEY)
+            val userAccount = settingValue(SettingsKeys.CLOUDFLARE_ACCOUNT_ID)
+            val bundledKey = BuildConfig.CLOUDFLARE_API_KEY.trim().ifBlank { null }
+            val bundledAccount = BuildConfig.CLOUDFLARE_ACCOUNT_ID.trim().ifBlank { null }
+            val pair = when {
+                userKey != null && userAccount != null -> Triple(userKey, userAccount, false)
+                bundledKey != null && bundledAccount != null -> Triple(bundledKey, bundledAccount, true)
+                else -> null
+            }
+            pair?.let { (key, accountId, bundled) ->
+                val model = settingValue(SettingsKeys.CLOUDFLARE_MODEL) ?: CLOUDFLARE_MODEL
+                ProviderConfig(ProviderKind.OPENAI_COMPAT, model, key, cloudflareUrl(accountId), usesBundledKey = bundled)
+            }
         }
         AiProvider.OPENAI -> settingValue(SettingsKeys.OPENAI_API_KEY)?.let {
             val model = settingValue(SettingsKeys.OPENAI_MODEL) ?: OPENAI_MODEL
@@ -117,13 +140,20 @@ internal class ProviderConfigResolver @Inject constructor(
         settingsRepository.getString(SettingsKeys.GEMINI_API_KEY),
         settingsRepository.getString(SettingsKeys.MISTRAL_API_KEY),
         settingsRepository.getString(SettingsKeys.OPENROUTER_API_KEY),
-        settingsRepository.getString(SettingsKeys.HUGGINGFACE_API_KEY)
-    ) { gemini, mistral, openRouter, huggingFace ->
+        settingsRepository.getString(SettingsKeys.HUGGINGFACE_API_KEY),
+        settingsRepository.getString(SettingsKeys.NVIDIA_API_KEY),
+        settingsRepository.getString(SettingsKeys.CLOUDFLARE_API_KEY),
+        settingsRepository.getString(SettingsKeys.CLOUDFLARE_ACCOUNT_ID)
+    ) { keys ->
         buildSet {
-            if (gemini.isBlank() && BUNDLED_GEMINI) add(AiProvider.GEMINI)
-            if (mistral.isBlank() && BUNDLED_MISTRAL) add(AiProvider.MISTRAL)
-            if (openRouter.isBlank() && BUNDLED_OPENROUTER) add(AiProvider.OPENROUTER)
-            if (huggingFace.isBlank() && BUNDLED_HUGGINGFACE) add(AiProvider.HUGGINGFACE)
+            if (keys[0].isBlank() && BUNDLED_GEMINI) add(AiProvider.GEMINI)
+            if (keys[1].isBlank() && BUNDLED_MISTRAL) add(AiProvider.MISTRAL)
+            if (keys[2].isBlank() && BUNDLED_OPENROUTER) add(AiProvider.OPENROUTER)
+            if (keys[3].isBlank() && BUNDLED_HUGGINGFACE) add(AiProvider.HUGGINGFACE)
+            if (keys[4].isBlank() && BUNDLED_NVIDIA) add(AiProvider.NVIDIA)
+            // Cloudflare falls back to the bundled pair unless BOTH user fields are set
+            // (resolve() uses key + account id as an inseparable pair).
+            if ((keys[5].isBlank() || keys[6].isBlank()) && BUNDLED_CLOUDFLARE) add(AiProvider.CLOUDFLARE)
         }
     }
 
@@ -133,6 +163,8 @@ internal class ProviderConfigResolver @Inject constructor(
         if (BUNDLED_MISTRAL) add(AiProvider.MISTRAL)
         if (BUNDLED_OPENROUTER) add(AiProvider.OPENROUTER)
         if (BUNDLED_HUGGINGFACE) add(AiProvider.HUGGINGFACE)
+        if (BUNDLED_NVIDIA) add(AiProvider.NVIDIA)
+        if (BUNDLED_CLOUDFLARE) add(AiProvider.CLOUDFLARE)
     }
 
     // Trimmed, or null if unset/blank.
@@ -145,9 +177,15 @@ internal class ProviderConfigResolver @Inject constructor(
         private const val OPENROUTER_MODEL = "google/gemma-4-26b-a4b-it:free"
         private const val HUGGINGFACE_URL = "https://router.huggingface.co/v1/chat/completions"
         private const val NVIDIA_URL = "https://integrate.api.nvidia.com/v1/chat/completions"
-        private const val NVIDIA_MODEL = "meta/llama-3.2-11b-vision-instruct"
+        private const val NVIDIA_MODEL = "google/gemma-4-31b-it"
         private const val GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
         private const val GROQ_MODEL = "qwen/qwen3.6-27b"
+        private const val CEREBRAS_URL = "https://api.cerebras.ai/v1/chat/completions"
+        private const val CEREBRAS_MODEL = "gemma-4-31b"
+        private const val CLOUDFLARE_MODEL = "@cf/mistralai/mistral-small-3.1-24b-instruct"
+        // Workers AI OpenAI-compatible endpoint; the account id is part of the path.
+        fun cloudflareUrl(accountId: String) =
+            "https://api.cloudflare.com/client/v4/accounts/$accountId/ai/v1/chat/completions"
         private const val OPENAI_URL = "https://api.openai.com/v1/chat/completions"
         private const val OPENAI_MODEL = "gpt-4o-mini"
         private const val CLAUDE_MODEL = "claude-haiku-4-5-20251001"
@@ -157,6 +195,9 @@ internal class ProviderConfigResolver @Inject constructor(
         private val BUNDLED_MISTRAL = BuildConfig.MISTRAL_API_KEY.isNotBlank()
         private val BUNDLED_OPENROUTER = BuildConfig.OPENROUTER_API_KEY.isNotBlank()
         private val BUNDLED_HUGGINGFACE = BuildConfig.HUGGINGFACE_API_KEY.isNotBlank()
+        private val BUNDLED_NVIDIA = BuildConfig.NVIDIA_API_KEY.isNotBlank()
+        private val BUNDLED_CLOUDFLARE =
+            BuildConfig.CLOUDFLARE_API_KEY.isNotBlank() && BuildConfig.CLOUDFLARE_ACCOUNT_ID.isNotBlank()
 
         private val FALLBACK_ORDER = listOf(
             AiProvider.GEMINI,
@@ -165,6 +206,8 @@ internal class ProviderConfigResolver @Inject constructor(
             AiProvider.HUGGINGFACE,
             AiProvider.NVIDIA,
             AiProvider.GROQ,
+            AiProvider.CEREBRAS,
+            AiProvider.CLOUDFLARE,
             AiProvider.OPENAI,
             AiProvider.CLAUDE,
             AiProvider.CUSTOM

@@ -59,6 +59,23 @@ android {
             "HUGGINGFACE_API_KEY",
             "\"${localProperties.getProperty("HUGGINGFACE_API_KEY") ?: ""}\""
         )
+        // Bundled free-tier NVIDIA NIM developer key.
+        buildConfigField(
+            "String",
+            "NVIDIA_API_KEY",
+            "\"${localProperties.getProperty("NVIDIA_API_KEY") ?: ""}\""
+        )
+        // Bundled free-tier Cloudflare Workers AI token + account id.
+        buildConfigField(
+            "String",
+            "CLOUDFLARE_API_KEY",
+            "\"${localProperties.getProperty("CLOUDFLARE_API_KEY") ?: ""}\""
+        )
+        buildConfigField(
+            "String",
+            "CLOUDFLARE_ACCOUNT_ID",
+            "\"${localProperties.getProperty("CLOUDFLARE_ACCOUNT_ID") ?: ""}\""
+        )
     }
 
     lint {

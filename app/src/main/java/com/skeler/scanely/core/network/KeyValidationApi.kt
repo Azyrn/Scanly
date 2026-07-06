@@ -1,9 +1,12 @@
 package com.skeler.scanely.core.network
 
+import okhttp3.RequestBody
 import okhttp3.ResponseBody
 import retrofit2.Response
+import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.HeaderMap
+import retrofit2.http.POST
 import retrofit2.http.Url
 
 /**
@@ -19,6 +22,14 @@ interface KeyValidationApi {
     suspend fun get(
         @Url url: String,
         @HeaderMap headers: Map<String, String>
+    ): Response<ResponseBody>
+
+    /** For providers whose only authenticated endpoint is a POST (e.g. NVIDIA NIM). */
+    @POST
+    suspend fun post(
+        @Url url: String,
+        @HeaderMap headers: Map<String, String>,
+        @Body body: RequestBody
     ): Response<ResponseBody>
 
     companion object {

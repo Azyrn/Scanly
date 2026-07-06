@@ -64,7 +64,9 @@ object GenerativeAiModule {
     fun provideOpenAiCompatApi(): OpenAiCompatApi =
         Retrofit.Builder()
             .baseUrl(OpenAiCompatApi.BASE_URL)
-            .client(defaultClient())
+            // 90 s: a non-streaming (degraded) multi-image request waits for the whole
+            // body in one read; 60 s undercut the executor's 90–240 s attempt budget.
+            .client(defaultClient(90))
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()
             .create(OpenAiCompatApi::class.java)

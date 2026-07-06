@@ -43,6 +43,7 @@ import androidx.compose.material.icons.rounded.Key
 import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.Memory
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Tag
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
@@ -77,6 +78,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
@@ -160,6 +162,13 @@ fun AiProvidersScreen(
                 SettingsSectionHeader(
                     text = "Advanced",
                     modifier = Modifier.padding(start = 8.dp, top = 8.dp)
+                )
+            }
+
+            item {
+                CloudflareProviderCard(
+                    settingsViewModel = settingsViewModel,
+                    verificationViewModel = verificationViewModel
                 )
             }
 
@@ -262,7 +271,7 @@ private val PROVIDERS = listOf(
         provider = AiProvider.NVIDIA,
         settingsKey = SettingsKeys.NVIDIA_API_KEY,
         modelKey = SettingsKeys.NVIDIA_MODEL,
-        defaultModel = "meta/llama-3.2-11b-vision-instruct",
+        defaultModel = "google/gemma-4-31b-it",
         name = "NVIDIA",
         icon = Icons.Rounded.Memory,
         hint = "nvapi-…",
@@ -279,6 +288,17 @@ private val PROVIDERS = listOf(
         hint = "gsk_…",
         getKeyUrl = "https://console.groq.com/keys",
         description = "Groq LPU · very fast inference. Free tier included."
+    ),
+    ProviderSpec(
+        provider = AiProvider.CEREBRAS,
+        settingsKey = SettingsKeys.CEREBRAS_API_KEY,
+        modelKey = SettingsKeys.CEREBRAS_MODEL,
+        defaultModel = "gemma-4-31b",
+        name = "Cerebras",
+        icon = Icons.Rounded.Bolt,
+        hint = "csk-…",
+        getKeyUrl = "https://cloud.cerebras.ai",
+        description = "Cerebras · ultra-fast Gemma-4 vision inference. Free tier included."
     ),
     ProviderSpec(
         provider = AiProvider.OPENAI,
@@ -359,7 +379,7 @@ private fun ProviderCard(
             trailingIcon = { RevealToggle(revealed) { revealed = !revealed } },
             supportingText = statusMessage(verifyState)?.let { msg -> { Text(msg) } },
             visualTransformation = keyTransform(revealed),
-            keyboardOptions = KeyboardOptions.Default,
+            keyboardOptions = KEY_KEYBOARD,
             shape = MaterialTheme.shapes.large,
             interactionSource = interactionSource
         )
@@ -377,6 +397,109 @@ private fun ProviderCard(
             getKeyLabel = "Get ${spec.name} key",
             onVerify = { verificationViewModel.verify(spec.provider, value) },
             onGetKey = { uriHandler.openUri(spec.getKeyUrl) }
+        )
+    }
+}
+
+/**
+ * Cloudflare Workers AI: account id + token + model. The account id is folded
+ * into the run URL rather than typed as a full endpoint, so it gets its own
+ * plain field and is passed to verification as the "custom URL".
+ */
+@Composable
+private fun CloudflareProviderCard(
+    settingsViewModel: SettingsViewModel,
+    verificationViewModel: ProviderVerificationViewModel
+) {
+    val uriHandler = LocalUriHandler.current
+    val interactionSource = remember { MutableInteractionSource() }
+    val focused by interactionSource.collectIsFocusedAsState()
+
+    var accountId by rememberSaveable { mutableStateOf("") }
+    var accountSeeded by rememberSaveable { mutableStateOf(false) }
+    var key by rememberSaveable { mutableStateOf("") }
+    var keySeeded by rememberSaveable { mutableStateOf(false) }
+    var revealed by remember { mutableStateOf(false) }
+    val storedAccount by settingsViewModel.getString(SettingsKeys.CLOUDFLARE_ACCOUNT_ID).collectAsState(initial = "")
+    val storedKey by settingsViewModel.getString(SettingsKeys.CLOUDFLARE_API_KEY).collectAsState(initial = "")
+
+    LaunchedEffect(storedAccount, accountSeeded) {
+        if (!accountSeeded && storedAccount.isNotEmpty()) {
+            accountId = storedAccount
+            accountSeeded = true
+        }
+    }
+    LaunchedEffect(storedKey, keySeeded) {
+        if (!keySeeded && storedKey.isNotEmpty()) {
+            key = storedKey
+            keySeeded = true
+        }
+    }
+
+    val entries by verificationViewModel.states.collectAsState()
+    val verifyState = verificationViewModel.resolve(entries[AiProvider.CLOUDFLARE], key)
+
+    ProviderContainer(focused = focused) {
+        ProviderHeader(
+            name = "Cloudflare",
+            icon = Icons.Rounded.Bolt,
+            description = "Workers AI · vision on Cloudflare's edge. Free tier included; " +
+                "add your own Account ID + token to use your quota.",
+            verifyState = verifyState
+        )
+
+        OutlinedTextField(
+            value = accountId,
+            onValueChange = {
+                accountSeeded = true
+                accountId = it
+                settingsViewModel.setString(SettingsKeys.CLOUDFLARE_ACCOUNT_ID, it.trim())
+                // Account id is part of the run URL — a change invalidates a prior key check.
+                verificationViewModel.invalidate(AiProvider.CLOUDFLARE)
+            },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            label = { Text("Account ID") },
+            placeholder = { Text("32-char account id") },
+            leadingIcon = { Icon(Icons.Rounded.Tag, contentDescription = null) },
+            shape = MaterialTheme.shapes.large
+        )
+
+        PlainField(
+            settingsViewModel = settingsViewModel,
+            settingsKey = SettingsKeys.CLOUDFLARE_MODEL,
+            label = "Model",
+            hint = "@cf/mistralai/mistral-small-3.1-24b-instruct",
+            leading = Icons.Rounded.Category
+        )
+
+        OutlinedTextField(
+            value = key,
+            onValueChange = {
+                keySeeded = true
+                key = it
+                settingsViewModel.setString(SettingsKeys.CLOUDFLARE_API_KEY, it.trim())
+                verificationViewModel.onKeyChanged(AiProvider.CLOUDFLARE, it)
+            },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            isError = verifyState is VerifyState.Invalid,
+            label = { Text("API token") },
+            placeholder = { Text("cfut_…") },
+            leadingIcon = { Icon(Icons.Rounded.Key, contentDescription = null) },
+            trailingIcon = { RevealToggle(revealed) { revealed = !revealed } },
+            supportingText = statusMessage(verifyState)?.let { msg -> { Text(msg) } },
+            visualTransformation = keyTransform(revealed),
+            keyboardOptions = KEY_KEYBOARD,
+            shape = MaterialTheme.shapes.large,
+            interactionSource = interactionSource
+        )
+
+        ProviderActions(
+            verifyState = verifyState,
+            getKeyLabel = "Get Cloudflare token",
+            onVerify = { verificationViewModel.verify(AiProvider.CLOUDFLARE, key, customUrl = accountId) },
+            onGetKey = { uriHandler.openUri("https://dash.cloudflare.com/profile/api-tokens") }
         )
     }
 }
@@ -467,6 +590,7 @@ private fun CustomProviderCard(
             trailingIcon = { RevealToggle(revealed) { revealed = !revealed } },
             supportingText = statusMessage(verifyState)?.let { msg -> { Text(msg) } },
             visualTransformation = keyTransform(revealed),
+            keyboardOptions = KEY_KEYBOARD,
             shape = MaterialTheme.shapes.large,
             interactionSource = interactionSource
         )
@@ -814,3 +938,6 @@ private fun PlainField(
 
 private fun keyTransform(revealed: Boolean): VisualTransformation =
     if (revealed) VisualTransformation.None else PasswordVisualTransformation()
+
+// Password keyboard so the IME never learns or suggests API keys.
+private val KEY_KEYBOARD = KeyboardOptions(keyboardType = KeyboardType.Password)

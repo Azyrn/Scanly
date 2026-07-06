@@ -23,6 +23,9 @@ enum class SettingsKeys(val default: Any?) {
     HUGGINGFACE_API_KEY(""), // User-supplied Hugging Face token; falls back to bundled key
     NVIDIA_API_KEY(""), // User-supplied NVIDIA NIM key (nvapi-…)
     GROQ_API_KEY(""), // User-supplied Groq key (gsk_…)
+    CEREBRAS_API_KEY(""), // User-supplied Cerebras key (csk-…)
+    CLOUDFLARE_API_KEY(""), // User-supplied Cloudflare Workers AI token (cfut_…)
+    CLOUDFLARE_ACCOUNT_ID(""), // Cloudflare account id — folded into the run URL
     // Which Hugging Face OCR model to use when no manual model override is set.
     OCR_ENGINE("qwen"), // OcrEngine.id — "qwen"
     // Per-provider model overrides; blank = use the built-in default model.
@@ -34,6 +37,8 @@ enum class SettingsKeys(val default: Any?) {
     HUGGINGFACE_MODEL(""),
     NVIDIA_MODEL(""),
     GROQ_MODEL(""),
+    CEREBRAS_MODEL(""),
+    CLOUDFLARE_MODEL(""),
     CUSTOM_API_KEY(""), // Custom OpenAI-compatible endpoint key
     CUSTOM_BASE_URL(""), // Custom endpoint URL (full chat/completions URL)
     CUSTOM_MODEL("") // Custom endpoint model id

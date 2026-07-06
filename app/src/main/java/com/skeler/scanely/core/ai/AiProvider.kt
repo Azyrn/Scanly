@@ -27,6 +27,8 @@ enum class AiProvider(val displayName: String, val kind: ProviderKind) {
     HUGGINGFACE("Hugging Face", ProviderKind.OPENAI_COMPAT),
     NVIDIA("NVIDIA", ProviderKind.OPENAI_COMPAT),
     GROQ("Groq", ProviderKind.OPENAI_COMPAT),
+    CEREBRAS("Cerebras", ProviderKind.OPENAI_COMPAT),
+    CLOUDFLARE("Cloudflare", ProviderKind.OPENAI_COMPAT),
     OPENAI("OpenAI", ProviderKind.OPENAI_COMPAT),
     CLAUDE("Claude", ProviderKind.ANTHROPIC),
     CUSTOM("Custom", ProviderKind.OPENAI_COMPAT);

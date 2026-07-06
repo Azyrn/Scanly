@@ -85,7 +85,7 @@ class ProviderVerificationViewModel @Inject constructor(
 
         jobs[provider]?.cancel()
         put(provider, trimmed, VerifyState.Verifying)
-        jobs[provider] = viewModelScope.launch {
+        val job = viewModelScope.launch {
             val state = when (val result = verifier.verify(provider, trimmed, customUrl)) {
                 is VerificationResult.Valid -> VerifyState.Verified
                 is VerificationResult.Invalid -> VerifyState.Invalid(result.message)
@@ -96,6 +96,10 @@ class ProviderVerificationViewModel @Inject constructor(
                 put(provider, trimmed, state)
             }
         }
+        jobs[provider] = job
+        // Drop the entry once done so finished jobs don't accumulate; guard against
+        // a newer job having already replaced this one.
+        job.invokeOnCompletion { if (jobs[provider] === job) jobs.remove(provider) }
     }
 
     /** On every key edit: invalidate a stale cache and cancel any running check. */

@@ -15,7 +15,11 @@ private val SECRET_PATTERNS: List<Pair<Regex, String>> = listOf(
     Regex("sk-ant-[A-Za-z0-9._\\-]+") to "***",
     Regex("sk-or-[A-Za-z0-9._\\-]+") to "***",
     Regex("sk-[A-Za-z0-9._\\-]+") to "***",
-    Regex("AIza[A-Za-z0-9._\\-]+") to "***"
+    Regex("AIza[A-Za-z0-9._\\-]+") to "***",
+    Regex("nvapi-[A-Za-z0-9._\\-]+") to "***",
+    Regex("gsk_[A-Za-z0-9._\\-]+") to "***",
+    Regex("hf_[A-Za-z0-9._\\-]+") to "***",
+    Regex("cfut_[A-Za-z0-9._\\-]+") to "***"
 )
 
 /**

@@ -74,10 +74,16 @@ internal class ProviderExecutor @Inject constructor(
                     }
                 }
                 aiDebug { "$name attempt ${attempt + 1} ok in ${SystemClock.elapsedRealtime() - start} ms" }
-                return if (text.isBlank()) {
-                    ProviderOutcome.Fatal(AiResult.Error("No response generated"))
+                if (text.isNotBlank()) return ProviderOutcome.Success(text)
+                // A 200 stream that never carried an SSE data line means the endpoint
+                // doesn't implement streaming — degrade the remaining attempts to
+                // plain requests instead of failing the whole chain.
+                if (useStreaming && !streamedAnything[0]) {
+                    aiDebug { "$name returned 200 with no SSE data; degrading to plain requests" }
+                    useStreaming = false
+                    lastFailureWasNetwork = false
                 } else {
-                    ProviderOutcome.Success(text)
+                    return ProviderOutcome.Fatal(AiResult.Error("No response generated"))
                 }
             } catch (e: TimeoutCancellationException) {
                 aiDebug { "$name attempt ${attempt + 1} timed out after $timeoutMs ms" }

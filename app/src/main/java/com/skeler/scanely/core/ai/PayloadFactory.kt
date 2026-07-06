@@ -22,7 +22,7 @@ import javax.inject.Singleton
  *
  * Supported inputs:
  * - Images: image/png, image/jpeg, image/webp (sent directly)
- * - PDF: application/pdf (first [MAX_PDF_PAGES] pages rendered to images)
+ * - PDF: application/pdf (first [MAX_INPUT_IMAGES] pages rendered to images)
  * - Text: text/plain (content inlined into the prompt)
  */
 @Singleton
@@ -35,6 +35,14 @@ internal class PayloadFactory @Inject constructor(
     data class Payload(val prompt: String, val images: List<String>)
 
     fun create(uri: Uri, mode: AiMode): Payload {
+        val size = fileSizeBytes(uri)
+        if (size != null && size > MAX_FILE_SIZE_BYTES) {
+            throw PayloadException(
+                "File too large (${size / (1024 * 1024)} MB). " +
+                    "The maximum size for an AI scan is $MAX_FILE_SIZE_MB MB."
+            )
+        }
+
         val mimeType = context.contentResolver.getType(uri) ?: "application/octet-stream"
         val prompt = AiPrompts.forMode(mode)
 
@@ -51,7 +59,7 @@ internal class PayloadFactory @Inject constructor(
                 Payload(prompt, images)
             }
 
-            mimeType.startsWith("image/") || mode != AiMode.EXTRACT_PDF_TEXT -> {
+            mimeType.startsWith("image/") -> {
                 val bitmap = loadBitmapFromUri(uri)
                     ?: throw PayloadException("Failed to load image")
                 try {
@@ -94,6 +102,16 @@ internal class PayloadFactory @Inject constructor(
         return Bitmap.createScaledBitmap(bitmap, width, height, true)
     }
 
+    /** Source byte size via file descriptor, or null when the provider won't report it. */
+    private fun fileSizeBytes(uri: Uri): Long? = try {
+        context.contentResolver.openFileDescriptor(uri, "r")?.use {
+            it.statSize.takeIf { size -> size >= 0 }
+        }
+    } catch (e: Exception) {
+        aiDebug { "size check failed: ${e.message}" }
+        null
+    }
+
     private fun loadFileBytes(uri: Uri): ByteArray? = try {
         context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
     } catch (e: Exception) {
@@ -109,7 +127,7 @@ internal class PayloadFactory @Inject constructor(
     }
 
     /**
-     * Render up to [MAX_PDF_PAGES] pages to downscaled JPEG base64 strings,
+     * Render up to [MAX_INPUT_IMAGES] pages to downscaled JPEG base64 strings,
      * recycling each page bitmap before rendering the next so peak memory is
      * one page rather than the whole document.
      */
@@ -124,7 +142,7 @@ internal class PayloadFactory @Inject constructor(
 
             ParcelFileDescriptor.open(tempFile, ParcelFileDescriptor.MODE_READ_ONLY).use { fd ->
                 PdfRenderer(fd).use { renderer ->
-                    val pageCount = minOf(renderer.pageCount, MAX_PDF_PAGES)
+                    val pageCount = minOf(renderer.pageCount, MAX_INPUT_IMAGES)
                     for (i in 0 until pageCount) {
                         val bitmap = renderer.openPage(i).use { page ->
                             val width = (page.width * PDF_RENDER_SCALE).toInt()
@@ -155,8 +173,12 @@ internal class PayloadFactory @Inject constructor(
         private const val PDF_MIME_TYPE = "application/pdf"
         private const val TEXT_MIME_TYPE = "text/plain"
 
-        /** Cap pages/dimensions to keep request payloads (and token usage) sane. */
-        private const val MAX_PDF_PAGES = 5
+        /** AI-scan input limits. */
+        private const val MAX_FILE_SIZE_MB = 20
+        private const val MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB.toLong() * 1024 * 1024
+        private const val MAX_INPUT_IMAGES = 3
+
+        /** Cap dimensions to keep request payloads (and token usage) sane. */
         private const val MAX_IMAGE_DIMENSION = 1536
         private const val JPEG_QUALITY = 85
         private const val PDF_RENDER_SCALE = 2.0f

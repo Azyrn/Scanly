@@ -17,6 +17,7 @@ release_log*.txt
 # Local dev artifacts
 /ai-audit-fixes/
 *.patch
+..bfg-report/
 
 # Firebase
 google-services.json

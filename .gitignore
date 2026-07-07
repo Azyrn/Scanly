@@ -14,6 +14,10 @@ local.properties
 release_log*.txt
 /.kotlin
 
+# Local dev artifacts
+/ai-audit-fixes/
+*.patch
+
 # Firebase
 google-services.json
 firebase.json

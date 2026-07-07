@@ -32,7 +32,6 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
-import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -55,6 +54,7 @@ import com.skeler.scanely.core.actions.ActionExecutor
 import com.skeler.scanely.core.actions.ScanAction
 import com.skeler.scanely.navigation.LocalNavController
 import com.skeler.scanely.ui.components.ExtractedTextSection
+import com.skeler.scanely.ui.components.ScanResultSkeleton
 import com.skeler.scanely.ui.components.rememberTextExporter
 import com.skeler.scanely.ui.viewmodel.UnifiedScanViewModel
 
@@ -96,18 +96,12 @@ fun UnifiedResultsScreen() {
     ) { innerPadding ->
         when {
             uiState.isLoading -> {
-                Box(
+                ScanResultSkeleton(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(innerPadding),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        LoadingIndicator()
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text("Scanning...", style = MaterialTheme.typography.bodyLarge)
-                    }
-                }
+                        .padding(innerPadding)
+                        .padding(16.dp)
+                )
             }
             uiState.isEmpty -> {
                 Box(

@@ -8,9 +8,6 @@ import android.content.Context
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -59,6 +56,7 @@ import com.skeler.scanely.ui.components.LanguageChipRow
 import com.skeler.scanely.ui.components.ProcessingContent
 import com.skeler.scanely.ui.components.RateLimitSheet
 import com.skeler.scanely.ui.components.TranslatingContent
+import com.skeler.scanely.ui.components.ScanResultSkeleton
 import com.skeler.scanely.ui.components.TranslationLanguages
 import com.skeler.scanely.ui.components.rememberTextExporter
 import com.skeler.scanely.ui.viewmodel.AiScanViewModel
@@ -121,7 +119,6 @@ fun ResultsScreen() {
     var showLanguageMenu by remember { mutableStateOf(false) }
     val languages = TranslationLanguages.ALL
 
-    var showContent by remember { mutableStateOf(false) }
     var navigatingUp by remember { mutableStateOf(false) }
 
     val onBack: () -> Unit = {
@@ -137,11 +134,6 @@ fun ResultsScreen() {
                 ocrViewModel.clearResult()
             }
         }
-    }
-
-    LaunchedEffect(Unit) {
-        delay(100)
-        showContent = true
     }
 
     // Surface one-shot messages (e.g. a translation failure) as a toast.
@@ -219,84 +211,84 @@ fun ResultsScreen() {
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
-        AnimatedVisibility(
-            visible = showContent,
-            enter = fadeIn(tween(300))
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp)
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 20.dp)
-            ) {
-                Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-                when {
-                    isProcessing -> {
-                        ProcessingContent(
-                            currentFile = aiState.currentFileIndex,
-                            totalFiles = aiState.totalFiles,
-                            stage = aiState.stage,
-                            stageMessage = aiState.stageMessage,
-                            streamingText = aiState.streamingText,
-                            // Only the AI pipeline is cancellable; plain OCR
-                            // finishes in well under a second.
-                            onCancel = if (aiState.isProcessing) {
-                                {
-                                    aiViewModel.cancelProcessing()
-                                    onBack()
-                                }
-                            } else null
-                        )
-                    }
-                    isTranslating -> {
-                        TranslatingContent()
-                    }
-                    displayText != null -> {
-                        if (isAiResult && isOnline) {
-                            LanguageChipRow(
-                                cachedLanguages = cachedLanguages,
-                                currentLanguage = currentLanguage,
-                                showLanguageMenu = showLanguageMenu,
-                                onShowLanguageMenu = { showLanguageMenu = true },
-                                onDismissLanguageMenu = { showLanguageMenu = false },
-                                onSelectOriginal = { aiViewModel.showOriginal() },
-                                onSelectCached = { aiViewModel.selectCachedLanguage(it) },
-                                allLanguages = languages,
-                                onNewLanguageSelected = { language ->
-                                    showLanguageMenu = false
-                                    scanViewModel.triggerAiWithRateLimit(aiState.provider) {
-                                        aiViewModel.translateResult(language)
-                                    }
-                                },
-                                onComposeText = { navController.navigate(Routes.TEXT_COMPOSE) }
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
+            when {
+                // AI pipeline keeps its staged/streaming progress UI; plain
+                // OCR/PDF extraction shows a result-shaped skeleton instead
+                // of a spinner.
+                aiState.isProcessing -> {
+                    ProcessingContent(
+                        currentFile = aiState.currentFileIndex,
+                        totalFiles = aiState.totalFiles,
+                        stage = aiState.stage,
+                        stageMessage = aiState.stageMessage,
+                        streamingText = aiState.streamingText,
+                        onCancel = {
+                            aiViewModel.cancelProcessing()
+                            onBack()
                         }
-                        ExtractedTextSection(
-                            text = displayText,
-                            onCopy = { copyToClipboard(context, displayText) },
-                            onExport = { format -> exportText(displayText, format) },
-                            onSaveEdit = { edited ->
-                                when {
-                                    // Editing a shown translation corrects that translation.
-                                    currentLanguage != null -> aiViewModel.updateText(edited)
-                                    // Reopened-from-history text persists to its row.
-                                    historyText != null -> scanViewModel.updateHistoryText(edited)
-                                    isAiResult -> aiViewModel.updateText(edited)
-                                    else -> ocrViewModel.updateText(edited)
-                                }
-                            }
-                        )
-                    }
-                    else -> {
-                        EmptyResultContent()
-                    }
+                    )
                 }
-
-                Spacer(modifier = Modifier.height(100.dp))
+                isProcessing -> {
+                    ScanResultSkeleton(
+                        modifier = Modifier.padding(top = 8.dp),
+                        showChips = false
+                    )
+                }
+                isTranslating -> {
+                    TranslatingContent()
+                }
+                displayText != null -> {
+                    if (isAiResult && isOnline) {
+                        LanguageChipRow(
+                            cachedLanguages = cachedLanguages,
+                            currentLanguage = currentLanguage,
+                            showLanguageMenu = showLanguageMenu,
+                            onShowLanguageMenu = { showLanguageMenu = true },
+                            onDismissLanguageMenu = { showLanguageMenu = false },
+                            onSelectOriginal = { aiViewModel.showOriginal() },
+                            onSelectCached = { aiViewModel.selectCachedLanguage(it) },
+                            allLanguages = languages,
+                            onNewLanguageSelected = { language ->
+                                showLanguageMenu = false
+                                scanViewModel.triggerAiWithRateLimit(aiState.provider) {
+                                    aiViewModel.translateResult(language)
+                                }
+                            },
+                            onComposeText = { navController.navigate(Routes.TEXT_COMPOSE) }
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+                    ExtractedTextSection(
+                        text = displayText,
+                        onCopy = { copyToClipboard(context, displayText) },
+                        onExport = { format -> exportText(displayText, format) },
+                        onSaveEdit = { edited ->
+                            when {
+                                // Editing a shown translation corrects that translation.
+                                currentLanguage != null -> aiViewModel.updateText(edited)
+                                // Reopened-from-history text persists to its row.
+                                historyText != null -> scanViewModel.updateHistoryText(edited)
+                                isAiResult -> aiViewModel.updateText(edited)
+                                else -> ocrViewModel.updateText(edited)
+                            }
+                        }
+                    )
+                }
+                else -> {
+                    EmptyResultContent()
+                }
             }
+
+            Spacer(modifier = Modifier.height(100.dp))
         }
     }
 }

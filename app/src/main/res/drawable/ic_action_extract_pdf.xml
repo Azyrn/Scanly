@@ -1,0 +1,30 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:tint="?attr/colorControlNormal"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Viewfinder brackets: document captured inside a scan frame -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="@android:color/white"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M8,4 L5.5,4 A1.5,1.5 0 0 0 4,5.5 L4,8 M16,4 L18.5,4 A1.5,1.5 0 0 1 20,5.5 L20,8 M4,16 L4,18.5 A1.5,1.5 0 0 0 5.5,20 L8,20 M20,16 L20,18.5 A1.5,1.5 0 0 1 18.5,20 L16,20" />
+    <!-- Mini page with folded corner -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="@android:color/white"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M12.8,7.5 L9.8,7.5 A1,1 0 0 0 8.8,8.5 L8.8,15.5 A1,1 0 0 0 9.8,16.5 L14.2,16.5 A1,1 0 0 0 15.2,15.5 L15.2,9.9 Z" />
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="@android:color/white"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M12.8,7.5 L12.8,9.9 L15.2,9.9" />
+</vector>

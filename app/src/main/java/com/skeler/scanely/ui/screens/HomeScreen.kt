@@ -64,6 +64,7 @@ import com.skeler.scanely.ui.components.RateLimitDisplayState
 import com.skeler.scanely.ui.components.RateLimitSheet
 import com.skeler.scanely.ui.components.rememberGalleryPicker
 import com.skeler.scanely.ui.components.rememberMultiDocumentPicker
+import com.skeler.scanely.ui.components.MAX_AI_FILES
 import com.skeler.scanely.ui.components.rememberMultiGalleryPicker
 import com.skeler.scanely.ui.viewmodel.AiScanViewModel
 import com.skeler.scanely.ui.viewmodel.OcrViewModel
@@ -107,7 +108,7 @@ fun HomeScreen() {
     )
 
     // Pickers
-    val aiMultiGalleryPicker = rememberMultiGalleryPicker(maxItems = 10) { uris ->
+    val aiMultiGalleryPicker = rememberMultiGalleryPicker(maxItems = MAX_AI_FILES) { uris ->
         if (uris.isNotEmpty() && pendingAiMode != null) {
             val mode = pendingAiMode!!
             val provider = pendingAiProvider
@@ -123,8 +124,17 @@ fun HomeScreen() {
 
     val aiMultiDocumentPicker = rememberMultiDocumentPicker(
         mimeTypes = arrayOf("application/pdf", "text/plain")
-    ) { uris ->
-        if (uris.isNotEmpty() && pendingAiMode != null) {
+    ) { selectedUris ->
+        if (selectedUris.isNotEmpty() && pendingAiMode != null) {
+            // SAF can't cap selection count, so enforce it here.
+            val uris = selectedUris.take(MAX_AI_FILES)
+            if (selectedUris.size > MAX_AI_FILES) {
+                scope.launch {
+                    snackbarHostState.showSnackbar(
+                        "Up to $MAX_AI_FILES files per scan — using the first $MAX_AI_FILES."
+                    )
+                }
+            }
             val mode = pendingAiMode!!
             val provider = pendingAiProvider
             pendingAiMode = null

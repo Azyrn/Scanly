@@ -11,6 +11,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 
+/** Max images/files accepted per AI scan (matches the per-file 20 MB cap in PayloadFactory). */
+const val MAX_AI_FILES = 3
+
 /**
  * Photo Picker wrapper using Material 3 Photo Picker (Android 13+)
  * with fallback to legacy picker for older versions.
@@ -46,7 +49,7 @@ fun rememberGalleryPicker(
 @Suppress("ComposableNaming") // Returns a lambda, not a Unit-returning composable
 @Composable
 fun rememberMultiGalleryPicker(
-    maxItems: Int = 10,
+    maxItems: Int = MAX_AI_FILES,
     onImagesSelected: (List<Uri>) -> Unit
 ): () -> Unit {
     val launcher = rememberLauncherForActivityResult(

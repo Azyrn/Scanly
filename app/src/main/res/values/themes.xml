@@ -6,7 +6,8 @@
     <!-- Launch theme: shows the branded icon instantly, then hands off to Compose. -->
     <style name="Theme.Scanely.Splash" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/splash_background</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <!-- Must be the real launcher art (mipmap), not the old placeholder vector. -->
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
         <item name="postSplashScreenTheme">@style/Theme.Scanely</item>
     </style>
 </resources>

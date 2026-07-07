@@ -1,0 +1,96 @@
+diff --git b/app/src/main/java/com/skeler/scanely/core/ai/ProviderClient.kt a/app/src/main/java/com/skeler/scanely/core/ai/ProviderClient.kt
+index a5554b6..7c25a44 100644
+--- b/app/src/main/java/com/skeler/scanely/core/ai/ProviderClient.kt
++++ a/app/src/main/java/com/skeler/scanely/core/ai/ProviderClient.kt
+@@ -10,8 +10,10 @@ import com.skeler.scanely.core.network.MistralApi
+ import com.skeler.scanely.core.network.MistralDocument
+ import com.skeler.scanely.core.network.MistralOcrRequest
+ import com.skeler.scanely.core.network.OpenAiCompatApi
++import com.skeler.scanely.core.network.codeInt
+ import kotlinx.coroutines.currentCoroutineContext
+ import kotlinx.coroutines.ensureActive
++import kotlinx.serialization.SerializationException
+ import kotlinx.serialization.json.Json
+ import okhttp3.ResponseBody
+ import retrofit2.HttpException
+@@ -116,18 +118,28 @@ internal class ProviderClient @Inject constructor(
+     private fun stripReasoning(text: String): String =
+         text.replace(THINK_BLOCK, "").trim()
+ 
++    // A malformed / schema-mismatched SSE chunk (e.g. a provider sending a string
++    // error `code` where an int is expected) would otherwise throw an unhandled
++    // SerializationException that escapes ProviderExecutor's retry/fallback. Treat
++    // it as transient so the next attempt / provider can take over.
++    private inline fun <reified T> decodeChunk(payload: String): T = try {
++        streamJson.decodeFromString<T>(payload)
++    } catch (e: SerializationException) {
++        throw TransientAiException("Malformed response chunk")
++    }
++
+     /** Decode one SSE payload line into a text delta, or null if it carries none. */
+     private fun parseStreamPiece(kind: ProviderKind, payload: String): String? = when (kind) {
+         ProviderKind.OPENAI_COMPAT -> {
+-            val chunk = streamJson.decodeFromString<ChatStreamChunk>(payload)
++            val chunk = decodeChunk<ChatStreamChunk>(payload)
+             chunk.error?.let { err ->
+-                if (err.code == 429) throw TransientAiException(err.message ?: "rate limited")
++                if (err.codeInt == 429) throw TransientAiException(err.message ?: "rate limited")
+                 throw FatalAiException(AiResult.Error(err.message ?: "Provider error"))
+             }
+             chunk.choices.firstOrNull()?.delta?.content
+         }
+         ProviderKind.ANTHROPIC -> {
+-            val event = streamJson.decodeFromString<ClaudeStreamEvent>(payload)
++            val event = decodeChunk<ClaudeStreamEvent>(payload)
+             event.error?.let { err ->
+                 if (err.type == "overloaded_error") {
+                     throw TransientAiException(err.message ?: "overloaded")
+@@ -139,7 +151,7 @@ internal class ProviderClient @Inject constructor(
+             } else null
+         }
+         ProviderKind.GEMINI -> {
+-            val chunk = streamJson.decodeFromString<GeminiResponse>(payload)
++            val chunk = decodeChunk<GeminiResponse>(payload)
+             chunk.error?.let { err ->
+                 if (err.code == 429) throw TransientAiException(err.message ?: "rate limited")
+                 throw FatalAiException(AiResult.Error(err.message ?: "Gemini error"))
+@@ -187,7 +199,7 @@ internal class ProviderClient @Inject constructor(
+                 AiRequestFactory.openAi(config, systemInstruction, prompt, images, stream = false)
+             )
+             response.error?.let { err ->
+-                if (err.code == 429) throw TransientAiException(err.message ?: "rate limited")
++                if (err.codeInt == 429) throw TransientAiException(err.message ?: "rate limited")
+                 throw FatalAiException(AiResult.Error(err.message ?: "Provider error"))
+             }
+             stripReasoning(response.choices.firstOrNull()?.message?.content.orEmpty())
+diff --git b/app/src/main/java/com/skeler/scanely/core/network/OpenAiCompatApi.kt a/app/src/main/java/com/skeler/scanely/core/network/OpenAiCompatApi.kt
+index 3bb66a6..026aed5 100644
+--- b/app/src/main/java/com/skeler/scanely/core/network/OpenAiCompatApi.kt
++++ a/app/src/main/java/com/skeler/scanely/core/network/OpenAiCompatApi.kt
+@@ -2,6 +2,9 @@ package com.skeler.scanely.core.network
+ 
+ import kotlinx.serialization.SerialName
+ import kotlinx.serialization.Serializable
++import kotlinx.serialization.json.JsonElement
++import kotlinx.serialization.json.JsonPrimitive
++import kotlinx.serialization.json.intOrNull
+ import okhttp3.ResponseBody
+ import retrofit2.http.Body
+ import retrofit2.http.Header
+@@ -109,9 +112,15 @@ data class ResponseMessage(
+ @Serializable
+ data class ApiError(
+     val message: String? = null,
+-    val code: Int? = null
++    // Some OpenAI-compatible providers send `code` as a string ("rate_limit_exceeded")
++    // rather than an int, so decode it loosely and normalize via [codeInt].
++    val code: JsonElement? = null
+ )
+ 
++/** Numeric error code when the provider sent one as a JSON number, else null. */
++val ApiError.codeInt: Int?
++    get() = (code as? JsonPrimitive)?.intOrNull
++
+ // --- Streaming response models ---
+ 
+ /** One SSE chunk of a streamed chat completion. */

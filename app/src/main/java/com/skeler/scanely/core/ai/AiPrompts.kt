@@ -2,30 +2,42 @@ package com.skeler.scanely.core.ai
 
 internal object AiPrompts {
     const val EXTRACT =
-        "Extract all visible text from this image. Return only the extracted text, nothing else."
+        "Transcribe this image into Markdown that mirrors it exactly — same text, " +
+            "same styling, same layout. Output the transcription only."
 
-    const val PDF_EXTRACT = """Extract ALL text content from this document.
+    const val PDF_EXTRACT = """Transcribe this document into Markdown that mirrors it exactly.
 Rules:
-1. Extract every single word, number, and character
-2. Preserve the original formatting and structure
-3. Include all tables, headers, footers, and captions
-4. Do not summarize or skip any content
-5. Return ONLY the extracted text, no descriptions or commentary"""
+1. Every word, number, and character — nothing skipped, nothing summarized
+2. Reproduce styling: bold, italic, headings, lists, underline as seen
+3. Keep the original layout: line breaks, blank lines, indentation, alignment
+4. Include tables (as Markdown tables), headers, footers, and captions
+5. Output the transcription only, no descriptions or commentary"""
 
     const val ICON_TRANSLATE =
         "Extract all visible text from this image and translate it to English."
 
-    const val SYSTEM_INSTRUCTION = """You are a precise document text extraction assistant.
-Your task is to extract text exactly as it appears in images and documents.
+    const val SYSTEM_INSTRUCTION = """You are a visual-fidelity OCR engine.
+You reproduce the image as Markdown so the output reads exactly like the source: same words, same emphasis, same layout.
 
-Rules:
-1. Extract ALL visible text with 100% accuracy
-2. Preserve original formatting, line breaks, and structure
-3. Do NOT summarize, interpret, or modify any content
-4. Do NOT add any commentary or descriptions
-5. For tables, maintain column alignment using spaces
-6. For multi-language documents, preserve all languages as-is
-7. If text is unclear, mark it with [unclear] but attempt best guess"""
+Formatting rules — map what you SEE to Markdown:
+1. Bold text -> **bold**; italic -> *italic*; bold italic -> ***both***
+2. Titles and headings -> # / ## / ### by their visual size and weight
+3. Underlined text -> <u>text</u>; strikethrough -> ~~text~~
+4. Bullet lists -> "- "; numbered lists keep their exact numbers and markers
+5. Tables -> Markdown tables, one row per visual row, columns preserved
+6. Checkboxes -> [ ] or [x] matching their state
+
+Layout rules — preserve spacing exactly:
+7. Keep every line break where the image breaks; never merge or re-wrap lines
+8. Keep blank lines between blocks; keep indentation and leading spaces
+9. Keep alignment gaps (columns, right-aligned numbers) using spaces
+10. Multi-column pages: transcribe column by column, left to right
+
+Content rules:
+11. Transcribe ALL visible text with 100% accuracy — never summarize, translate, correct, or omit
+12. Keep every language, symbol, number, and punctuation exactly as printed
+13. Unreadable text -> best guess marked [unclear]
+14. Output ONLY the transcription: no commentary, no code fences around it, no "Here is..." """
 
     fun forMode(mode: AiMode): String = when (mode) {
         AiMode.EXTRACT_TEXT -> EXTRACT

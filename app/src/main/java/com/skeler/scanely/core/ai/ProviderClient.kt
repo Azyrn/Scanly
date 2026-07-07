@@ -83,21 +83,34 @@ internal class ProviderClient @Inject constructor(
         var lastEmit = 0L
         val requestStart = SystemClock.elapsedRealtime()
 
-        consumeSse(body) { payload ->
-            val piece = parseStreamPiece(config.kind, payload)
-            if (!piece.isNullOrEmpty()) {
-                if (accumulated.isEmpty()) {
-                    firstTokenAt = SystemClock.elapsedRealtime()
-                    emit(AiEvent.Stage(AiStage.GENERATING))
-                }
-                streamedAnything[0] = true
-                accumulated.append(piece)
-                val now = SystemClock.elapsedRealtime()
-                if (now - lastEmit >= DELTA_THROTTLE_MS) {
-                    lastEmit = now
-                    emit(AiEvent.Delta(accumulated.toString()))
+        try {
+            consumeSse(body) { payload ->
+                val piece = parseStreamPiece(config.kind, payload)
+                if (!piece.isNullOrEmpty()) {
+                    if (accumulated.isEmpty()) {
+                        firstTokenAt = SystemClock.elapsedRealtime()
+                        emit(AiEvent.Stage(AiStage.GENERATING))
+                    }
+                    streamedAnything[0] = true
+                    accumulated.append(piece)
+                    val now = SystemClock.elapsedRealtime()
+                    if (now - lastEmit >= DELTA_THROTTLE_MS) {
+                        lastEmit = now
+                        emit(AiEvent.Delta(accumulated.toString()))
+                    }
                 }
             }
+        } catch (e: FatalAiException) {
+            throw e
+        } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
+            // A stream that already produced text but then breaks (a trailing
+            // chunk that fails to decode, or a socket the provider closes
+            // abruptly after the last token — Cerebras does this) must not be
+            // retried from scratch: keep the text we streamed instead of
+            // discarding it and re-billing a full re-scan.
+            if (accumulated.isEmpty()) throw e
+            aiDebug { "stream broke after ${accumulated.length} chars, keeping partial: ${e.message}" }
         }
 
         val result = stripReasoning(accumulated.toString())

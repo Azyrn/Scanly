@@ -1,3 +1,7 @@
+import java.io.File
+import java.security.KeyStore
+import java.security.MessageDigest
+import java.util.Base64
 import java.util.Properties
 
 // Google's public test IDs — safe for development, never serve real ads.
@@ -16,6 +20,75 @@ plugins {
     // alias(libs.plugins.firebase.crashlytics) // Disabled - no google-services.json
 }
 
+// local.properties (gitignored): bundled keys, signing config, real AdMob ids.
+val secretsProps = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+
+val SECRET_PROPERTIES = listOf(
+    "OPENROUTER_API_KEY", "GEMINI_API_KEY", "MISTRAL_API_KEY", "HUGGINGFACE_API_KEY",
+    "NVIDIA_API_KEY", "CLOUDFLARE_API_KEY", "CLOUDFLARE_ACCOUNT_ID", "GROQ_API_KEY", "CEREBRAS_API_KEY"
+)
+
+// Must stay byte-identical to core.security.Secrets so the runtime can decode.
+private val SECRET_PEPPER: ByteArray = intArrayOf(
+    0x53, 0x63, 0x6E, 0x6C, 0x79, 0x9A, 0x17, 0x42,
+    0xC3, 0x08, 0xEE, 0x5B, 0x71, 0x2D, 0xF0, 0x64
+).map { it.toByte() }.toByteArray()
+
+private fun secretsKeystream(seed: ByteArray, len: Int): ByteArray {
+    val out = ByteArray(len)
+    var pos = 0
+    var counter = 0
+    while (pos < len) {
+        val md = MessageDigest.getInstance("SHA-256")
+        md.update(seed)
+        md.update(
+            byteArrayOf(
+                (counter ushr 24).toByte(), (counter ushr 16).toByte(),
+                (counter ushr 8).toByte(), counter.toByte()
+            )
+        )
+        val block = md.digest()
+        val n = minOf(block.size, len - pos)
+        System.arraycopy(block, 0, out, pos, n)
+        pos += n
+        counter++
+    }
+    return out
+}
+
+// XOR-obfuscate + Base64 a bundled secret so it never ships as a plaintext string.
+fun encodeSecret(propertyKey: String): String {
+    val plain = secretsProps.getProperty(propertyKey).orEmpty()
+    if (plain.isEmpty()) return ""
+    val bytes = plain.toByteArray(Charsets.UTF_8)
+    val ks = secretsKeystream(SECRET_PEPPER, bytes.size)
+    val xored = ByteArray(bytes.size) { (bytes[it].toInt() xor ks[it].toInt()).toByte() }
+    return Base64.getEncoder().encodeToString(xored)
+}
+
+// SHA-256 of the release signing cert; pins bundled keys to this build's signature.
+// Empty when the keystore is unavailable (e.g. CI without secrets) — pin then off.
+fun releaseCertSha256(): String {
+    return try {
+        val path = secretsProps.getProperty("storeFile") ?: return ""
+        val f = File(path)
+        if (!f.exists()) return ""
+        val ks = KeyStore.getInstance("PKCS12")
+        f.inputStream().use { stream ->
+            ks.load(stream, secretsProps.getProperty("storePassword")?.toCharArray())
+        }
+        val alias = secretsProps.getProperty("keyAlias") ?: ks.aliases().nextElement()
+        val cert = ks.getCertificate(alias)
+        val digest = MessageDigest.getInstance("SHA-256").digest(cert.encoded)
+        digest.joinToString("") { b -> "%02X".format(b) }
+    } catch (e: Exception) {
+        ""
+    }
+}
+
 
 android {
     namespace = "com.skeler.scanely"
@@ -30,52 +103,13 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // Inject API key from local.properties (gitignored)
-        val localProperties = Properties()
-        val localPropertiesFile = rootProject.file("local.properties")
-        if (localPropertiesFile.exists()) {
-            localPropertiesFile.inputStream().use { localProperties.load(it) }
+        // Bundled free-tier keys, XOR+Base64 obfuscated and pinned to the release
+        // signature. Never plaintext in the APK; decoded at runtime by core.security.Secrets.
+        for (name in SECRET_PROPERTIES) {
+            buildConfigField("String", name, "\"${encodeSecret(name)}\"")
         }
-        buildConfigField(
-            "String",
-            "OPENROUTER_API_KEY",
-            "\"${localProperties.getProperty("OPENROUTER_API_KEY") ?: ""}\""
-        )
-        // Bundled default provider key so AI scans work without user setup.
-        buildConfigField(
-            "String",
-            "GEMINI_API_KEY",
-            "\"${localProperties.getProperty("GEMINI_API_KEY") ?: ""}\""
-        )
-        // Bundled free-tier Mistral OCR key.
-        buildConfigField(
-            "String",
-            "MISTRAL_API_KEY",
-            "\"${localProperties.getProperty("MISTRAL_API_KEY") ?: ""}\""
-        )
-        // Bundled free-tier Hugging Face token for LightOnOCR.
-        buildConfigField(
-            "String",
-            "HUGGINGFACE_API_KEY",
-            "\"${localProperties.getProperty("HUGGINGFACE_API_KEY") ?: ""}\""
-        )
-        // Bundled free-tier NVIDIA NIM developer key.
-        buildConfigField(
-            "String",
-            "NVIDIA_API_KEY",
-            "\"${localProperties.getProperty("NVIDIA_API_KEY") ?: ""}\""
-        )
-        // Bundled free-tier Cloudflare Workers AI token + account id.
-        buildConfigField(
-            "String",
-            "CLOUDFLARE_API_KEY",
-            "\"${localProperties.getProperty("CLOUDFLARE_API_KEY") ?: ""}\""
-        )
-        buildConfigField(
-            "String",
-            "CLOUDFLARE_ACCOUNT_ID",
-            "\"${localProperties.getProperty("CLOUDFLARE_ACCOUNT_ID") ?: ""}\""
-        )
+        // Expected release-signing SHA-256; runtime refuses bundled keys on a mismatch.
+        buildConfigField("String", "EXPECTED_SIGNATURE", "\"${releaseCertSha256()}\"")
     }
 
     lint {
@@ -99,16 +133,10 @@ android {
 
     signingConfigs {
         create("release") {
-            val localProperties = Properties()
-            val localPropertiesFile = rootProject.file("local.properties")
-            if (localPropertiesFile.exists()) {
-                localPropertiesFile.inputStream().use { localProperties.load(it) }
-            }
-
-            storeFile = file(localProperties.getProperty("storeFile") ?: "keystore.jks")
-            storePassword = localProperties.getProperty("storePassword")
-            keyAlias = localProperties.getProperty("keyAlias")
-            keyPassword = localProperties.getProperty("keyPassword")
+            storeFile = file(secretsProps.getProperty("storeFile") ?: "keystore.jks")
+            storePassword = secretsProps.getProperty("storePassword")
+            keyAlias = secretsProps.getProperty("keyAlias")
+            keyPassword = secretsProps.getProperty("keyPassword")
         }
     }
 
@@ -129,18 +157,13 @@ android {
                 "proguard-rules.pro"
             )
 
-            // Real AdMob IDs live in local.properties (gitignored); test IDs as fallback.
-            val localProperties = Properties()
-            val localPropertiesFile = rootProject.file("local.properties")
-            if (localPropertiesFile.exists()) {
-                localPropertiesFile.inputStream().use { localProperties.load(it) }
-            }
+            // Real AdMob ids from local.properties; test ids as fallback.
             manifestPlaceholders["admobAppId"] =
-                localProperties.getProperty("ADMOB_APP_ID") ?: admobTestAppId
+                secretsProps.getProperty("ADMOB_APP_ID") ?: admobTestAppId
             buildConfigField(
                 "String",
                 "ADMOB_REWARDED_AD_UNIT_ID",
-                "\"${localProperties.getProperty("ADMOB_REWARDED_AD_UNIT_ID") ?: admobTestRewardedUnitId}\""
+                "\"${secretsProps.getProperty("ADMOB_REWARDED_AD_UNIT_ID") ?: admobTestRewardedUnitId}\""
             )
         }
     }

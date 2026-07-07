@@ -8,10 +8,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.annotation.DrawableRes
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.TextSnippet
 import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.PictureAsPdf
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -29,9 +28,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.skeler.scanely.R
 import com.skeler.scanely.core.ai.AiMode
 import com.skeler.scanely.core.ai.AiProvider
 
@@ -100,14 +100,14 @@ fun AiModeBottomSheet(
             }
 
             AiModeItem(
-                icon = Icons.AutoMirrored.Rounded.TextSnippet,
+                iconRes = R.drawable.ic_action_extract_text,
                 title = "Extract Text",
                 subtitle = "Extract visible text from image",
                 onClick = { onModeSelected(AiMode.EXTRACT_TEXT, provider) }
             )
 
             AiModeItem(
-                icon = Icons.Rounded.PictureAsPdf,
+                iconRes = R.drawable.ic_action_extract_pdf,
                 title = "Extract PDF",
                 subtitle = "AI-powered PDF and text file extraction",
                 onClick = { onModeSelected(AiMode.EXTRACT_PDF_TEXT, provider) }
@@ -121,7 +121,7 @@ fun AiModeBottomSheet(
  */
 @Composable
 private fun AiModeItem(
-    icon: ImageVector,
+    @DrawableRes iconRes: Int,
     title: String,
     subtitle: String,
     onClick: () -> Unit
@@ -152,7 +152,7 @@ private fun AiModeItem(
             },
             leadingContent = {
                 Icon(
-                    imageVector = icon,
+                    painter = painterResource(iconRes),
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(28.dp)

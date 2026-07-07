@@ -6,19 +6,17 @@ import coil.ImageLoaderFactory
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import coil.request.CachePolicy
+import com.skeler.scanely.core.security.Secrets
 import dagger.hilt.android.HiltAndroidApp
 
-/**
- * Scanly Application class with optimized Coil ImageLoader configuration.
- * 
- * Performance optimizations:
- * - Memory cache: 25% of available heap (balanced for scanning apps)
- * - Disk cache: 100MB for product images
- * - Cross-fade disabled for faster perceived loading
- * - Aggressive caching policies
- */
 @HiltAndroidApp
 class App : Application(), ImageLoaderFactory {
+
+    override fun onCreate() {
+        super.onCreate()
+        // Pin bundled keys to this build's signature before any provider resolves.
+        Secrets.init(this)
+    }
 
     override fun newImageLoader(): ImageLoader {
         return ImageLoader.Builder(this)

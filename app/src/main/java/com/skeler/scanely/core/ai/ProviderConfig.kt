@@ -2,6 +2,7 @@ package com.skeler.scanely.core.ai
 
 import com.skeler.scanely.BuildConfig
 import com.skeler.scanely.core.network.MistralApi
+import com.skeler.scanely.core.security.Secrets
 import com.skeler.scanely.settings.data.SettingsKeys
 import com.skeler.scanely.settings.domain.repository.SettingsRepository
 import kotlinx.coroutines.flow.Flow
@@ -38,19 +39,19 @@ internal class ProviderConfigResolver @Inject constructor(
     suspend fun resolve(provider: AiProvider): ProviderConfig? = when (provider) {
         AiProvider.GEMINI -> {
             val userKey = settingValue(SettingsKeys.GEMINI_API_KEY)
-            val key = userKey ?: BuildConfig.GEMINI_API_KEY.trim().ifBlank { null }
+            val key = userKey ?: Secrets.gemini.trim().ifBlank { null }
             val model = settingValue(SettingsKeys.GEMINI_MODEL) ?: GEMINI_MODEL
             key?.let { ProviderConfig(ProviderKind.GEMINI, model, it, usesBundledKey = userKey == null) }
         }
         AiProvider.OPENROUTER -> {
             val userKey = settingValue(SettingsKeys.OPENROUTER_API_KEY)
-            val key = userKey ?: BuildConfig.OPENROUTER_API_KEY.trim().ifBlank { null }
+            val key = userKey ?: Secrets.openRouter.trim().ifBlank { null }
             val model = settingValue(SettingsKeys.OPENROUTER_MODEL) ?: OPENROUTER_MODEL
             key?.let { ProviderConfig(ProviderKind.OPENAI_COMPAT, model, it, OPENROUTER_URL, usesBundledKey = userKey == null) }
         }
         AiProvider.HUGGINGFACE -> {
             val userKey = settingValue(SettingsKeys.HUGGINGFACE_API_KEY)
-            val key = userKey ?: BuildConfig.HUGGINGFACE_API_KEY.trim().ifBlank { null }
+            val key = userKey ?: Secrets.huggingFace.trim().ifBlank { null }
             // A manual model override wins; otherwise the selected OCR engine decides.
             val engineModel = OcrEngine.fromId(settingValue(SettingsKeys.OCR_ENGINE)).model
             val model = settingValue(SettingsKeys.HUGGINGFACE_MODEL) ?: engineModel
@@ -58,25 +59,29 @@ internal class ProviderConfigResolver @Inject constructor(
         }
         AiProvider.NVIDIA -> {
             val userKey = settingValue(SettingsKeys.NVIDIA_API_KEY)
-            val key = userKey ?: BuildConfig.NVIDIA_API_KEY.trim().ifBlank { null }
+            val key = userKey ?: Secrets.nvidia.trim().ifBlank { null }
             val model = settingValue(SettingsKeys.NVIDIA_MODEL) ?: NVIDIA_MODEL
             key?.let { ProviderConfig(ProviderKind.OPENAI_COMPAT, model, it, NVIDIA_URL, usesBundledKey = userKey == null) }
         }
-        AiProvider.GROQ -> settingValue(SettingsKeys.GROQ_API_KEY)?.let {
+        AiProvider.GROQ -> {
+            val userKey = settingValue(SettingsKeys.GROQ_API_KEY)
+            val key = userKey ?: Secrets.groq.trim().ifBlank { null }
             val model = settingValue(SettingsKeys.GROQ_MODEL) ?: GROQ_MODEL
-            ProviderConfig(ProviderKind.OPENAI_COMPAT, model, it, GROQ_URL)
+            key?.let { ProviderConfig(ProviderKind.OPENAI_COMPAT, model, it, GROQ_URL, usesBundledKey = userKey == null) }
         }
-        AiProvider.CEREBRAS -> settingValue(SettingsKeys.CEREBRAS_API_KEY)?.let {
+        AiProvider.CEREBRAS -> {
+            val userKey = settingValue(SettingsKeys.CEREBRAS_API_KEY)
+            val key = userKey ?: Secrets.cerebras.trim().ifBlank { null }
             val model = settingValue(SettingsKeys.CEREBRAS_MODEL) ?: CEREBRAS_MODEL
-            ProviderConfig(ProviderKind.OPENAI_COMPAT, model, it, CEREBRAS_URL)
+            key?.let { ProviderConfig(ProviderKind.OPENAI_COMPAT, model, it, CEREBRAS_URL, usesBundledKey = userKey == null) }
         }
         AiProvider.CLOUDFLARE -> {
             // A token is bound to its account, so key + account id travel as a pair:
             // use the user's pair when both are set, else fall back to the bundled pair.
             val userKey = settingValue(SettingsKeys.CLOUDFLARE_API_KEY)
             val userAccount = settingValue(SettingsKeys.CLOUDFLARE_ACCOUNT_ID)
-            val bundledKey = BuildConfig.CLOUDFLARE_API_KEY.trim().ifBlank { null }
-            val bundledAccount = BuildConfig.CLOUDFLARE_ACCOUNT_ID.trim().ifBlank { null }
+            val bundledKey = Secrets.cloudflareToken.trim().ifBlank { null }
+            val bundledAccount = Secrets.cloudflareAccountId.trim().ifBlank { null }
             val pair = when {
                 userKey != null && userAccount != null -> Triple(userKey, userAccount, false)
                 bundledKey != null && bundledAccount != null -> Triple(bundledKey, bundledAccount, true)
@@ -97,7 +102,7 @@ internal class ProviderConfigResolver @Inject constructor(
         }
         AiProvider.MISTRAL -> {
             val userKey = settingValue(SettingsKeys.MISTRAL_API_KEY)
-            val key = userKey ?: BuildConfig.MISTRAL_API_KEY.trim().ifBlank { null }
+            val key = userKey ?: Secrets.mistral.trim().ifBlank { null }
             val model = settingValue(SettingsKeys.MISTRAL_MODEL) ?: ProviderConfig.MISTRAL_OCR_DEFAULT
             key?.let { ProviderConfig(ProviderKind.MISTRAL_OCR, model, it, usesBundledKey = userKey == null) }
         }
@@ -143,7 +148,9 @@ internal class ProviderConfigResolver @Inject constructor(
         settingsRepository.getString(SettingsKeys.HUGGINGFACE_API_KEY),
         settingsRepository.getString(SettingsKeys.NVIDIA_API_KEY),
         settingsRepository.getString(SettingsKeys.CLOUDFLARE_API_KEY),
-        settingsRepository.getString(SettingsKeys.CLOUDFLARE_ACCOUNT_ID)
+        settingsRepository.getString(SettingsKeys.CLOUDFLARE_ACCOUNT_ID),
+        settingsRepository.getString(SettingsKeys.GROQ_API_KEY),
+        settingsRepository.getString(SettingsKeys.CEREBRAS_API_KEY)
     ) { keys ->
         buildSet {
             if (keys[0].isBlank() && BUNDLED_GEMINI) add(AiProvider.GEMINI)
@@ -154,6 +161,8 @@ internal class ProviderConfigResolver @Inject constructor(
             // Cloudflare falls back to the bundled pair unless BOTH user fields are set
             // (resolve() uses key + account id as an inseparable pair).
             if ((keys[5].isBlank() || keys[6].isBlank()) && BUNDLED_CLOUDFLARE) add(AiProvider.CLOUDFLARE)
+            if (keys[7].isBlank() && BUNDLED_GROQ) add(AiProvider.GROQ)
+            if (keys[8].isBlank() && BUNDLED_CEREBRAS) add(AiProvider.CEREBRAS)
         }
     }
 
@@ -165,6 +174,8 @@ internal class ProviderConfigResolver @Inject constructor(
         if (BUNDLED_HUGGINGFACE) add(AiProvider.HUGGINGFACE)
         if (BUNDLED_NVIDIA) add(AiProvider.NVIDIA)
         if (BUNDLED_CLOUDFLARE) add(AiProvider.CLOUDFLARE)
+        if (BUNDLED_GROQ) add(AiProvider.GROQ)
+        if (BUNDLED_CEREBRAS) add(AiProvider.CEREBRAS)
     }
 
     // Trimmed, or null if unset/blank.
@@ -196,6 +207,8 @@ internal class ProviderConfigResolver @Inject constructor(
         private val BUNDLED_OPENROUTER = BuildConfig.OPENROUTER_API_KEY.isNotBlank()
         private val BUNDLED_HUGGINGFACE = BuildConfig.HUGGINGFACE_API_KEY.isNotBlank()
         private val BUNDLED_NVIDIA = BuildConfig.NVIDIA_API_KEY.isNotBlank()
+        private val BUNDLED_GROQ = BuildConfig.GROQ_API_KEY.isNotBlank()
+        private val BUNDLED_CEREBRAS = BuildConfig.CEREBRAS_API_KEY.isNotBlank()
         private val BUNDLED_CLOUDFLARE =
             BuildConfig.CLOUDFLARE_API_KEY.isNotBlank() && BuildConfig.CLOUDFLARE_ACCOUNT_ID.isNotBlank()
 

@@ -16,8 +16,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -32,8 +30,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.skeler.scanely.R
 
 /**
  * Rate limit state for gamified FAB.
@@ -78,11 +78,13 @@ fun GamifiedAiFab(
         label = "Fab Press Scale"
     )
 
+    // Same flat surfaceContainer tone as the home action cards; nudges up one
+    // level while recharging to read as muted.
     val containerColor by animateColorAsState(
         targetValue = if (isRecharging) {
             MaterialTheme.colorScheme.surfaceContainerHigh
         } else {
-            MaterialTheme.colorScheme.primaryContainer
+            MaterialTheme.colorScheme.surfaceContainer
         },
         animationSpec = tween(220),
         label = "Fab Container"
@@ -91,7 +93,7 @@ fun GamifiedAiFab(
         targetValue = if (isRecharging) {
             MaterialTheme.colorScheme.onSurfaceVariant
         } else {
-            MaterialTheme.colorScheme.onPrimaryContainer
+            MaterialTheme.colorScheme.onSurface
         },
         animationSpec = tween(220),
         label = "Fab Content"
@@ -108,17 +110,19 @@ fun GamifiedAiFab(
         }
     }
 
+    // Same flat surfaceContainer card as the four home actions; the accent-tinted
+    // spark glyph is what marks this as the AI action.
     Surface(
         onClick = { if (!isRecharging) onClick() },
         modifier = modifier.scale(pressScale),
         shape = MaterialTheme.shapes.large,
         color = containerColor,
         contentColor = contentColor,
-        shadowElevation = 2.dp,
         interactionSource = interactionSource
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
+            modifier = Modifier
+                .padding(horizontal = 20.dp, vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (isRecharging) {
@@ -136,8 +140,9 @@ fun GamifiedAiFab(
                 )
             } else {
                 Icon(
-                    imageVector = Icons.Rounded.AutoAwesome,
+                    painter = painterResource(R.drawable.ic_action_spark),
                     contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(22.dp)
                 )
                 Spacer(modifier = Modifier.width(10.dp))

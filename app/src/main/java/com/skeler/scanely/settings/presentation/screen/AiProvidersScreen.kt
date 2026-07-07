@@ -37,6 +37,7 @@ import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Category
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.DocumentScanner
 import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.Key
@@ -143,6 +144,8 @@ fun AiProvidersScreen(
                 )
             }
 
+            item { BundledKeyNote() }
+
             item {
                 SettingsSectionHeader(
                     text = "Providers",
@@ -204,6 +207,34 @@ fun AiProvidersScreen(
                     )
                 }
             }
+        }
+    }
+}
+
+/** Tonal note explaining that scans run on a shared free-tier key until the user adds their own. */
+@Composable
+private fun BundledKeyNote() {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.secondaryContainer
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Info,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                modifier = Modifier.size(20.dp)
+            )
+            Text(
+                text = "Using the bundled free-tier API key. Add your own provider API key " +
+                    "to use your personal quota and avoid shared limits.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSecondaryContainer
+            )
         }
     }
 }

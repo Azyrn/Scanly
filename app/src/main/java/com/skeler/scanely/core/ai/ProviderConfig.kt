@@ -200,7 +200,7 @@ internal class ProviderConfigResolver @Inject constructor(
         private const val OPENAI_URL = "https://api.openai.com/v1/chat/completions"
         private const val OPENAI_MODEL = "gpt-4o-mini"
         private const val CLAUDE_MODEL = "claude-haiku-4-5-20251001"
-        private const val GEMINI_MODEL = "gemma-4-31b-it"
+        private const val GEMINI_MODEL = "gemini-3.1-flash-lite"
 
         private val BUNDLED_GEMINI = BuildConfig.GEMINI_API_KEY.isNotBlank()
         private val BUNDLED_MISTRAL = BuildConfig.MISTRAL_API_KEY.isNotBlank()

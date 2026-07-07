@@ -16,7 +16,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.CircularWavyProgressIndicator
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -49,8 +49,8 @@ data class RateLimitDisplayState(
  * action cards: the same large squircle shape, flat tonal surface, and spring
  * press-scale, with the primary-container tone marking it as the accent action.
  *
- * While rate-limited it recedes to a muted surface and shows a small wavy
- * recharge indicator with a countdown; haptic feedback fires when it is ready
+ * While rate-limited it recedes to a muted surface and shows a small
+ * determinate recharge ring with a countdown; haptic feedback fires when ready
  * again.
  *
  * @param rateLimitState Current rate limit display state
@@ -126,9 +126,10 @@ fun GamifiedAiFab(
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (isRecharging) {
-                CircularWavyProgressIndicator(
+                CircularProgressIndicator(
                     progress = { progress },
-                    modifier = Modifier.size(22.dp),
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.5.dp,
                     trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                     color = MaterialTheme.colorScheme.primary
                 )

@@ -15,6 +15,7 @@ enum class SettingsKeys(val default: Any?) {
     // Opt-in: on failure, try other configured providers. Off by default — the
     // selected provider is used exactly, with no silent substitution.
     AI_PROVIDER_FALLBACK(false),
+    SELECTED_AI_PROVIDER(""), // Last AiProvider chosen in the AI scan sheet (enum name)
     OPENROUTER_API_KEY(""), // User-supplied OpenRouter key (empty = not configured)
     GEMINI_API_KEY(""), // User-supplied Google AI (Gemini/Gemma) key; falls back to bundled key
     OPENAI_API_KEY(""), // User-supplied OpenAI key

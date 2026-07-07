@@ -41,17 +41,21 @@ import com.skeler.scanely.core.ai.AiProvider
  * Lets the user pick the AI provider (per-scan) and the extraction mode.
  *
  * @param sheetState Modal sheet state
+ * @param initialProvider Provider to preselect (the user's last choice)
  * @param onDismiss Called when sheet is dismissed
+ * @param onProviderSelected Called when the user picks a provider (to persist it)
  * @param onModeSelected Called with the chosen mode and provider
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AiModeBottomSheet(
     sheetState: SheetState,
+    initialProvider: AiProvider,
     onDismiss: () -> Unit,
+    onProviderSelected: (AiProvider) -> Unit,
     onModeSelected: (AiMode, AiProvider) -> Unit
 ) {
-    var provider by remember { mutableStateOf(AiProvider.DEFAULT) }
+    var provider by remember(initialProvider) { mutableStateOf(initialProvider) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -84,7 +88,10 @@ fun AiModeBottomSheet(
                     val selected = provider == option
                     FilterChip(
                         selected = selected,
-                        onClick = { provider = option },
+                        onClick = {
+                            provider = option
+                            onProviderSelected(option)
+                        },
                         label = { Text(option.displayName) },
                         leadingIcon = if (selected) {
                             {

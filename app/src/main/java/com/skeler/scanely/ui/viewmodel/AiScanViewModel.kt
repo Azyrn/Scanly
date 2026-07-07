@@ -7,17 +7,23 @@ import com.skeler.scanely.core.ai.AiEvent
 import com.skeler.scanely.core.ai.AiMode
 import com.skeler.scanely.core.ai.AiProvider
 import com.skeler.scanely.core.ai.AiResult
+import com.skeler.scanely.core.ai.AiRunInfo
 import com.skeler.scanely.core.ai.AiStage
 import com.skeler.scanely.core.ai.GenerativeAiService
 import com.skeler.scanely.history.data.HistoryManager
+import com.skeler.scanely.settings.data.SettingsKeys
+import com.skeler.scanely.settings.domain.repository.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -36,6 +42,8 @@ data class AiScanState(
     val mode: AiMode? = null,
     /** Provider used for this scan (for rescan + translation) */
     val provider: AiProvider = AiProvider.DEFAULT,
+    /** Provider/model/key source that actually served the last successful scan. */
+    val runInfo: AiRunInfo? = null,
     val originalText: String? = null,
     /** Cached translations: language name -> translated text */
     val translationCache: Map<String, String> = emptyMap(),
@@ -61,11 +69,25 @@ data class AiScanState(
 @HiltViewModel
 class AiScanViewModel @Inject constructor(
     private val aiService: GenerativeAiService,
-    private val historyManager: HistoryManager
+    private val historyManager: HistoryManager,
+    private val settingsRepository: SettingsRepository
 ) : ViewModel() {
 
     private val _aiState = MutableStateFlow(AiScanState())
     val aiState: StateFlow<AiScanState> = _aiState.asStateFlow()
+
+    /** Last provider the user picked in the AI scan sheet, persisted across launches. */
+    val selectedProvider: StateFlow<AiProvider> =
+        settingsRepository.getString(SettingsKeys.SELECTED_AI_PROVIDER)
+            .map { AiProvider.fromName(it.ifBlank { null }) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AiProvider.DEFAULT)
+
+    /** Remember the chosen provider so the sheet reopens on it next time. */
+    fun setSelectedProvider(provider: AiProvider) {
+        viewModelScope.launch {
+            settingsRepository.setString(SettingsKeys.SELECTED_AI_PROVIDER, provider.name)
+        }
+    }
 
     /** The in-flight processing job, so Cancel can abort it. */
     private var processingJob: Job? = null
@@ -107,7 +129,12 @@ class AiScanViewModel @Inject constructor(
                 is AiEvent.Delta -> _aiState.value = _aiState.value.copy(
                     streamingText = event.textSoFar
                 )
-                is AiEvent.Finished -> result = event.result
+                is AiEvent.Finished -> {
+                    result = event.result
+                    event.runInfo?.let {
+                        _aiState.value = _aiState.value.copy(runInfo = it)
+                    }
+                }
             }
         }
         return result

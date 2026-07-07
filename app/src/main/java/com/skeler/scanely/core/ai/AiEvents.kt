@@ -13,6 +13,16 @@ sealed class AiResult {
     data class Error(val message: String) : AiResult()
 }
 
+/**
+ * The provider, model and key source that actually served a successful request.
+ * [usesBundledKey] is false when the user's own API key made the call.
+ */
+data class AiRunInfo(
+    val provider: AiProvider,
+    val model: String,
+    val usesBundledKey: Boolean
+)
+
 /** User-visible phases of one extraction, in order. */
 enum class AiStage {
     PREPARING,
@@ -32,5 +42,5 @@ enum class AiStage {
 sealed class AiEvent {
     data class Stage(val stage: AiStage, val message: String? = null) : AiEvent()
     data class Delta(val textSoFar: String) : AiEvent()
-    data class Finished(val result: AiResult) : AiEvent()
+    data class Finished(val result: AiResult, val runInfo: AiRunInfo? = null) : AiEvent()
 }

@@ -10,6 +10,7 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.expressiveLightColorScheme
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.graphics.ColorUtils
 import com.google.android.material.color.utilities.CorePalette
@@ -51,7 +52,6 @@ private const val HarmonizeFraction = 0.1f
 
 /** Non-black dark surfaces used when a dynamic scheme resolves to pure black but OLED is off. */
 private val DarkSurface = Color(0xFF141218)
-private val DarkSurfaceLowest = Color(0xFF0F0D13)
 
 // =============================================================================
 // SEED-BASED SCHEMES — the single pipeline for all non-dynamic themes
@@ -177,15 +177,36 @@ fun ColorScheme.toOledBlack(): ColorScheme = copy(
 )
 
 /**
- * Guard against a dynamic (wallpaper) scheme that resolves to pure black when the
- * user has OLED mode turned off — lift it back to standard M3 dark surfaces.
+ * Bring any non-OLED dark scheme to life. Wallpaper-derived (dynamic) neutrals
+ * often resolve to a flat, near-black gray-brown with almost no separation between
+ * background and cards — the classic "sad" dark theme. This rebuilds the surface
+ * elevation ladder from a single anchor, widening the steps so cards read clearly,
+ * and folds a hint of the scheme's own accent into every surface so the dark tone
+ * feels tinted and intentional instead of dead. The accent tint keeps dynamic
+ * schemes on-hue while making seed schemes richer.
  */
-fun ColorScheme.withoutPureBlack(): ColorScheme =
-    if (background == Color.Black) copy(
-        background = DarkSurface,
-        surface = DarkSurface,
-        surfaceContainerLowest = DarkSurfaceLowest,
-    ) else this
+fun ColorScheme.enlivenDark(): ColorScheme {
+    // Anchor the darkest surface; lift a dynamic scheme off (near-)black since OLED
+    // mode owns the true-black look via toOledBlack().
+    val base = if (surface.luminance() < 0.02f) DarkSurface else surface
+    val tint = primary
+
+    fun rung(lift: Float, tintAmount: Float): Color =
+        base.blend(Color.White, lift).blend(tint, tintAmount)
+
+    val bg = rung(0.00f, 0.03f)
+    return copy(
+        background = bg,
+        surface = bg,
+        surfaceDim = bg,
+        surfaceContainerLowest = rung(0.00f, 0.02f),
+        surfaceContainerLow = rung(0.045f, 0.05f),
+        surfaceContainer = rung(0.075f, 0.06f),
+        surfaceContainerHigh = rung(0.11f, 0.07f),
+        surfaceContainerHighest = rung(0.15f, 0.08f),
+        surfaceBright = rung(0.18f, 0.06f),
+    )
+}
 
 // =============================================================================
 // COLOR UTILITIES

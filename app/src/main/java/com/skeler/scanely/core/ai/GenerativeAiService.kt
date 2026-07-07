@@ -72,7 +72,12 @@ class GenerativeAiService @Inject internal constructor(
                     is ProviderOutcome.Success -> {
                         send(AiEvent.Stage(AiStage.COMPLETE))
                         aiDebug { "total ${SystemClock.elapsedRealtime() - totalStart} ms" }
-                        send(AiEvent.Finished(AiResult.Success(outcome.text)))
+                        send(
+                            AiEvent.Finished(
+                                AiResult.Success(outcome.text),
+                                AiRunInfo(prov, config.model, config.usesBundledKey)
+                            )
+                        )
                         return@channelFlow
                     }
                     is ProviderOutcome.Fatal -> {

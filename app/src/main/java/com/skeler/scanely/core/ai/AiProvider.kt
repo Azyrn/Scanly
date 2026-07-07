@@ -36,6 +36,10 @@ enum class AiProvider(val displayName: String, val kind: ProviderKind) {
     companion object {
         /** Default provider — backed by the bundled key. */
         val DEFAULT = GEMINI
+
+        /** Parse a persisted enum name; unknown/blank falls back to [DEFAULT]. */
+        fun fromName(name: String?): AiProvider =
+            entries.firstOrNull { it.name == name } ?: DEFAULT
     }
 }
 

@@ -54,7 +54,7 @@ fun ScanelyTheme(
 
     val colorScheme = when {
         darkTheme && settings.isOledModeEnabled -> baseScheme.toOledBlack()
-        darkTheme -> baseScheme.withoutPureBlack()
+        darkTheme -> baseScheme.enlivenDark()
         else -> baseScheme
     }
     val animatedColorScheme = colorScheme.animated()

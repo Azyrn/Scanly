@@ -90,6 +90,9 @@ fun HomeScreen() {
     var pendingAiMode by remember { mutableStateOf<AiMode?>(null) }
     var pendingAiProvider by remember { mutableStateOf(AiProvider.DEFAULT) }
 
+    // Remembered AI provider (last chosen), seeds the sheet selection.
+    val selectedAiProvider by aiViewModel.selectedProvider.collectAsState()
+
     // Rate Limit state
     val showRateLimitSheet by scanViewModel.showRateLimitSheet.collectAsState()
     val rateLimitState by scanViewModel.rateLimitState.collectAsState()
@@ -231,7 +234,8 @@ fun HomeScreen() {
                     progress = rateLimitState.progress,
                     justBecameReady = rateLimitState.justBecameReady
                 ),
-                onClick = { onAiFabClick() }
+                onClick = { onAiFabClick() },
+                modifier = Modifier.padding(bottom = 24.dp)
             )
         },
         containerColor = MaterialTheme.colorScheme.background
@@ -294,7 +298,8 @@ fun HomeScreen() {
             Spacer(modifier = Modifier.height(48.dp))
 
             HistoryPillButton(
-                onClick = { navController.navigate(Routes.HISTORY) }
+                onClick = { navController.navigate(Routes.HISTORY) },
+                modifier = Modifier.padding(bottom = 24.dp)
             )
         }
     }
@@ -303,7 +308,9 @@ fun HomeScreen() {
     if (showAiBottomSheet) {
         AiModeBottomSheet(
             sheetState = aiSheetState,
+            initialProvider = selectedAiProvider,
             onDismiss = { showAiBottomSheet = false },
+            onProviderSelected = { aiViewModel.setSelectedProvider(it) },
             onModeSelected = { mode, provider -> onAiModeSelected(mode, provider) }
         )
     }

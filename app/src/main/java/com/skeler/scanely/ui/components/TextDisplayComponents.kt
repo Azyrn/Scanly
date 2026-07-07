@@ -44,8 +44,8 @@ import com.skeler.scanely.core.ai.AiStage
  * Document-style readable text tuned for long passages of extracted text.
  *
  * Readability rationale:
- * - 17sp reading size with a generous 28sp line height (~1.65x) reduces
- *   crowding on dense OCR output.
+ * - 14sp reading size with a 20sp line height (~1.43x) keeps long passages
+ *   compact enough to fit without heavy scrolling while staying legible.
  * - onSurface gives the strongest text-on-background contrast in the scheme.
  * - Paragraphs (split on blank lines) are spaced apart so the eye can track
  *   where one block ends and the next begins — real typographic hierarchy
@@ -73,9 +73,9 @@ fun ReadableTextContent(
     }
 
     val readingStyle = MaterialTheme.typography.bodyLarge.copy(
-        fontSize = 17.sp,
-        lineHeight = 28.sp,
-        letterSpacing = 0.015.sp,
+        fontSize = 14.sp,
+        lineHeight = 20.sp,
+        letterSpacing = 0.01.sp,
         textDirection = TextDirection.Content
     )
 
@@ -85,7 +85,7 @@ fun ReadableTextContent(
                 modifier = modifier
                     .fillMaxWidth()
                     .padding(top = 8.dp, bottom = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 paragraphs.forEach { paragraph ->
                     Text(
@@ -101,7 +101,7 @@ fun ReadableTextContent(
 
 /**
  * Editable twin of [ReadableTextContent] for correcting imperfect OCR. Keeps the
- * exact reading typography (17sp / 28sp, onSurface) so switching into edit mode
+ * exact reading typography (14sp / 20sp, onSurface) so switching into edit mode
  * doesn't reflow or restyle the text; only the caret and a subtle field
  * background appear. Edits are staged locally — the caller commits them on Save.
  */
@@ -112,9 +112,9 @@ fun EditableReadableText(
     modifier: Modifier = Modifier
 ) {
     val readingStyle = MaterialTheme.typography.bodyLarge.copy(
-        fontSize = 17.sp,
-        lineHeight = 28.sp,
-        letterSpacing = 0.015.sp,
+        fontSize = 14.sp,
+        lineHeight = 20.sp,
+        letterSpacing = 0.01.sp,
         textDirection = TextDirection.Content,
         color = MaterialTheme.colorScheme.onSurface
     )

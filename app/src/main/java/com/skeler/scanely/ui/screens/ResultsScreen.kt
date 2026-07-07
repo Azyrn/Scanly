@@ -14,19 +14,20 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.ContentCopy
-import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Autorenew
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -50,13 +51,14 @@ import com.skeler.scanely.core.ocr.OcrResult
 import com.skeler.scanely.navigation.LocalNavController
 import com.skeler.scanely.navigation.Routes
 import com.skeler.scanely.ui.ScanViewModel
+import com.skeler.scanely.ui.components.CredentialBadge
 import com.skeler.scanely.ui.components.EmptyResultContent
 import com.skeler.scanely.ui.components.ExtractedTextSection
 import com.skeler.scanely.ui.components.LanguageChipRow
 import com.skeler.scanely.ui.components.ProcessingContent
 import com.skeler.scanely.ui.components.RateLimitSheet
-import com.skeler.scanely.ui.components.TranslatingContent
 import com.skeler.scanely.ui.components.ScanResultSkeleton
+import com.skeler.scanely.ui.components.TranslatingContent
 import com.skeler.scanely.ui.components.TranslationLanguages
 import com.skeler.scanely.ui.components.rememberTextExporter
 import com.skeler.scanely.ui.viewmodel.AiScanViewModel
@@ -181,9 +183,9 @@ fun ResultsScreen() {
                     horizontalAlignment = Alignment.End,
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // Rescan FAB (rate-limited)
+                    // Rescan (rate-limited) — styled identically to the header actions.
                     if (isAiResult && aiState.lastImageUri != null) {
-                        FloatingActionButton(
+                        FilledTonalIconButton(
                             onClick = {
                                 aiViewModel.getRescanParams()?.let { (uri, mode, provider) ->
                                     scanViewModel.triggerAiWithRateLimit(provider) {
@@ -191,21 +193,20 @@ fun ResultsScreen() {
                                     }
                                 }
                             },
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                            modifier = Modifier.size(56.dp),
+                            shape = RoundedCornerShape(18.dp),
+                            colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
                         ) {
-                            Icon(Icons.Rounded.Refresh, contentDescription = "Rescan")
+                            Icon(
+                                Icons.Rounded.Autorenew,
+                                contentDescription = "Rescan",
+                                modifier = Modifier.size(26.dp)
+                            )
                         }
                     }
-                    
-                    // Prominent, labeled copy action for one-tap copying.
-                    ExtendedFloatingActionButton(
-                        onClick = { copyToClipboard(context, displayText) },
-                        icon = { Icon(Icons.Rounded.ContentCopy, contentDescription = null) },
-                        text = { Text("Copy") },
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
                 }
             }
         },
@@ -247,6 +248,19 @@ fun ResultsScreen() {
                     TranslatingContent()
                 }
                 displayText != null -> {
+                    // Which credentials served this scan — only for a fresh AI
+                    // result (history reopens don't know what produced them).
+                    val runInfo = aiState.runInfo
+                    if (isAiResult && historyText == null && runInfo != null &&
+                        aiState.result is AiResult.Success
+                    ) {
+                        CredentialBadge(
+                            providerName = runInfo.provider.displayName,
+                            model = runInfo.model,
+                            usesBundledKey = runInfo.usesBundledKey
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
                     if (isAiResult && isOnline) {
                         LanguageChipRow(
                             cachedLanguages = cachedLanguages,

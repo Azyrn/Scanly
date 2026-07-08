@@ -33,7 +33,6 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -192,36 +191,26 @@ fun ResultsScreen() {
                 .statusBarsPadding()
                 .padding(horizontal = 20.dp)
         ) {
-            // Top bar stays pinned (outside scroll) so back is always reachable.
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                IconButton(
-                    onClick = onBack,
-                    modifier = Modifier.align(Alignment.CenterStart)
-                ) {
-                    Icon(
-                        Icons.AutoMirrored.Rounded.ArrowBack,
-                        contentDescription = "Back",
-                        modifier = Modifier.size(26.dp)
-                    )
-                }
-                Text(
-                    text = "Results",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-
           Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
                 .verticalScroll(rememberScrollState())
           ) {
+            // Title scrolls with content; the floating back button overlays it,
+            // matching the offline image screen.
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 14.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Results",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Medium
+                )
+            }
             when {
                 // AI pipeline keeps its staged/streaming progress UI; plain
                 // OCR/PDF extraction shows a result-shaped skeleton instead
@@ -363,6 +352,23 @@ fun ResultsScreen() {
                     modifier = Modifier.size(26.dp)
                 )
             }
+        }
+
+        // Floating back hovers over the scrolling content, matching the offline
+        // image results screen.
+        FilledTonalIconButton(
+            onClick = onBack,
+            shape = RoundedCornerShape(16.dp),
+            colors = IconButtonDefaults.filledTonalIconButtonColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                contentColor = MaterialTheme.colorScheme.onSurface
+            ),
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .statusBarsPadding()
+                .padding(start = 12.dp, top = 8.dp)
+        ) {
+            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
         }
     }
 }

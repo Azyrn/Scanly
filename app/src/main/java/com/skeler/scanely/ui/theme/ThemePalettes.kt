@@ -63,7 +63,7 @@ object SeedPalettes {
     )
 
     val ALL: List<SeedColor> = listOf(
-        CeruleanWave, LavenderVolt, AmethystHaze, EmeraldGrove, SunsetCoral, RoseBlush
+        RoseBlush, CeruleanWave, LavenderVolt, AmethystHaze, EmeraldGrove, SunsetCoral
     )
 
     /** Purple-leaning anchor that reads as the classic Material 3 default. */

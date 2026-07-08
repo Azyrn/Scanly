@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.graphics.ColorUtils
 import com.google.android.material.color.utilities.CorePalette
+import com.google.android.material.color.utilities.Hct
 
 // =============================================================================
 // TONAL PALETTES
@@ -24,24 +25,28 @@ import com.google.android.material.color.utilities.CorePalette
 // =============================================================================
 
 private class TonalPalettes(seed: SeedColor) {
+    private val mono = seed.monochrome
     private val primaryCore = CorePalette.of(seed.primary)
     private val secondaryCore = CorePalette.of(seed.secondary)
     private val tertiaryCore = CorePalette.of(seed.tertiary)
 
+    /** Chroma-0 gray at [tone]; CorePalette would otherwise force accents to chroma≥48. */
+    private fun gray(tone: Int): Color = Color(Hct.from(0.0, 0.0, tone.toDouble()).toInt())
+
     /** Primary accent ramp. */
-    fun a1(tone: Int): Color = Color(primaryCore.a1.tone(tone))
+    fun a1(tone: Int): Color = if (mono) gray(tone) else Color(primaryCore.a1.tone(tone))
 
     /** Secondary accent ramp (from the secondary seed's own vivid a1). */
-    fun a2(tone: Int): Color = Color(secondaryCore.a1.tone(tone))
+    fun a2(tone: Int): Color = if (mono) gray(tone) else Color(secondaryCore.a1.tone(tone))
 
     /** Tertiary accent ramp (from the tertiary seed's own vivid a1). */
-    fun a3(tone: Int): Color = Color(tertiaryCore.a1.tone(tone))
+    fun a3(tone: Int): Color = if (mono) gray(tone) else Color(tertiaryCore.a1.tone(tone))
 
     /** Neutral ramp for surfaces/backgrounds. */
-    fun n1(tone: Int): Color = Color(primaryCore.n1.tone(tone))
+    fun n1(tone: Int): Color = if (mono) gray(tone) else Color(primaryCore.n1.tone(tone))
 
     /** Neutral-variant ramp for outlines/surface variants. */
-    fun n2(tone: Int): Color = Color(primaryCore.n2.tone(tone))
+    fun n2(tone: Int): Color = if (mono) gray(tone) else Color(primaryCore.n2.tone(tone))
 
     /** Standard error ramp. */
     fun error(tone: Int): Color = Color(primaryCore.error.tone(tone))

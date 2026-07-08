@@ -6,10 +6,10 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,37 +17,38 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.QrCode2
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material.icons.automirrored.rounded.Notes
+import androidx.compose.material.icons.rounded.Bolt
+import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.material.icons.rounded.SaveAlt
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LargeTopAppBar
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.skeler.scanely.core.actions.ActionExecutor
@@ -55,14 +56,15 @@ import com.skeler.scanely.core.actions.ScanAction
 import com.skeler.scanely.navigation.LocalNavController
 import com.skeler.scanely.ui.components.ExtractedTextSection
 import com.skeler.scanely.ui.components.ScanResultSkeleton
+import com.skeler.scanely.ui.components.TextExportFormat
+import com.skeler.scanely.ui.components.rememberExtractedTextState
 import com.skeler.scanely.ui.components.rememberTextExporter
 import com.skeler.scanely.ui.viewmodel.UnifiedScanViewModel
 
 /**
- * Unified Results Screen with separated sections for:
- * - Text OCR results
- * - Barcode/QR detection results
- * - Smart actions from OCR text
+ * Unified Results Screen — floating back over free-scrolling content, a minimal
+ * centered "Results" title, and an "Extracted Text" ⟷ "Quick Actions" control
+ * row above the raw text. No surfaces: the text sits directly on the page.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,239 +77,224 @@ fun UnifiedResultsScreen() {
     val uiState by unifiedViewModel.uiState.collectAsState()
     val exportText = rememberTextExporter()
 
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
+    val extracted = uiState.extractedText.orEmpty()
+    val textState = rememberExtractedTextState(extracted)
+    val onCopyExtracted = {
+        val clipboard = context.getSystemService(ClipboardManager::class.java)
+        clipboard.setPrimaryClip(ClipData.newPlainText("Extracted Text", extracted))
+        Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
+    }
 
-    Scaffold(
-        topBar = {
-            LargeTopAppBar(
-                title = { Text("Scan Results") },
-                navigationIcon = {
-                    IconButton(onClick = { 
-                        unifiedViewModel.clearResult()
-                        navController.popBackStack() 
-                    }) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                scrollBehavior = scrollBehavior
-            )
-        },
-        containerColor = MaterialTheme.colorScheme.background
-    ) { innerPadding ->
-        when {
-            uiState.isLoading -> {
-                ScanResultSkeleton(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding)
-                        .padding(16.dp)
+    val onBack: () -> Unit = {
+        unifiedViewModel.clearResult()
+        navController.popBackStack()
+    }
+
+    // Barcode + smart-text actions folded into one Quick Actions menu (Copy/ShowRaw
+    // dropped, unique only, capped at 6). Remembered so it isn't rebuilt on scroll.
+    val quickActions = remember(uiState.barcodeActions, uiState.textActions) {
+        val smart = uiState.textActions
+            .filter { it !is ScanAction.CopyText && it !is ScanAction.ShowRaw }
+        (uiState.barcodeActions + smart)
+            .distinctBy { action ->
+                when (action) {
+                    is ScanAction.OpenUrl -> "url:${action.url}"
+                    is ScanAction.CallPhone -> "call:${action.number}"
+                    is ScanAction.SendEmail -> "email:${action.email}"
+                    is ScanAction.SendSms -> "sms:${action.number}"
+                    is ScanAction.ConnectWifi -> "wifi:${action.ssid}"
+                    is ScanAction.AddContact -> "contact:${action.name}"
+                    else -> action.label
+                }
+            }
+            .take(6)
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp)
+        ) {
+            // Minimal centered title; the floating back button overlays its left.
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 14.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Results",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Medium
                 )
             }
-            uiState.isEmpty -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "No text or barcodes detected",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center
-                    )
-                }
-            }
-            else -> {
-                // Smart actions from OCR text (no Copy/ShowRaw, unique only, max 3);
-                // remembered so it isn't re-derived on every scroll recomposition.
-                val filteredActions = remember(uiState.textActions) {
-                    uiState.textActions
-                        .filter { it !is ScanAction.CopyText && it !is ScanAction.ShowRaw }
-                        .distinctBy { action ->
-                            when (action) {
-                                is ScanAction.OpenUrl -> "url:${action.url}"
-                                is ScanAction.CallPhone -> "call:${action.number}"
-                                is ScanAction.SendEmail -> "email:${action.email}"
-                                is ScanAction.SendSms -> "sms:${action.number}"
-                                is ScanAction.ConnectWifi -> "wifi:${action.ssid}"
-                                is ScanAction.AddContact -> "contact:${action.name}"
-                                else -> action.label
-                            }
-                        }
-                        .take(3)
-                }
 
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding)
-                        .nestedScroll(scrollBehavior.nestedScrollConnection),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    // Barcode Results Section
-                    if (uiState.hasBarcodes) {
-                        item {
-                            SectionHeader(
-                                icon = Icons.Rounded.QrCode2,
-                                title = "Barcodes Detected"
-                            )
-                        }
-                        
-                        items(uiState.barcodeActions) { action ->
-                            BarcodeActionCard(
-                                action = action,
-                                onClick = { ActionExecutor.execute(context, action) }
-                            )
-                        }
+            when {
+                uiState.isLoading -> {
+                    ScanResultSkeleton(modifier = Modifier.padding(top = 8.dp))
+                }
+                uiState.isEmpty -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 120.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "No text or barcodes detected",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
+                        )
                     }
+                }
+                else -> {
+                    Spacer(modifier = Modifier.height(4.dp))
 
-                    if (filteredActions.isNotEmpty()) {
-                        item {
+                    // Mirrors the online results header: Notes + title left,
+                    // Actions / Save / Copy cluster right.
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Rounded.Notes,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
                             Text(
-                                text = "Quick Actions",
+                                text = "Extracted Text",
                                 style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                modifier = Modifier.padding(top = 8.dp)
+                                fontWeight = FontWeight.SemiBold
                             )
                         }
-                        
-                        item {
-                            LazyRow(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                items(filteredActions) { action ->
-                                    SmartActionChip(
-                                        action = action,
-                                        onClick = { ActionExecutor.execute(context, action) }
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (quickActions.isNotEmpty()) {
+                                ActionsButton(
+                                    actions = quickActions,
+                                    onExecute = { ActionExecutor.execute(context, it) }
+                                )
+                            }
+                            if (uiState.hasText) {
+                                SaveButton(onExport = { exportText(extracted, it) })
+                                FilledTonalIconButton(
+                                    onClick = onCopyExtracted,
+                                    shape = RoundedCornerShape(14.dp),
+                                    colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.primary,
+                                        contentColor = MaterialTheme.colorScheme.onPrimary
                                     )
+                                ) {
+                                    Icon(Icons.Rounded.ContentCopy, "Copy text", Modifier.size(20.dp))
                                 }
                             }
                         }
                     }
 
-                    // Text Results Section
                     if (uiState.hasText) {
-                        val extracted = uiState.extractedText.orEmpty()
-                        item {
-                            ExtractedTextSection(
-                                text = extracted,
-                                onCopy = {
-                                    val clipboard = context.getSystemService(ClipboardManager::class.java)
-                                    clipboard.setPrimaryClip(
-                                        ClipData.newPlainText("Extracted Text", extracted)
-                                    )
-                                    Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
-                                },
-                                onExport = { format -> exportText(extracted, format) }
-                            )
-                        }
+                        Spacer(modifier = Modifier.height(10.dp))
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        // Raw text directly on the page — no card, no surface.
+                        ExtractedTextSection(state = textState, text = extracted)
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(48.dp))
+        }
+
+        // Floating back — hovers above the content, which scrolls freely beneath.
+        FilledTonalIconButton(
+            onClick = onBack,
+            shape = RoundedCornerShape(16.dp),
+            colors = IconButtonDefaults.filledTonalIconButtonColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                contentColor = MaterialTheme.colorScheme.onSurface
+            ),
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .statusBarsPadding()
+                .padding(start = 12.dp, top = 8.dp)
+        ) {
+            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
         }
     }
 }
 
+/** Actions slot (mirrors the online Edit button) opening the smart-actions menu. */
 @Composable
-private fun SectionHeader(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    title: String
+private fun ActionsButton(
+    actions: List<ScanAction>,
+    onExecute: (ScanAction) -> Unit
 ) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.padding(vertical = 8.dp)
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(24.dp)
-        )
-        Spacer(modifier = Modifier.width(12.dp))
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun BarcodeActionCard(
-    action: ScanAction,
-    onClick: () -> Unit
-) {
-    Card(
-        onClick = onClick,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer
-        ),
-        shape = MaterialTheme.shapes.medium
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = action.icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(28.dp)
+    Box {
+        var open by remember { mutableStateOf(false) }
+        FilledTonalIconButton(
+            onClick = { open = true },
+            shape = RoundedCornerShape(14.dp),
+            colors = IconButtonDefaults.filledTonalIconButtonColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                contentColor = MaterialTheme.colorScheme.onSurface
             )
-            Spacer(modifier = Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = action.label,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium
-                )
-                Text(
-                    text = getActionSubtitle(action),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+        ) {
+            Icon(Icons.Rounded.Bolt, contentDescription = "Actions", modifier = Modifier.size(20.dp))
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            actions.forEach { action ->
+                DropdownMenuItem(
+                    text = { Text(action.label) },
+                    leadingIcon = {
+                        Icon(action.icon, contentDescription = null, modifier = Modifier.size(20.dp))
+                    },
+                    onClick = {
+                        open = false
+                        onExecute(action)
+                    }
                 )
             }
         }
     }
 }
 
+/** "Save" (export) slot, matching the online Export button, opening PDF/CSV. */
 @Composable
-private fun SmartActionChip(
-    action: ScanAction,
-    onClick: () -> Unit
-) {
-    FilledTonalButton(
-        onClick = onClick,
-        shape = MaterialTheme.shapes.medium
-    ) {
-        Icon(
-            imageVector = action.icon,
-            contentDescription = null,
-            modifier = Modifier.size(18.dp)
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(action.label)
-    }
-}
-
-private fun getActionSubtitle(action: ScanAction): String {
-    return when (action) {
-        is ScanAction.OpenUrl -> action.url.take(50)
-        is ScanAction.CopyText -> action.text.take(50)
-        is ScanAction.CallPhone -> action.number
-        is ScanAction.SendEmail -> action.email
-        is ScanAction.ConnectWifi -> action.ssid
-        is ScanAction.SendSms -> action.number
-        is ScanAction.AddContact -> action.name ?: "Contact"
-        is ScanAction.AddEvent -> action.title ?: "Event"
-        is ScanAction.ShowRaw -> action.text.take(50)
-        is ScanAction.LookupProduct -> "Barcode: ${action.barcode}"
+private fun SaveButton(onExport: (TextExportFormat) -> Unit) {
+    Box {
+        var open by remember { mutableStateOf(false) }
+        FilledTonalIconButton(
+            onClick = { open = true },
+            shape = RoundedCornerShape(14.dp),
+            colors = IconButtonDefaults.filledTonalIconButtonColors(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+            )
+        ) {
+            Icon(Icons.Rounded.SaveAlt, contentDescription = "Export", modifier = Modifier.size(20.dp))
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            DropdownMenuItem(
+                text = { Text("Save as PDF") },
+                onClick = { open = false; onExport(TextExportFormat.PDF) }
+            )
+            DropdownMenuItem(
+                text = { Text("Save as CSV") },
+                onClick = { open = false; onExport(TextExportFormat.CSV) }
+            )
+        }
     }
 }

@@ -8,30 +8,35 @@ import android.content.Context
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.Notes
 import androidx.compose.material.icons.rounded.Autorenew
-import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -52,6 +57,8 @@ import com.skeler.scanely.navigation.LocalNavController
 import com.skeler.scanely.navigation.Routes
 import com.skeler.scanely.ui.ScanViewModel
 import com.skeler.scanely.ui.components.CredentialBadge
+import com.skeler.scanely.ui.components.ExtractedTextActions
+import com.skeler.scanely.ui.components.rememberExtractedTextState
 import com.skeler.scanely.ui.components.EmptyResultContent
 import com.skeler.scanely.ui.components.ExtractedTextSection
 import com.skeler.scanely.ui.components.LanguageChipRow
@@ -68,7 +75,7 @@ import kotlinx.coroutines.launch
 
 /**
  * Wikipedia-style Results Screen - Orchestration Layer Only
- * 
+ *
  * Components extracted to:
  * - LanguageChipRow.kt
  * - TextDisplayComponents.kt (ReadableTextContent, ProcessingContent, etc.)
@@ -87,11 +94,11 @@ fun ResultsScreen() {
     val scanState by scanViewModel.uiState.collectAsState()
     val aiState by aiViewModel.aiState.collectAsState()
     val ocrState by ocrViewModel.uiState.collectAsState()
-    
+
     // Processing state
     val isProcessing = aiState.isProcessing || ocrState.isProcessing
     val isTranslating = aiState.isTranslating
-    
+
     // Text priority: History > AI > OCR
     val historyText = scanState.historyText
     val aiResultText = when (val result = aiState.result) {
@@ -105,7 +112,7 @@ fun ResultsScreen() {
     }
     val primaryResultText = historyText ?: aiResultText ?: ocrResultText
     val isAiResult = aiResultText != null
-    
+
     // Translation state
     val cachedLanguages = aiState.translationCache.keys.toList()
     val currentLanguage = aiState.currentLanguage
@@ -116,12 +123,26 @@ fun ResultsScreen() {
     val showRateLimitSheet by scanViewModel.showRateLimitSheet.collectAsState()
     val isRewardedAdAvailable by scanViewModel.isRewardedAdAvailable.collectAsState()
     val isOnline by scanViewModel.isOnline.collectAsState()
-    
+
     // Language menu state
     var showLanguageMenu by remember { mutableStateOf(false) }
     val languages = TranslationLanguages.ALL
 
     var navigatingUp by remember { mutableStateOf(false) }
+
+    // Hoisted so the copy/export/edit actions can live in the header while the
+    // body renders below; keyed on the shown text.
+    val textState = rememberExtractedTextState(displayText.orEmpty())
+    val onSaveExtracted: (String) -> Unit = { edited ->
+        when {
+            // Editing a shown translation corrects that translation.
+            currentLanguage != null -> aiViewModel.updateText(edited)
+            // Reopened-from-history text persists to its row.
+            historyText != null -> scanViewModel.updateHistoryText(edited)
+            isAiResult -> aiViewModel.updateText(edited)
+            else -> ocrViewModel.updateText(edited)
+        }
+    }
 
     val onBack: () -> Unit = {
         if (!navigatingUp) {
@@ -157,70 +178,50 @@ fun ResultsScreen() {
         )
     }
 
-    Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Text(
-                        text = "Results",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Medium
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
-                )
-            )
-        },
-        floatingActionButton = {
-            if (displayText != null && !isProcessing && !isTranslating) {
-                Column(
-                    horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    // Rescan (rate-limited) — styled identically to the header actions.
-                    if (isAiResult && aiState.lastImageUri != null) {
-                        FilledTonalIconButton(
-                            onClick = {
-                                aiViewModel.getRescanParams()?.let { (uri, mode, provider) ->
-                                    scanViewModel.triggerAiWithRateLimit(provider) {
-                                        aiViewModel.processImage(uri, mode, provider)
-                                    }
-                                }
-                            },
-                            modifier = Modifier.size(56.dp),
-                            shape = RoundedCornerShape(18.dp),
-                            colors = IconButtonDefaults.filledTonalIconButtonColors(
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-                        ) {
-                            Icon(
-                                Icons.Rounded.Autorenew,
-                                contentDescription = "Rescan",
-                                modifier = Modifier.size(26.dp)
-                            )
-                        }
-                    }
-                }
-            }
-        },
-        containerColor = MaterialTheme.colorScheme.background
-    ) { innerPadding ->
+    val showRescan = displayText != null && !isProcessing && !isTranslating &&
+        isAiResult && aiState.lastImageUri != null
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
-                .verticalScroll(rememberScrollState())
+                .statusBarsPadding()
                 .padding(horizontal = 20.dp)
         ) {
-            Spacer(modifier = Modifier.height(8.dp))
+            // Top bar stays pinned (outside scroll) so back is always reachable.
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                IconButton(
+                    onClick = onBack,
+                    modifier = Modifier.align(Alignment.CenterStart)
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Rounded.ArrowBack,
+                        contentDescription = "Back",
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
+                Text(
+                    text = "Results",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Medium
+                )
+            }
 
+          Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+          ) {
             when {
                 // AI pipeline keeps its staged/streaming progress UI; plain
                 // OCR/PDF extraction shows a result-shaped skeleton instead
@@ -251,16 +252,19 @@ fun ResultsScreen() {
                     // Which credentials served this scan — only for a fresh AI
                     // result (history reopens don't know what produced them).
                     val runInfo = aiState.runInfo
-                    if (isAiResult && historyText == null && runInfo != null &&
-                        aiState.result is AiResult.Success
-                    ) {
-                        CredentialBadge(
-                            providerName = runInfo.provider.displayName,
-                            model = runInfo.model,
-                            usesBundledKey = runInfo.usesBundledKey
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                    }
+                    val credential: (@Composable () -> Unit)? =
+                        if (isAiResult && historyText == null && runInfo != null &&
+                            aiState.result is AiResult.Success
+                        ) {
+                            {
+                                CredentialBadge(
+                                    providerName = runInfo.provider.displayName,
+                                    model = runInfo.model,
+                                    usesBundledKey = runInfo.usesBundledKey
+                                )
+                            }
+                        } else null
+
                     if (isAiResult && isOnline) {
                         LanguageChipRow(
                             cachedLanguages = cachedLanguages,
@@ -279,22 +283,48 @@ fun ResultsScreen() {
                             },
                             onComposeText = { navController.navigate(Routes.TEXT_COMPOSE) }
                         )
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(10.dp))
                     }
-                    ExtractedTextSection(
-                        text = displayText,
-                        onCopy = { copyToClipboard(context, displayText) },
-                        onExport = { format -> exportText(displayText, format) },
-                        onSaveEdit = { edited ->
-                            when {
-                                // Editing a shown translation corrects that translation.
-                                currentLanguage != null -> aiViewModel.updateText(edited)
-                                // Reopened-from-history text persists to its row.
-                                historyText != null -> scanViewModel.updateHistoryText(edited)
-                                isAiResult -> aiViewModel.updateText(edited)
-                                else -> ocrViewModel.updateText(edited)
-                            }
+
+                    // "Extracted Text" pinned left, edit / export / copy opposite.
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Rounded.Notes,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Spacer(modifier = Modifier.size(10.dp))
+                            Text(
+                                text = "Extracted Text",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
                         }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            ExtractedTextActions(
+                                state = textState,
+                                text = displayText,
+                                onCopy = { copyToClipboard(context, displayText) },
+                                onExport = { format -> exportText(displayText, format) },
+                                onSaveEdit = onSaveExtracted
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    ExtractedTextSection(
+                        state = textState,
+                        text = displayText,
+                        credential = credential
                     )
                 }
                 else -> {
@@ -303,6 +333,36 @@ fun ResultsScreen() {
             }
 
             Spacer(modifier = Modifier.height(100.dp))
+          }
+        }
+
+        // Rescan (rate-limited) floats bottom-end over the scrolling text.
+        if (showRescan) {
+            FilledTonalIconButton(
+                onClick = {
+                    aiViewModel.getRescanParams()?.let { (uri, mode, provider) ->
+                        scanViewModel.triggerAiWithRateLimit(provider) {
+                            aiViewModel.processImage(uri, mode, provider)
+                        }
+                    }
+                },
+                shape = RoundedCornerShape(18.dp),
+                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                ),
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .navigationBarsPadding()
+                    .padding(end = 20.dp, bottom = 24.dp)
+                    .size(56.dp)
+            ) {
+                Icon(
+                    Icons.Rounded.Autorenew,
+                    contentDescription = "Rescan",
+                    modifier = Modifier.size(26.dp)
+                )
+            }
         }
     }
 }

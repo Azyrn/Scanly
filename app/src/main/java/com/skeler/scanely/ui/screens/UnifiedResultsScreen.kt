@@ -25,9 +25,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.Notes
-import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.MoreHoriz
-import androidx.compose.material.icons.rounded.SaveAlt
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -54,6 +52,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.skeler.scanely.core.actions.ActionExecutor
 import com.skeler.scanely.core.actions.ScanAction
 import com.skeler.scanely.navigation.LocalNavController
+import com.skeler.scanely.ui.components.ExtractedTextActions
 import com.skeler.scanely.ui.components.ExtractedTextSection
 import com.skeler.scanely.ui.components.ScanResultSkeleton
 import com.skeler.scanely.ui.components.TextExportFormat
@@ -159,7 +158,9 @@ fun UnifiedResultsScreen() {
                     Spacer(modifier = Modifier.height(4.dp))
 
                     // Mirrors the online results header: Notes + title left,
-                    // Actions / Save / Copy cluster right.
+                    // Actions / Edit / Save / Copy cluster right. Cluster shrinks
+                    // when the Actions button is present so it doesn't crowd.
+                    val hasActions = quickActions.isNotEmpty()
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
@@ -179,28 +180,30 @@ fun UnifiedResultsScreen() {
                                 fontWeight = FontWeight.SemiBold
                             )
                         }
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            if (quickActions.isNotEmpty()) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (uiState.hasText) {
+                                ExtractedTextActions(
+                                    state = textState,
+                                    text = extracted,
+                                    onCopy = onCopyExtracted,
+                                    onExport = { exportText(extracted, it) },
+                                    onSaveEdit = { unifiedViewModel.updateExtractedText(it) },
+                                    compact = hasActions,
+                                    leading = if (hasActions) {
+                                        {
+                                            ActionsButton(
+                                                actions = quickActions,
+                                                onExecute = { ActionExecutor.execute(context, it) },
+                                                compact = true
+                                            )
+                                        }
+                                    } else null
+                                )
+                            } else if (hasActions) {
                                 ActionsButton(
                                     actions = quickActions,
                                     onExecute = { ActionExecutor.execute(context, it) }
                                 )
-                            }
-                            if (uiState.hasText) {
-                                SaveButton(onExport = { exportText(extracted, it) })
-                                FilledTonalIconButton(
-                                    onClick = onCopyExtracted,
-                                    shape = RoundedCornerShape(14.dp),
-                                    colors = IconButtonDefaults.filledTonalIconButtonColors(
-                                        containerColor = MaterialTheme.colorScheme.primary,
-                                        contentColor = MaterialTheme.colorScheme.onPrimary
-                                    )
-                                ) {
-                                    Icon(Icons.Rounded.ContentCopy, "Copy text", Modifier.size(20.dp))
-                                }
                             }
                         }
                     }
@@ -240,19 +243,25 @@ fun UnifiedResultsScreen() {
 @Composable
 private fun ActionsButton(
     actions: List<ScanAction>,
-    onExecute: (ScanAction) -> Unit
+    onExecute: (ScanAction) -> Unit,
+    compact: Boolean = false
 ) {
     Box {
         var open by remember { mutableStateOf(false) }
         FilledTonalIconButton(
             onClick = { open = true },
+            modifier = if (compact) Modifier.size(34.dp) else Modifier,
             shape = RoundedCornerShape(14.dp),
             colors = IconButtonDefaults.filledTonalIconButtonColors(
                 containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                 contentColor = MaterialTheme.colorScheme.onSurface
             )
         ) {
-            Icon(Icons.Rounded.MoreHoriz, contentDescription = "Actions", modifier = Modifier.size(20.dp))
+            Icon(
+                Icons.Rounded.MoreHoriz,
+                contentDescription = "Actions",
+                modifier = Modifier.size(if (compact) 18.dp else 20.dp)
+            )
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             actions.forEach { action ->
@@ -267,34 +276,6 @@ private fun ActionsButton(
                     }
                 )
             }
-        }
-    }
-}
-
-/** "Save" (export) slot, matching the online Export button, opening PDF/CSV. */
-@Composable
-private fun SaveButton(onExport: (TextExportFormat) -> Unit) {
-    Box {
-        var open by remember { mutableStateOf(false) }
-        FilledTonalIconButton(
-            onClick = { open = true },
-            shape = RoundedCornerShape(14.dp),
-            colors = IconButtonDefaults.filledTonalIconButtonColors(
-                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-            )
-        ) {
-            Icon(Icons.Rounded.SaveAlt, contentDescription = "Export", modifier = Modifier.size(20.dp))
-        }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            DropdownMenuItem(
-                text = { Text("Save as PDF") },
-                onClick = { open = false; onExport(TextExportFormat.PDF) }
-            )
-            DropdownMenuItem(
-                text = { Text("Save as CSV") },
-                onClick = { open = false; onExport(TextExportFormat.CSV) }
-            )
         }
     }
 }

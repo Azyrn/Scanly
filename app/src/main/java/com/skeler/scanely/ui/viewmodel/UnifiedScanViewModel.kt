@@ -87,6 +87,10 @@ class UnifiedScanViewModel @Inject constructor(
         }
     }
 
+    fun updateExtractedText(text: String) {
+        _uiState.value = _uiState.value.copy(extractedText = text)
+    }
+
     fun clearResult() {
         currentScanJob?.cancel()
         currentScanJob = null

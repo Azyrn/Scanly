@@ -33,16 +33,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.AltRoute
-import androidx.compose.material.icons.rounded.AutoAwesome
-import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Category
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material.icons.rounded.DocumentScanner
 import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.Key
 import androidx.compose.material.icons.rounded.Link
-import androidx.compose.material.icons.rounded.Memory
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Tag
 import androidx.compose.material.icons.rounded.Tune
@@ -93,6 +89,7 @@ import com.skeler.scanely.settings.presentation.viewmodel.VerifyState
 import com.skeler.scanely.ui.components.SettingSwitchTile
 import com.skeler.scanely.ui.components.SettingsGroup
 import com.skeler.scanely.ui.components.SettingsSectionHeader
+import com.skeler.scanely.ui.icons.ProviderIcons
 
 /**
  * Lets the user store their own API keys for each AI provider. Keys are kept
@@ -260,7 +257,7 @@ private val PROVIDERS = listOf(
         modelKey = SettingsKeys.GEMINI_MODEL,
         defaultModel = "gemma-4-31b-it",
         name = "Gemini",
-        icon = Icons.Rounded.AutoAwesome,
+        icon = ProviderIcons.Gemini,
         hint = "AIza…",
         getKeyUrl = "https://aistudio.google.com/apikey",
         description = "Google AI · works out of the box. Add a key to use your own quota."
@@ -271,7 +268,7 @@ private val PROVIDERS = listOf(
         modelKey = SettingsKeys.MISTRAL_MODEL,
         defaultModel = "mistral-ocr-latest",
         name = "Mistral OCR",
-        icon = Icons.Rounded.DocumentScanner,
+        icon = ProviderIcons.Mistral,
         hint = "key",
         getKeyUrl = "https://console.mistral.ai/api-keys",
         description = "Dedicated OCR-4 model · fast, accurate document text. Free tier included."
@@ -282,7 +279,7 @@ private val PROVIDERS = listOf(
         modelKey = SettingsKeys.OPENROUTER_MODEL,
         defaultModel = "google/gemma-4-26b-a4b-it:free",
         name = "OpenRouter",
-        icon = Icons.Rounded.Bolt,
+        icon = ProviderIcons.OpenRouter,
         hint = "sk-or-…",
         getKeyUrl = "https://openrouter.ai/keys",
         description = "One key, many models."
@@ -293,7 +290,7 @@ private val PROVIDERS = listOf(
         modelKey = SettingsKeys.HUGGINGFACE_MODEL,
         defaultModel = "Qwen/Qwen3-VL-30B-A3B-Instruct",
         name = "Hugging Face",
-        icon = Icons.Rounded.DocumentScanner,
+        icon = ProviderIcons.HuggingFace,
         hint = "hf_…",
         getKeyUrl = "https://huggingface.co/settings/tokens",
         description = "Qwen OCR via HF Inference Providers. Free tier included."
@@ -304,7 +301,7 @@ private val PROVIDERS = listOf(
         modelKey = SettingsKeys.NVIDIA_MODEL,
         defaultModel = "google/gemma-4-31b-it",
         name = "NVIDIA",
-        icon = Icons.Rounded.Memory,
+        icon = ProviderIcons.Nvidia,
         hint = "nvapi-…",
         getKeyUrl = "https://build.nvidia.com/settings/api-keys",
         description = "NVIDIA NIM · vision models on NVIDIA's API. Free tier included."
@@ -315,7 +312,7 @@ private val PROVIDERS = listOf(
         modelKey = SettingsKeys.GROQ_MODEL,
         defaultModel = "qwen/qwen3.6-27b",
         name = "Groq",
-        icon = Icons.Rounded.Bolt,
+        icon = ProviderIcons.Groq,
         hint = "gsk_…",
         getKeyUrl = "https://console.groq.com/keys",
         description = "Groq LPU · very fast inference. Free tier included."
@@ -326,7 +323,7 @@ private val PROVIDERS = listOf(
         modelKey = SettingsKeys.CEREBRAS_MODEL,
         defaultModel = "gemma-4-31b",
         name = "Cerebras",
-        icon = Icons.Rounded.Bolt,
+        icon = ProviderIcons.Cerebras,
         hint = "csk-…",
         getKeyUrl = "https://cloud.cerebras.ai",
         description = "Cerebras · ultra-fast Gemma-4 vision inference. Free tier included."
@@ -337,7 +334,7 @@ private val PROVIDERS = listOf(
         modelKey = SettingsKeys.OPENAI_MODEL,
         defaultModel = "gpt-4o-mini",
         name = "OpenAI",
-        icon = Icons.Rounded.Bolt,
+        icon = ProviderIcons.OpenAi,
         hint = "sk-…",
         getKeyUrl = "https://platform.openai.com/api-keys",
         description = "GPT vision models."
@@ -348,7 +345,7 @@ private val PROVIDERS = listOf(
         modelKey = SettingsKeys.CLAUDE_MODEL,
         defaultModel = "claude-haiku-4-5-20251001",
         name = "Claude",
-        icon = Icons.Rounded.AutoAwesome,
+        icon = ProviderIcons.Anthropic,
         hint = "sk-ant-…",
         getKeyUrl = "https://console.anthropic.com/settings/keys",
         description = "Anthropic vision models."
@@ -473,7 +470,7 @@ private fun CloudflareProviderCard(
     ProviderContainer(focused = focused) {
         ProviderHeader(
             name = "Cloudflare",
-            icon = Icons.Rounded.Bolt,
+            icon = ProviderIcons.Cloudflare,
             description = "Workers AI · vision on Cloudflare's edge. Free tier included; " +
                 "add your own Account ID + token to use your quota.",
             verifyState = verifyState

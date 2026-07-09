@@ -1,6 +1,7 @@
 package com.skeler.scanely.core.di
 
 import android.content.Context
+import com.skeler.scanely.core.security.KeyCipher
 import com.skeler.scanely.settings.data.datastore.SettingsDataStore
 import com.skeler.scanely.settings.data.repository.SettingsRepositoryImpl
 import com.skeler.scanely.settings.domain.repository.SettingsRepository
@@ -17,8 +18,10 @@ import javax.inject.Singleton
 object SettingsModule {
 
     @Provides
-    fun provideSettingsDataStore(@ApplicationContext context: Context): SettingsDataStore =
-        SettingsDataStore(context)
+    fun provideSettingsDataStore(
+        @ApplicationContext context: Context,
+        keyCipher: KeyCipher,
+    ): SettingsDataStore = SettingsDataStore(context, keyCipher)
 
     @Provides
     fun provideSettingsRepository(dataStore: SettingsDataStore): SettingsRepository =

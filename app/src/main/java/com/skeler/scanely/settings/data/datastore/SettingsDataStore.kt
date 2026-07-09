@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
+import com.skeler.scanely.core.security.KeyCipher
 import com.skeler.scanely.settings.data.SettingsKeys
 import com.skeler.scanely.settings.data.provider.settingsDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -19,9 +20,27 @@ import javax.inject.Singleton
 
 @Singleton
 class SettingsDataStore @Inject constructor(
-    @param:ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context,
+    private val keyCipher: KeyCipher,
 ) {
     private val ds = context.settingsDataStore
+
+    // Personal credentials only — bundled/model/url settings stay plain since
+    // they aren't secrets. Every one of these is a bearer key or token that
+    // gets encrypted at rest (see KeyCipher) instead of stored as plain text.
+    private val secretKeys = setOf(
+        SettingsKeys.OPENROUTER_API_KEY,
+        SettingsKeys.GEMINI_API_KEY,
+        SettingsKeys.OPENAI_API_KEY,
+        SettingsKeys.CLAUDE_API_KEY,
+        SettingsKeys.MISTRAL_API_KEY,
+        SettingsKeys.HUGGINGFACE_API_KEY,
+        SettingsKeys.NVIDIA_API_KEY,
+        SettingsKeys.GROQ_API_KEY,
+        SettingsKeys.CEREBRAS_API_KEY,
+        SettingsKeys.CLOUDFLARE_API_KEY,
+        SettingsKeys.CUSTOM_API_KEY,
+    )
 
     private fun SettingsKeys.toBooleanKey(): Preferences.Key<Boolean> =
         booleanPreferencesKey(this.name)
@@ -104,17 +123,36 @@ class SettingsDataStore @Inject constructor(
     private fun SettingsKeys.toStringKey(): Preferences.Key<String> =
         stringPreferencesKey(this.name)
 
+    /**
+     * For a key in [secretKeys], the stored value is ciphertext — decrypted
+     * here so every caller keeps reading a plain key, same as before. A key
+     * saved before encryption shipped is still plain text on disk, though:
+     * [KeyCipher.decrypt] can't recognize it as ciphertext and returns null,
+     * so falling back to the raw stored value is what keeps an
+     * already-configured key from silently vanishing on upgrade. It's
+     * re-encrypted the moment the user next saves that field. A genuinely
+     * corrupt blob degrades to a garbage key (a clean "invalid key" from the
+     * provider) rather than an unexplained disappearance.
+     */
     fun stringFlow(key: SettingsKeys): Flow<String> {
         val preferencesKey = key.toStringKey()
         val default = key.default as? String ?: ""
         return ds.data
-            .map { prefs -> prefs[preferencesKey] ?: default }
+            .map { prefs ->
+                val stored = prefs[preferencesKey] ?: return@map default
+                if (key in secretKeys && stored.isNotBlank()) {
+                    keyCipher.decrypt(stored) ?: stored
+                } else {
+                    stored
+                }
+            }
     }
 
     suspend fun setString(key: SettingsKeys, value: String) {
         val preferencesKey = key.toStringKey()
+        val toStore = if (key in secretKeys && value.isNotBlank()) keyCipher.encrypt(value) else value
         ds.edit { prefs ->
-            prefs[preferencesKey] = value
+            prefs[preferencesKey] = toStore
         }
     }
 

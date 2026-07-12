@@ -9,20 +9,6 @@ import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Streaming
 
-/**
- * Google Generative Language API (Gemini / Gemma models).
- *
- * Used as an alternative provider to OpenRouter for text extraction and
- * translation. Images are sent inline as base64 in `inline_data` parts.
- *
- * The API key is supplied per request via the `x-goog-api-key` header (never as
- * a `?key=` query parameter, so it can't leak into logged/thrown request URLs).
- * Gemma models "think" by default and return their reasoning as separate parts
- * flagged with `thought = true`; callers must keep only the non-thought parts to
- * get the clean answer.
- *
- * API docs: https://ai.google.dev/api/generate-content
- */
 interface GeminiApi {
 
     @POST("v1beta/models/{model}:generateContent")
@@ -32,11 +18,6 @@ interface GeminiApi {
         @Body request: GeminiRequest
     ): GeminiResponse
 
-    /**
-     * Server-sent-events variant: each `data:` line is a [GeminiResponse]-shaped
-     * chunk whose candidate parts hold the incremental text (thought parts must
-     * still be filtered out by the caller).
-     */
     @Streaming
     @POST("v1beta/models/{model}:streamGenerateContent?alt=sse")
     suspend fun streamGenerateContent(
@@ -50,8 +31,6 @@ interface GeminiApi {
     }
 }
 
-// --- Request models ---
-
 @Serializable
 data class GeminiRequest(
     val contents: List<GeminiContent>,
@@ -64,10 +43,6 @@ data class GeminiContent(
     val parts: List<GeminiPart>
 )
 
-/**
- * A single content part. In requests only one of [text] / [inlineData] is set.
- * In responses, reasoning parts additionally carry [thought] = true.
- */
 @Serializable
 data class GeminiPart(
     val text: String? = null,
@@ -85,8 +60,6 @@ data class GeminiInlineData(
 data class GeminiGenerationConfig(
     val temperature: Double = 0.1
 )
-
-// --- Response models ---
 
 @Serializable
 data class GeminiResponse(

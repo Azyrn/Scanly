@@ -1,8 +1,5 @@
 package com.skeler.scanely.core.lookup
 
-/**
- * Category of product for engine routing and UI rendering.
- */
 enum class ProductCategory {
     FOOD,
     BOOK,
@@ -12,43 +9,27 @@ enum class ProductCategory {
     GENERIC
 }
 
-/**
- * Universal product information model.
- * 
- * All lookup engines map their API responses to this common format,
- * enabling consistent UI rendering regardless of data source.
- */
 data class ProductInfo(
-    // Core identifiers
     val barcode: String,
     val source: String,
     val category: ProductCategory,
     
-    // Basic info (universal)
     val name: String?,
     val brand: String?,
     val description: String?,
     val imageUrl: String?,
     
-    // Food-specific
     val foodData: FoodData? = null,
     
-    // Book-specific
     val bookData: BookData? = null,
     
-    // Medicine-specific
     val medicineData: MedicineData? = null,
     
-    // Cosmetics-specific
     val cosmeticsData: CosmeticsData? = null,
     
-    // Raw metadata for debugging/extensibility
     val rawMetadata: Map<String, String> = emptyMap()
 )
 
-/**
- * Food product data from Open Food Facts and similar sources.
- */
 data class FoodData(
     val nutriScore: String?,
     val novaGroup: Int?,
@@ -64,9 +45,6 @@ data class FoodData(
     val servingSize: String?
 )
 
-/**
- * Book data from Google Books, Open Library, etc.
- */
 data class BookData(
     val title: String?,
     val authors: List<String>,
@@ -81,9 +59,6 @@ data class BookData(
     val language: String?
 )
 
-/**
- * Medicine/drug data from OpenFDA.
- */
 data class MedicineData(
     val genericName: String?,
     val activeIngredients: List<String>,
@@ -97,9 +72,6 @@ data class MedicineData(
     val isRecalled: Boolean
 )
 
-/**
- * Cosmetics data from Open Beauty Facts.
- */
 data class CosmeticsData(
     val ingredients: String?,
     val allergens: List<String>,

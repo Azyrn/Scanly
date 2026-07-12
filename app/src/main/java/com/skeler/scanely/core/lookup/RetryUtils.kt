@@ -4,9 +4,6 @@ import kotlinx.coroutines.delay
 import kotlin.math.min
 import kotlin.math.pow
 
-/**
- * Retry configuration for network operations.
- */
 data class RetryConfig(
     val maxAttempts: Int = 3,
     val initialDelayMs: Long = 500,
@@ -14,15 +11,6 @@ data class RetryConfig(
     val backoffMultiplier: Double = 2.0
 )
 
-/**
- * Execute a suspending block with exponential backoff retry.
- * 
- * @param config Retry configuration
- * @param shouldRetry Predicate to determine if exception is retryable
- * @param block The suspending block to execute
- * @return Result of the block
- * @throws Exception if all retries exhausted
- */
 suspend fun <T> withRetry(
     config: RetryConfig = RetryConfig(),
     shouldRetry: (Exception) -> Boolean = { it.isRetryable() },
@@ -52,9 +40,6 @@ suspend fun <T> withRetry(
     throw lastException ?: IllegalStateException("Retry failed")
 }
 
-/**
- * Check if an exception is likely transient and worth retrying.
- */
 fun Exception.isRetryable(): Boolean {
     val message = message?.lowercase() ?: ""
     return when {

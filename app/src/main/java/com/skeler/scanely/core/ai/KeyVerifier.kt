@@ -10,24 +10,14 @@ import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Outcome of a lightweight, read-only key-validation request. */
 sealed interface VerificationResult {
     data object Valid : VerificationResult
 
-    /** The provider rejected the key; retrying the same key won't help. */
     data class Invalid(val message: String) : VerificationResult
 
-    /** Validity couldn't be determined (offline, timeout, provider outage). Retryable. */
     data class Failed(val message: String) : VerificationResult
 }
 
-/**
- * Verifies an API key by calling the provider's cheapest authenticated endpoint
- * (typically `GET /models`) and inspecting the HTTP status. No user content is
- * sent, and no tokens are spent except NVIDIA's unavoidable 1-token probe.
- * Runs entirely off the main thread; cancellation
- * propagates so an in-flight check can be abandoned when the key changes.
- */
 @Singleton
 class KeyVerifier @Inject constructor(
     private val api: KeyValidationApi,
@@ -63,10 +53,6 @@ class KeyVerifier @Inject constructor(
                     bearer(trimmed)
                 ).code()
 
-                // NVIDIA's GET /v1/models is public and returns 200 for any (or no)
-                // key, so it can't validate. The only authenticated endpoint is
-                // chat/completions itself; probe it with max_tokens=1 (401/403 on a
-                // bad key costs nothing; a valid key spends one token).
                 AiProvider.NVIDIA -> api.post(
                     "https://integrate.api.nvidia.com/v1/chat/completions",
                     bearer(trimmed),
@@ -97,7 +83,6 @@ class KeyVerifier @Inject constructor(
                 ).code()
 
                 AiProvider.CLOUDFLARE -> {
-                    // customUrl carries the account id here (no full URL to enter).
                     val accountId = customUrl?.trim()?.ifBlank { null }
                         ?: return VerificationResult.Invalid("Enter your Account ID first")
                     api.get(
@@ -133,17 +118,14 @@ class KeyVerifier @Inject constructor(
 
     private fun classify(provider: AiProvider, code: Int): VerificationResult = when {
         code in 200..299 -> VerificationResult.Valid
-        // Authenticated but throttled: the key itself is accepted.
         code == 429 -> VerificationResult.Valid
         code == 401 || code == 403 -> VerificationResult.Invalid("Key was rejected")
-        // Google (API_KEY_INVALID) and Cloudflare (auth code 9106) return 400, not 401, for a bad key.
         code == 400 && (provider == AiProvider.GEMINI || provider == AiProvider.CLOUDFLARE) ->
             VerificationResult.Invalid("Key was rejected")
         code in 500..599 -> VerificationResult.Failed("Provider error — try again")
         else -> VerificationResult.Failed("Unexpected response (HTTP $code)")
     }
 
-    /** Turn an OpenAI-style `…/chat/completions` URL into its sibling `…/models`. */
     private fun deriveModelsUrl(chatUrl: String): String? {
         val idx = chatUrl.indexOf("/chat/completions")
         return if (idx >= 0) chatUrl.substring(0, idx) + "/models" else null

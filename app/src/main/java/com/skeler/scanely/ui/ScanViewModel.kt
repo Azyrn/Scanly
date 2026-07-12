@@ -26,10 +26,11 @@ import javax.inject.Singleton
 private const val TAG = "ScanViewModel"
 
 data class ScanUiState(
-    val historyText: String? = null // restored from history; no re-extraction
+    // Restored history text (no re-extraction).
+    val historyText: String? = null
 )
 
-// Singleton so restored-history state survives the activity's ViewModel store.
+// Survives activity ViewModel store so history restore isn't lost on recreation.
 @Singleton
 class ScanStateHolder @Inject constructor() {
     private val _uiState = MutableStateFlow(ScanUiState())
@@ -56,7 +57,6 @@ class ScanViewModel @Inject constructor(
 
     val uiState: StateFlow<ScanUiState> = stateHolder.uiState
 
-    // Source history row for historyText, so edits can be persisted back.
     private var historyItemId: String? = null
 
     val isOnline: StateFlow<Boolean> = networkObserver.isOnline
@@ -69,8 +69,7 @@ class ScanViewModel @Inject constructor(
     val rateLimitState: StateFlow<RateLimitState> = rateLimitManager.rateLimitState
     val showRateLimitSheet: StateFlow<Boolean> = rateLimitManager.showRateLimitSheet
 
-    // Eager so triggerAiWithRateLimit reads a fresh snapshot synchronously; seeded
-    // with the bundled-capable set so the limit still applies before settings load.
+    // Eager for synchronous rate-limit checks; seed with bundled set before settings load.
     private val bundledKeyProviders: StateFlow<Set<AiProvider>> =
         generativeAiService.bundledKeyProviders()
             .stateIn(
@@ -86,7 +85,6 @@ class ScanViewModel @Inject constructor(
         rewardedAdManager.preload()
     }
 
-    // Reward granted only via AdMob's OnUserEarnedRewardListener.
     fun showRewardedAdForExtraScan(activity: Activity) {
         rewardedAdManager.show(activity) {
             rateLimitManager.grantExtraScan()
@@ -97,8 +95,7 @@ class ScanViewModel @Inject constructor(
         rateLimitManager.dismissRateLimitSheet()
     }
 
-    // Rate-limits only bundled-key providers; a user's own key bypasses the limiter.
-    // Returns false if rate limited.
+    // Bundled keys only; user keys bypass. Returns false if limited.
     fun triggerAiWithRateLimit(provider: AiProvider, onAllowed: () -> Unit): Boolean {
         if (provider !in bundledKeyProviders.value) {
             onAllowed()
@@ -107,13 +104,11 @@ class ScanViewModel @Inject constructor(
         return rateLimitManager.triggerWithRateLimit(viewModelScope, onAllowed)
     }
 
-    // Drops any restored-history text before a fresh scan takes over the screen.
     fun onNewScanSelected() {
         historyItemId = null
         stateHolder.reset()
     }
 
-    // [id] identifies the source history row so a later correction persists back to it.
     fun setHistoryText(text: String, id: String? = null) {
         historyItemId = id
         stateHolder.update {
@@ -121,7 +116,6 @@ class ScanViewModel @Inject constructor(
         }
     }
 
-    // Persists the correction to its history row so the edit survives re-opening.
     fun updateHistoryText(newText: String) {
         stateHolder.update { it.copy(historyText = newText) }
         val id = historyItemId ?: return

@@ -13,15 +13,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.skeler.scanely.core.lookup.BookData
 
-/**
- * Book-specific product detail content.
- * Displays authors, publisher, publication date, page count, categories, and ISBN.
- */
 @Composable
 fun BookContentSection(data: BookData) {
     var hasContent = false
-    
-    // Authors
+
     if (data.authors.isNotEmpty()) {
         hasContent = true
         SectionHeader("Authors")
@@ -31,8 +26,7 @@ fun BookContentSection(data: BookData) {
         )
         Spacer(modifier = Modifier.height(12.dp))
     }
-    
-    // Publisher, Published Date, Pages
+
     val hasMetadata = data.publisher != null || data.publishedDate != null || data.pageCount != null
     if (hasMetadata) {
         hasContent = true
@@ -46,15 +40,13 @@ fun BookContentSection(data: BookData) {
         }
         Spacer(modifier = Modifier.height(12.dp))
     }
-    
-    // Language
+
     data.language?.takeIf { it.isNotBlank() }?.let { language ->
         hasContent = true
         InfoColumn("Language", language.uppercase())
         Spacer(modifier = Modifier.height(12.dp))
     }
-    
-    // Categories
+
     if (data.categories.isNotEmpty()) {
         hasContent = true
         SectionHeader("Categories")
@@ -64,8 +56,7 @@ fun BookContentSection(data: BookData) {
         )
         Spacer(modifier = Modifier.height(12.dp))
     }
-    
-    // ISBN
+
     Column {
         data.isbn13?.let { isbn ->
             hasContent = true
@@ -84,8 +75,7 @@ fun BookContentSection(data: BookData) {
             )
         }
     }
-    
-    // Fallback if no data
+
     if (!hasContent) {
         Text(
             text = "No detailed information available for this book.",

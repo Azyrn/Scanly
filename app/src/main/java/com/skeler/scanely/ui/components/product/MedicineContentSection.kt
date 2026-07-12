@@ -21,31 +21,24 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.skeler.scanely.core.lookup.MedicineData
 
-/**
- * Medicine-specific product detail content.
- * Displays generic name, active ingredients, dosage form, route, warnings, and indications.
- */
 @Composable
 fun MedicineContentSection(data: MedicineData) {
     var hasContent = false
-    
-    // Generic Name
+
     data.genericName?.takeIf { it.isNotBlank() }?.let { generic ->
         hasContent = true
         SectionHeader("Generic Name")
         Text(generic, style = MaterialTheme.typography.bodyMedium)
         Spacer(modifier = Modifier.height(12.dp))
     }
-    
-    // Manufacturer
+
     data.manufacturer?.takeIf { it.isNotBlank() }?.let { manufacturer ->
         hasContent = true
         SectionHeader("Manufacturer")
         Text(manufacturer, style = MaterialTheme.typography.bodyMedium)
         Spacer(modifier = Modifier.height(12.dp))
     }
-    
-    // Active Ingredients
+
     if (data.activeIngredients.isNotEmpty()) {
         hasContent = true
         SectionHeader("Active Ingredients")
@@ -54,8 +47,7 @@ fun MedicineContentSection(data: MedicineData) {
         }
         Spacer(modifier = Modifier.height(12.dp))
     }
-    
-    // Dosage Form & Route
+
     if (data.dosageForm != null || data.route != null) {
         hasContent = true
         Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
@@ -64,22 +56,19 @@ fun MedicineContentSection(data: MedicineData) {
         }
         Spacer(modifier = Modifier.height(12.dp))
     }
-    
-    // Recall Warning
+
     if (data.isRecalled) {
         hasContent = true
         WarningCard(listOf("⚠️ This product has been recalled by the FDA."))
         Spacer(modifier = Modifier.height(12.dp))
     }
-    
-    // Warnings
+
     if (data.warnings.isNotEmpty()) {
         hasContent = true
         WarningCard(data.warnings)
         Spacer(modifier = Modifier.height(12.dp))
     }
-    
-    // Contraindications
+
     if (data.contraindications.isNotEmpty()) {
         hasContent = true
         SectionHeader("Contraindications")
@@ -88,8 +77,7 @@ fun MedicineContentSection(data: MedicineData) {
         }
         Spacer(modifier = Modifier.height(12.dp))
     }
-    
-    // Indications
+
     data.indications?.takeIf { it.isNotBlank() }?.let { indication ->
         hasContent = true
         SectionHeader("Indications")
@@ -98,8 +86,7 @@ fun MedicineContentSection(data: MedicineData) {
             style = MaterialTheme.typography.bodySmall
         )
     }
-    
-    // FDA Approval Date
+
     data.fdaApprovalDate?.takeIf { it.isNotBlank() }?.let { date ->
         hasContent = true
         Spacer(modifier = Modifier.height(8.dp))
@@ -109,8 +96,7 @@ fun MedicineContentSection(data: MedicineData) {
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
-    
-    // Fallback if no data
+
     if (!hasContent) {
         Text(
             text = "No detailed information available for this medicine.",

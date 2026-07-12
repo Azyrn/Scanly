@@ -9,13 +9,7 @@ import retrofit2.http.HeaderMap
 import retrofit2.http.POST
 import retrofit2.http.Url
 
-/**
- * Minimal transport for API-key validation. Every provider exposes a cheap,
- * read-only endpoint (usually `/models`) that authenticates a key without
- * spending tokens. The full URL and headers are supplied per call, and the raw
- * [Response] is returned so the caller can read the status code without an
- * exception being thrown on 4xx.
- */
+// Cheap auth probe (usually GET /models). Raw Response so 4xx isn't thrown.
 interface KeyValidationApi {
 
     @GET
@@ -24,7 +18,7 @@ interface KeyValidationApi {
         @HeaderMap headers: Map<String, String>
     ): Response<ResponseBody>
 
-    /** For providers whose only authenticated endpoint is a POST (e.g. NVIDIA NIM). */
+    // NVIDIA NIM only authenticates via POST.
     @POST
     suspend fun post(
         @Url url: String,
@@ -33,7 +27,7 @@ interface KeyValidationApi {
     ): Response<ResponseBody>
 
     companion object {
-        // Placeholder base; the real endpoint is supplied per request via @Url.
+        // Dummy base; real endpoint always passed via @Url.
         const val BASE_URL = "https://api.openai.com/"
     }
 }

@@ -8,10 +8,7 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/**
- * Runs on-device because [KeyCipher] is backed by the real Android Keystore,
- * which isn't available to a plain JVM unit test.
- */
+// On-device: KeyCipher needs the real Android Keystore.
 @RunWith(AndroidJUnit4::class)
 class KeyCipherTest {
 
@@ -34,8 +31,7 @@ class KeyCipherTest {
 
     @Test
     fun twoEncryptionsOfTheSameKeyDoNotMatch() {
-        // A fresh random IV per call, so equal plaintexts never produce equal
-        // ciphertext — otherwise repeated values would be fingerprintable.
+        // Random IV per encrypt — equal plaintexts must not fingerprint.
         val secret = "nvapi-same-value-both-times"
         assertNotEquals(cipher.encrypt(secret), cipher.encrypt(secret))
     }

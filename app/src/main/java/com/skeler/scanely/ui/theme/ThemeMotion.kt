@@ -8,14 +8,8 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
-/** Duration of the light <-> dark (and palette) colour crossfade. */
 const val ThemeSwitchDurationMillis = 220
 
-/**
- * Crossfade every colour role on one shared spec so a light/dark or palette switch
- * repaints the whole tree as a single smooth transition — no tearing between the
- * app bar and the body, and no abrupt flash.
- */
 @Composable
 fun ColorScheme.animated(
     spec: AnimationSpec<Color> = tween(ThemeSwitchDurationMillis, easing = FastOutSlowInEasing)

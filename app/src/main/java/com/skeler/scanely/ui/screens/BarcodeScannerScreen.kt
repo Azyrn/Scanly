@@ -38,6 +38,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,14 +50,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import com.skeler.scanely.core.actions.ActionExecutor
 import com.skeler.scanely.core.actions.ScanAction
 import com.skeler.scanely.core.barcode.BarcodeAnalyzer
+import com.skeler.scanely.core.barcode.BarcodeEngine
 import com.skeler.scanely.core.lookup.LookupOrchestrator
+import com.skeler.scanely.settings.data.SettingsKeys
+import com.skeler.scanely.settings.presentation.viewmodel.SettingsViewModel
 import com.skeler.scanely.core.lookup.LookupResult
 import com.skeler.scanely.navigation.LocalNavController
 import com.skeler.scanely.ui.components.BarcodeActionsSheet
@@ -69,9 +73,6 @@ import com.skeler.scanely.ui.viewmodel.UnifiedScanViewModel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
-/**
- * Barcode Scanner Screen with Multi-Engine Product Lookup
- */
 @OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun BarcodeScannerScreen(
@@ -84,7 +85,6 @@ fun BarcodeScannerScreen(
     val unifiedViewModel: UnifiedScanViewModel = hiltViewModel(activity)
     val scope = rememberCoroutineScope()
 
-    // UI State
     var detectedActions by remember { mutableStateOf<List<ScanAction>>(emptyList()) }
     var showActionsSheet by remember { mutableStateOf(false) }
     var textToShow by remember { mutableStateOf<String?>(null) }
@@ -92,12 +92,10 @@ fun BarcodeScannerScreen(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val textSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    // Product lookup state (multi-engine)
     var showProductSheet by remember { mutableStateOf(false) }
     var lookupResult by remember { mutableStateOf<LookupResult?>(null) }
     var isLookupLoading by remember { mutableStateOf(false) }
 
-    // Gallery picker for barcode-only mode
     val galleryPicker = rememberGalleryPicker { uri ->
         if (uri != null) {
             isProcessingGallery = true
@@ -115,7 +113,6 @@ fun BarcodeScannerScreen(
         }
     }
 
-    // Handle product lookup with multi-engine orchestrator
     fun lookupProduct(barcode: String) {
         showActionsSheet = false
         showProductSheet = true
@@ -128,18 +125,23 @@ fun BarcodeScannerScreen(
         }
     }
 
-    // Barcode analyzer
-    val barcodeAnalyzer = remember {
-        BarcodeAnalyzer { actions ->
-            if (actions.isNotEmpty() && !showActionsSheet && textToShow == null && !showProductSheet) {
-                detectedActions = actions
-                showActionsSheet = true
+    val settingsViewModel: SettingsViewModel = hiltViewModel()
+    val engineId by settingsViewModel.getString(SettingsKeys.BARCODE_ENGINE)
+        .collectAsState(initial = null)
+
+    val barcodeAnalyzer = remember(engineId) {
+        engineId?.let { id ->
+            BarcodeAnalyzer(engine = BarcodeEngine.fromId(id)) { actions ->
+                if (actions.isNotEmpty() && !showActionsSheet && textToShow == null && !showProductSheet) {
+                    detectedActions = actions
+                    showActionsSheet = true
+                }
             }
         }
     }
 
-    DisposableEffect(Unit) {
-        onDispose { barcodeAnalyzer.close() }
+    DisposableEffect(barcodeAnalyzer) {
+        onDispose { barcodeAnalyzer?.close() }
     }
 
     LaunchedEffect(Unit) {
@@ -148,17 +150,15 @@ fun BarcodeScannerScreen(
         }
     }
 
-    // UI
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
     ) {
         if (cameraPermissionState.status.isGranted) {
-            BarcodeCameraPreview(barcodeAnalyzer = barcodeAnalyzer)
+            barcodeAnalyzer?.let { BarcodeCameraPreview(barcodeAnalyzer = it) }
             ScanningOverlay()
 
-            // Hint text
             AnimatedVisibility(
                 visible = !showActionsSheet && !showProductSheet,
                 modifier = Modifier
@@ -183,7 +183,6 @@ fun BarcodeScannerScreen(
                         )
                     }
                     
-                    // Gallery upload button
                     Card(
                         onClick = { galleryPicker() },
                         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
@@ -206,7 +205,6 @@ fun BarcodeScannerScreen(
                 }
             }
 
-            // Back button
             IconButton(
                 onClick = { navController.popBackStack() },
                 modifier = Modifier
@@ -220,7 +218,6 @@ fun BarcodeScannerScreen(
                 Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
             }
         } else {
-            // Permission Denied State
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(
                     text = "Camera permission required\nfor barcode scanning.",
@@ -231,7 +228,6 @@ fun BarcodeScannerScreen(
         }
     }
 
-    // Actions Bottom Sheet
     if (showActionsSheet && detectedActions.isNotEmpty()) {
         ModalBottomSheet(
             onDismissRequest = {
@@ -261,7 +257,6 @@ fun BarcodeScannerScreen(
         }
     }
 
-    // Text Detail Bottom Sheet
     textToShow?.let { text ->
         ModalBottomSheet(
             onDismissRequest = { textToShow = null },
@@ -279,7 +274,6 @@ fun BarcodeScannerScreen(
         }
     }
 
-    // Product Detail Bottom Sheet (Multi-Engine)
     if (showProductSheet) {
         ProductDetailSheet(
             result = lookupResult,

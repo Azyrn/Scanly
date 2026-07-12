@@ -13,15 +13,6 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Reactive network state observer.
- *
- * Deep Reasoning (ULTRATHINK):
- * - Uses callbackFlow for lifecycle-safe NetworkCallback registration
- * - distinctUntilChanged() prevents redundant recompositions
- * - Checks activeNetwork on init for immediate state (cold start)
- * - awaitClose unregisters callback to prevent leaks
- */
 @Singleton
 class NetworkObserver @Inject constructor(
     @ApplicationContext private val context: Context
@@ -29,10 +20,6 @@ class NetworkObserver @Inject constructor(
     private val connectivityManager = 
         context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
-    /**
-     * Synchronous snapshot of connectivity for one-shot checks (e.g. deciding
-     * whether a failed request was rate-limiting or simply no network).
-     */
     fun isCurrentlyOnline(): Boolean {
         val network = connectivityManager.activeNetwork ?: return false
         val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
@@ -40,10 +27,6 @@ class NetworkObserver @Inject constructor(
             capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
     }
 
-    /**
-     * Flow emitting current network availability.
-     * Emits immediately with current state, then updates on changes.
-     */
     val isOnline: Flow<Boolean> = callbackFlow {
         val callback = object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
@@ -71,7 +54,6 @@ class NetworkObserver @Inject constructor(
             .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
             .build()
 
-        // Emit initial state
         val initialState = connectivityManager.activeNetwork?.let { network ->
             connectivityManager.getNetworkCapabilities(network)?.let { capabilities ->
                 capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&

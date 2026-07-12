@@ -15,23 +15,12 @@ import java.io.FileOutputStream
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Turns a content URI into a prompt plus inline images, ready for upload.
- * Images are downscaled, JPEG-compressed and base64-encoded exactly once so
- * retries and provider fallbacks reuse the same strings.
- *
- * Supported inputs:
- * - Images: image/png, image/jpeg, image/webp (sent directly)
- * - PDF: application/pdf (first [MAX_INPUT_IMAGES] pages rendered to images)
- * - Text: text/plain (content inlined into the prompt)
- */
 @Singleton
 internal class PayloadFactory @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
     class PayloadException(message: String) : Exception(message)
 
-    /** [images] are already downscaled, JPEG-compressed and base64-encoded. */
     data class Payload(val prompt: String, val images: List<String>)
 
     fun create(uri: Uri, mode: AiMode): Payload {
@@ -80,7 +69,6 @@ internal class PayloadFactory @Inject constructor(
         }
     }
 
-    /** Downscale, JPEG-encode and base64 a bitmap once for inline upload. */
     private fun encodeBase64Jpeg(bitmap: Bitmap): String {
         val scaled = downscale(bitmap)
         val output = ByteArrayOutputStream()
@@ -89,10 +77,6 @@ internal class PayloadFactory @Inject constructor(
         return Base64.encodeToString(output.toByteArray(), Base64.NO_WRAP)
     }
 
-    /**
-     * Downscale a bitmap so its largest dimension is at most [MAX_IMAGE_DIMENSION].
-     * Returns the original bitmap when no scaling is needed.
-     */
     private fun downscale(bitmap: Bitmap): Bitmap {
         val maxDim = maxOf(bitmap.width, bitmap.height)
         if (maxDim <= MAX_IMAGE_DIMENSION) return bitmap
@@ -102,7 +86,6 @@ internal class PayloadFactory @Inject constructor(
         return Bitmap.createScaledBitmap(bitmap, width, height, true)
     }
 
-    /** Source byte size via file descriptor, or null when the provider won't report it. */
     private fun fileSizeBytes(uri: Uri): Long? = try {
         context.contentResolver.openFileDescriptor(uri, "r")?.use {
             it.statSize.takeIf { size -> size >= 0 }
@@ -126,11 +109,6 @@ internal class PayloadFactory @Inject constructor(
         null
     }
 
-    /**
-     * Render up to [MAX_INPUT_IMAGES] pages to downscaled JPEG base64 strings,
-     * recycling each page bitmap before rendering the next so peak memory is
-     * one page rather than the whole document.
-     */
     private fun renderPdfToBase64(uri: Uri): List<String> {
         val pages = mutableListOf<String>()
         var tempFile: File? = null
@@ -148,7 +126,6 @@ internal class PayloadFactory @Inject constructor(
                             val width = (page.width * PDF_RENDER_SCALE).toInt()
                             val height = (page.height * PDF_RENDER_SCALE).toInt()
                             Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).also {
-                                // White background — PDFs render transparent otherwise.
                                 it.eraseColor(Color.WHITE)
                                 page.render(it, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
                             }
@@ -173,12 +150,10 @@ internal class PayloadFactory @Inject constructor(
         private const val PDF_MIME_TYPE = "application/pdf"
         private const val TEXT_MIME_TYPE = "text/plain"
 
-        /** AI-scan input limits. */
         private const val MAX_FILE_SIZE_MB = 20
         private const val MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB.toLong() * 1024 * 1024
         private const val MAX_INPUT_IMAGES = 3
 
-        /** Cap dimensions to keep request payloads (and token usage) sane. */
         private const val MAX_IMAGE_DIMENSION = 1536
         private const val JPEG_QUALITY = 85
         private const val PDF_RENDER_SCALE = 2.0f

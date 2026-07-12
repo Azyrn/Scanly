@@ -21,12 +21,6 @@ private const val TAG = "OpenBeautyFactsEngine"
 private const val FIELDS =
     "product_name,brands,image_front_url,ingredients_text,allergens_tags,labels_tags,categories_tags"
 
-/**
- * Lookup engine for cosmetics/beauty products using Open Beauty Facts API.
- *
- * Supports: EAN-8, EAN-13, UPC-A barcodes
- * Data: Ingredients, allergens, labels, categories
- */
 @Singleton
 class OpenBeautyFactsEngine @Inject constructor(
     private val okHttpClient: OkHttpClient

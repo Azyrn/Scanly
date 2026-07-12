@@ -61,7 +61,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.skeler.scanely.core.presentation.components.svg.DynamicColorImageVectors
 import com.skeler.scanely.core.presentation.components.svg.vectors.noSearchResult
 import com.skeler.scanely.history.data.HistoryItem
@@ -96,7 +96,6 @@ fun HistoryScreen() {
         }
     }
     
-    // Confirmation dialog state
     var showClearConfirmDialog by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -221,7 +220,6 @@ fun HistoryScreen() {
                         HistoryItemCard(
                             item = item,
                             onClick = {
-                                // Navigate to results with saved text (no re-extraction)
                                 scanViewModel.setHistoryText(item.text, item.id)
                                 navController.navigate(Routes.RESULTS)
                             }
@@ -232,7 +230,6 @@ fun HistoryScreen() {
         }
     }
     
-    // Clear All Confirmation Dialog
     if (showClearConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showClearConfirmDialog = false },

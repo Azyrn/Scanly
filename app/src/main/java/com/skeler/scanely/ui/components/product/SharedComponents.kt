@@ -13,10 +13,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
-/**
- * Shared UI components for product detail sections.
- */
-
 @Composable
 fun SectionHeader(title: String) {
     Text(

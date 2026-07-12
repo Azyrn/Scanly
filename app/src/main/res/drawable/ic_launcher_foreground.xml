@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Adaptive-icon foreground. The S is a single uniform stroke so it holds up at 48dp,
+  tilted to keep the diagonal energy of the brand mark. Everything stays inside the
+  66dp safe circle, so no launcher mask can clip it.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <group
+        android:pivotX="54"
+        android:pivotY="54"
+        android:rotation="-9"
+        android:scaleX="1.12"
+        android:scaleY="1.12">
+        <path
+            android:pathData="M71,40 C71,28 37,27 37,43 C37,57 71,53 71,67 C71,83 37,82 37,68"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="10"
+            android:strokeLineCap="round" />
+    </group>
+</vector>

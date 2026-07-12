@@ -9,15 +9,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.skeler.scanely.core.lookup.CosmeticsData
 
-/**
- * Cosmetics-specific product detail content.
- * Displays ingredients, allergens, labels, and categories.
- */
 @Composable
 fun CosmeticsContentSection(data: CosmeticsData) {
     var hasContent = false
-    
-    // Ingredients
+
     data.ingredients?.takeIf { it.isNotBlank() }?.let { ingredients ->
         hasContent = true
         SectionHeader("Ingredients")
@@ -27,13 +22,12 @@ fun CosmeticsContentSection(data: CosmeticsData) {
         )
         Spacer(modifier = Modifier.height(12.dp))
     }
-    
-    // Allergens
+
     if (data.allergens.isNotEmpty()) {
         hasContent = true
         SectionHeader("Allergens")
         Text(
-            text = data.allergens.joinToString(", ") { 
+            text = data.allergens.joinToString(", ") {
                 it.removePrefix("en:").replace("-", " ").replaceFirstChar { c -> c.uppercase() }
             },
             style = MaterialTheme.typography.bodySmall,
@@ -41,34 +35,31 @@ fun CosmeticsContentSection(data: CosmeticsData) {
         )
         Spacer(modifier = Modifier.height(12.dp))
     }
-    
-    // Labels
+
     if (data.labels.isNotEmpty()) {
         hasContent = true
         SectionHeader("Labels")
         Text(
-            text = data.labels.joinToString(", ") { 
+            text = data.labels.joinToString(", ") {
                 it.removePrefix("en:").replace("-", " ").replaceFirstChar { c -> c.uppercase() }
             },
             style = MaterialTheme.typography.bodySmall
         )
         Spacer(modifier = Modifier.height(12.dp))
     }
-    
-    // Categories
+
     if (data.categories.isNotEmpty()) {
         hasContent = true
         SectionHeader("Categories")
         Text(
-            text = data.categories.joinToString(", ") { 
+            text = data.categories.joinToString(", ") {
                 it.removePrefix("en:").replace("-", " ").replaceFirstChar { c -> c.uppercase() }
             },
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
-    
-    // Fallback if no data available
+
     if (!hasContent) {
         Text(
             text = "No detailed information available for this product.",

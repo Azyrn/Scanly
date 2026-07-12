@@ -32,11 +32,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
-/**
- * Main action button card for HomeScreen's four primary scan actions.
- *
- * @param accentTint Optional per-action icon tint; falls back to primary when null
- */
 @Composable
 fun MainActionButton(
     @DrawableRes iconRes: Int,
@@ -84,14 +79,6 @@ fun MainActionButton(
     }
 }
 
-/**
- * Secondary "View Previous Extracts" entry point.
- *
- * A stadium pill on the same [MaterialTheme.colorScheme.surfaceContainer] tone
- * as the action cards, so it reads as a quieter member of the same family rather
- * than a stock tinted button. Muted icon + medium label keep it clearly
- * secondary to the four primary scan actions.
- */
 @Composable
 fun HistoryPillButton(
     onClick: () -> Unit,

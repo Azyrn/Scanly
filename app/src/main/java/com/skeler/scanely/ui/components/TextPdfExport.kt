@@ -1,87 +1,65 @@
 package com.skeler.scanely.ui.components
 
 import android.content.Context
-import android.net.Uri
-import android.provider.DocumentsContract
 import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
+import com.skeler.scanely.core.ocr.TextBlockData
 import com.skeler.scanely.core.pdf.ScanExporter
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
 
-/** File formats the plain-text export flow can produce. */
-enum class TextExportFormat(val mimeType: String, val extension: String) {
-    PDF("application/pdf", "pdf"),
-    CSV("text/csv", "csv")
+enum class TextExportFormat(val mimeType: String, val extension: String, val label: String) {
+    PDF(ScanExporter.PDF_MIME_TYPE, "pdf", "Save as PDF"),
+    WORD(ScanExporter.WORD_MIME_TYPE, "docx", "Save as Word (.docx)"),
+    CSV(ScanExporter.CSV_MIME_TYPE, "csv", "Save as CSV"),
+    MARKDOWN(ScanExporter.MARKDOWN_MIME_TYPE, "md", "Save as Markdown"),
+    JSON(ScanExporter.JSON_MIME_TYPE, "json", "Save as JSON")
 }
 
-/**
- * Remembers a "save this text as a document and share it" action for use from
- * result screens. The user picks where the file goes via the system
- * ACTION_CREATE_DOCUMENT picker (the scoped-storage-safe path), the content is
- * written there off the main thread, and the share sheet is then offered so
- * saving and sharing happen in one step. Failures surface as Toasts and never
- * crash the app.
- *
- * The returned lambda is safe to wire straight onto a menu item's onClick.
- */
+/** Formats every result supports; Markdown/JSON are added only for offline Paddle scans. */
+val TEXT_EXPORT_FORMATS = listOf(TextExportFormat.PDF, TextExportFormat.WORD, TextExportFormat.CSV)
+
+val PADDLE_EXPORT_FORMATS = TEXT_EXPORT_FORMATS + TextExportFormat.MARKDOWN + TextExportFormat.JSON
+
+/** Writes straight to Downloads/Scanly (like the image exports), then offers to share. */
 @Composable
-fun rememberTextExporter(): (String, TextExportFormat) -> Unit {
+fun rememberTextExporter(
+    blocks: List<TextBlockData> = emptyList(),
+    markdown: String? = null
+): (String, TextExportFormat) -> Unit {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    // Text captured when the picker is launched, consumed when it returns.
-    val pendingText = remember { mutableStateOf<String?>(null) }
-
-    fun writeAndShare(uri: Uri?, format: TextExportFormat) {
-        val text = pendingText.value
-        pendingText.value = null
-        if (uri == null || text == null) return // picker cancelled
-        scope.launch {
-            runCatching {
-                when (format) {
-                    TextExportFormat.PDF -> ScanExporter.exportTextPdf(context, text, uri)
-                    TextExportFormat.CSV -> ScanExporter.exportTextCsv(context, text, uri)
-                }
-            }.fold(
-                onSuccess = {
-                    toast(context, "Saved as ${format.name}")
-                    ScanExporter.shareDocument(context, uri, format.mimeType)
-                },
-                onFailure = {
-                    // Don't leave a zero-byte file behind in the user's folder.
-                    runCatching {
-                        DocumentsContract.deleteDocument(context.contentResolver, uri)
-                    }
-                    toast(context, "Couldn't save ${format.name}")
-                }
-            )
-        }
-    }
-
-    val pdfLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument(TextExportFormat.PDF.mimeType)
-    ) { writeAndShare(it, TextExportFormat.PDF) }
-    val csvLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument(TextExportFormat.CSV.mimeType)
-    ) { writeAndShare(it, TextExportFormat.CSV) }
 
     return exporter@{ text: String, format: TextExportFormat ->
         if (text.isBlank()) {
             toast(context, "Nothing to export")
             return@exporter
         }
-        pendingText.value = text
-        when (format) {
-            TextExportFormat.PDF -> pdfLauncher
-            TextExportFormat.CSV -> csvLauncher
-        }.launch("${timestampName()}.${format.extension}")
+        scope.launch {
+            runCatching {
+                val name = timestampName()
+                when (format) {
+                    TextExportFormat.PDF -> ScanExporter.exportTextPdf(context, text, name)
+                    TextExportFormat.WORD -> ScanExporter.exportTextWord(context, text, name)
+                    TextExportFormat.CSV -> ScanExporter.exportTextCsv(context, text, name)
+                    TextExportFormat.MARKDOWN ->
+                        ScanExporter.exportTextMarkdown(context, text, markdown, name)
+                    TextExportFormat.JSON ->
+                        ScanExporter.exportTextJson(context, text, blocks, name)
+                }
+            }.fold(
+                onSuccess = { uri ->
+                    toast(context, "Saved to Downloads/Scanly")
+                    ScanExporter.shareDocument(context, uri, format.mimeType)
+                },
+                onFailure = {
+                    toast(context, "Couldn't save ${format.name}")
+                }
+            )
+        }
     }
 }
 

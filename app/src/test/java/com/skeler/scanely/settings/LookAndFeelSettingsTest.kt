@@ -10,14 +10,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/**
- * Unit tests for Look & Feel settings functionality.
- */
 class LookAndFeelSettingsTest {
-
-    // =========================================================================
-    // DataStore Key Tests
-    // =========================================================================
 
     @Test
     fun `SEED_COLOR_INDEX default matches SeedPalettes DEFAULT_INDEX`() {
@@ -36,10 +29,6 @@ class LookAndFeelSettingsTest {
         val defaultValue = SettingsKeys.IS_OLED_MODE_ENABLED.default as Boolean
         assertEquals(false, defaultValue)
     }
-
-    // =========================================================================
-    // SeedPalettes Tests
-    // =========================================================================
 
     @Test
     fun `SeedPalettes ALL is non-empty and names are unique`() {
@@ -76,10 +65,6 @@ class LookAndFeelSettingsTest {
             assertTrue(seed.name, seed.primary != seed.tertiary)
         }
     }
-
-    // =========================================================================
-    // Theme Mode Tests  
-    // =========================================================================
 
     @Test
     fun `THEME_MODE default follows system`() {

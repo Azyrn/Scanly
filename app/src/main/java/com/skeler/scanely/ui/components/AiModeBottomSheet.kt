@@ -35,17 +35,6 @@ import com.skeler.scanely.R
 import com.skeler.scanely.core.ai.AiMode
 import com.skeler.scanely.core.ai.AiProvider
 
-/**
- * AI mode selection bottom sheet.
- *
- * Lets the user pick the AI provider (per-scan) and the extraction mode.
- *
- * @param sheetState Modal sheet state
- * @param initialProvider Provider to preselect (the user's last choice)
- * @param onDismiss Called when sheet is dismissed
- * @param onProviderSelected Called when the user picks a provider (to persist it)
- * @param onModeSelected Called with the chosen mode and provider
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AiModeBottomSheet(
@@ -123,9 +112,6 @@ fun AiModeBottomSheet(
     }
 }
 
-/**
- * Single AI mode item card.
- */
 @Composable
 private fun AiModeItem(
     @DrawableRes iconRes: Int,

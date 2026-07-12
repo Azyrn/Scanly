@@ -59,3 +59,7 @@
     public static **[] values();
     public static ** valueOf(java.lang.String);
 }
+# ONNX Runtime resolves these from JNI; R8 full mode strips them otherwise
+# (UnsatisfiedLinkError / NoSuchMethodError at the first OCR run).
+-keep class ai.onnxruntime.** { *; }
+-dontwarn ai.onnxruntime.**

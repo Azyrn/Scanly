@@ -14,15 +14,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.skeler.scanely.core.lookup.FoodData
 
-/**
- * Food-specific product detail content.
- * Displays Nutri-Score, NOVA group, nutrition facts, and ingredients.
- */
 @Composable
 fun FoodContentSection(data: FoodData) {
     var hasContent = false
-    
-    // Nutri-Score and NOVA
+
     if (data.nutriScore != null || data.novaGroup != null) {
         hasContent = true
         Row(
@@ -46,21 +41,19 @@ fun FoodContentSection(data: FoodData) {
         }
         Spacer(modifier = Modifier.height(16.dp))
     }
-    
-    // Nutrition facts
+
     val hasNutrition = listOfNotNull(
-        data.calories, data.fat, data.carbs, 
+        data.calories, data.fat, data.carbs,
         data.protein, data.sugar, data.salt, data.fiber
     ).isNotEmpty()
-    
+
     if (hasNutrition) {
         hasContent = true
         SectionHeader("Nutrition Facts")
         NutritionGrid(data)
         Spacer(modifier = Modifier.height(16.dp))
     }
-    
-    // Serving size
+
     data.servingSize?.takeIf { it.isNotBlank() }?.let { serving ->
         hasContent = true
         Text(
@@ -70,8 +63,7 @@ fun FoodContentSection(data: FoodData) {
         )
         Spacer(modifier = Modifier.height(12.dp))
     }
-    
-    // Ingredients
+
     data.ingredients?.takeIf { it.isNotBlank() }?.let { ingredients ->
         hasContent = true
         SectionHeader("Ingredients")
@@ -81,21 +73,19 @@ fun FoodContentSection(data: FoodData) {
         )
         Spacer(modifier = Modifier.height(12.dp))
     }
-    
-    // Allergens
+
     if (data.allergens.isNotEmpty()) {
         hasContent = true
         SectionHeader("Allergens")
         Text(
-            text = data.allergens.joinToString(", ") { 
+            text = data.allergens.joinToString(", ") {
                 it.removePrefix("en:").replace("-", " ").replaceFirstChar { c -> c.uppercase() }
             },
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.error
         )
     }
-    
-    // Fallback if no data
+
     if (!hasContent) {
         Text(
             text = "No detailed nutrition information available for this product.",

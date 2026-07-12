@@ -3,9 +3,6 @@ package com.skeler.scanely.core.food
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-/**
- * Product data from Open Food Facts API.
- */
 @Serializable
 data class FoodProduct(
     val barcode: String,
@@ -24,9 +21,6 @@ data class FoodProduct(
     val categories: String?
 )
 
-/**
- * API response wrapper.
- */
 @Serializable
 data class OpenFoodFactsResponse(
     val status: Int,
@@ -57,9 +51,6 @@ data class NutrimentsDto(
     @SerialName("salt_100g") val salt: Double? = null
 )
 
-/**
- * Map API DTO to domain model.
- */
 fun ProductDto.toDomain(): FoodProduct? {
     val productName = name?.takeIf { it.isNotBlank() } ?: return null
     

@@ -26,16 +26,10 @@ import javax.inject.Singleton
 
 private const val TAG = "RewardedAdManager"
 
-// AdMob rewarded ads expire after 1 hour; refresh the cached ad before that.
+// AdMob rewarded ads expire after 1h; refresh before that.
 private const val AD_REFRESH_MS = 55 * 60 * 1000L
 
-/**
- * Preloads and shows a single rewarded ad used to grant one extra AI scan.
- *
- * The reward callback fires only from [RewardedAd.show]'s
- * OnUserEarnedRewardListener, never from the button tap. No other ad is
- * chained after dismissal (AdMob policy) — the next ad is only preloaded.
- */
+// Reward only via OnUserEarnedRewardListener — never on tap. No post-dismiss chain (AdMob policy).
 @Singleton
 class RewardedAdManager @Inject constructor(
     @ApplicationContext private val context: Context
@@ -91,10 +85,6 @@ class RewardedAdManager @Inject constructor(
         }
     }
 
-    /**
-     * Shows the preloaded ad. [onReward] runs only when AdMob reports the
-     * user actually earned the reward. No-op if no ad is cached.
-     */
     fun show(activity: Activity, onReward: () -> Unit) {
         val ad = rewardedAd ?: run {
             preload()

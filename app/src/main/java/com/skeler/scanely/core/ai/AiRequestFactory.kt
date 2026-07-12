@@ -13,7 +13,6 @@ import com.skeler.scanely.core.network.GeminiPart
 import com.skeler.scanely.core.network.GeminiRequest
 import com.skeler.scanely.core.network.ImageUrl
 
-/** Builds provider-specific request bodies from a shared prompt + base64 images. */
 internal object AiRequestFactory {
     fun openAi(
         config: ProviderConfig,
@@ -34,8 +33,7 @@ internal object AiRequestFactory {
             }
             add(ChatMessage("user", userParts))
         }
-        // Groq serves Qwen3 as a reasoning model that otherwise emits <think>…</think>
-        // inline in the content; "none" turns thinking off so OCR text stays clean.
+        // Groq Qwen3 otherwise emits <think>; "none" disables reasoning.
         val reasoningEffort = if (
             config.url?.contains("api.groq.com") == true &&
             config.model.contains("qwen", ignoreCase = true)
@@ -74,7 +72,7 @@ internal object AiRequestFactory {
         prompt: String,
         images: List<String>
     ): GeminiRequest {
-        // Gemma models have no system role, so fold the instruction into the prompt.
+        // Gemma has no system role — fold instruction into prompt.
         val fullPrompt = if (systemInstruction != null) "$systemInstruction\n\n$prompt" else prompt
         val parts = buildList {
             add(GeminiPart(text = fullPrompt))

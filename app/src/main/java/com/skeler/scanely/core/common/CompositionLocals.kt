@@ -18,11 +18,8 @@ fun CompositionLocals(
     settingsViewModel: SettingsViewModel = hiltViewModel(),
     content: @Composable () -> Unit
 ) {
-    // Use unified state flow to wait for data load (prevents violet flash)
     val uiState by settingsViewModel.settingsUiState.collectAsState()
-
-    // If state is null, we are still loading settings from disk.
-    // Return early to render nothing (or a splash background) until data is ready.
+    // Wait for settings so first frame isn't default/flash.
     val state = uiState ?: return
 
     val isDarkTheme = state.resolvedDarkTheme(isSystemInDarkTheme())

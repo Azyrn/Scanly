@@ -18,34 +18,25 @@ import kotlinx.coroutines.withContext
 
 private const val TAG = "OpenFDAEngine"
 
-/**
- * Lookup engine for medication/drugs using OpenFDA API.
- * 
- * Supports: NDC barcodes (National Drug Code)
- * Data: Drug name, ingredients, warnings, dosage, manufacturer
- * 
- * OpenFDA is free and doesn't require an API key.
- */
 @Singleton
 class OpenFDAEngine @Inject constructor(
     private val okHttpClient: OkHttpClient
 ) : LookupEngine {
-    
+
     override val name = "OpenFDA"
-    override val priority = 3  // After food, before cosmetics
+    override val priority = 3
     override val category = ProductCategory.MEDICINE
 
     override fun supports(barcode: String): Boolean {
-        // Try all numeric barcodes - OpenFDA will return not found if no match
         val digits = barcode.filter { it.isDigit() }
         return digits.length in 10..13
     }
-    
+
     override suspend fun lookup(barcode: String): LookupResult = withContext(Dispatchers.IO) {
         try {
             val cleaned = barcode.filter { it.isDigit() }
-            
-            // Try UPC search first, then NDC
+
+            // UPC first, then package NDC.
             val urls = listOf(
                 "https://api.fda.gov/drug/label.json?search=openfda.upc:\"$cleaned\"&limit=1",
                 "https://api.fda.gov/drug/label.json?search=openfda.package_ndc:\"$cleaned\"&limit=1"
@@ -92,7 +83,7 @@ class OpenFDAEngine @Inject constructor(
             name = openFda?.brandName?.firstOrNull() ?: result.splProductDataElements?.firstOrNull(),
             brand = openFda?.manufacturerName?.firstOrNull(),
             description = result.description?.firstOrNull()?.take(500),
-            imageUrl = null, // OpenFDA doesn't provide images
+            imageUrl = null,
             medicineData = MedicineData(
                 genericName = openFda?.genericName?.firstOrNull(),
                 activeIngredients = result.activeIngredient ?: emptyList(),
@@ -108,8 +99,6 @@ class OpenFDAEngine @Inject constructor(
         )
     }
 }
-
-// --- DTOs for OpenFDA API ---
 
 @Serializable
 data class OpenFDAResponse(

@@ -4,7 +4,7 @@ import java.security.MessageDigest
 import java.util.Base64
 import java.util.Properties
 
-// Google's public test IDs — safe for development, never serve real ads.
+// Google test AdMob IDs — never serve real ads.
 val admobTestAppId = "ca-app-pub-3940256099942544~3347511713"
 val admobTestRewardedUnitId = "ca-app-pub-3940256099942544/5224354917"
 
@@ -15,12 +15,10 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.baselineprofile)
-    // alias(libs.plugins.detekt) // Incompatible with AGP 8.13 - using CLI in CI
-    // alias(libs.plugins.google.services) // Disabled - no google-services.json
-    // alias(libs.plugins.firebase.crashlytics) // Disabled - no google-services.json
+    // detekt/google-services/crashlytics disabled (AGP 8.13 / no google-services.json)
 }
 
-// local.properties (gitignored): bundled keys, signing config, real AdMob ids.
+// local.properties (gitignored): keys, signing, real AdMob ids.
 val secretsProps = Properties().apply {
     val f = rootProject.file("local.properties")
     if (f.exists()) f.inputStream().use { load(it) }
@@ -31,7 +29,7 @@ val SECRET_PROPERTIES = listOf(
     "NVIDIA_API_KEY", "CLOUDFLARE_API_KEY", "CLOUDFLARE_ACCOUNT_ID", "GROQ_API_KEY", "CEREBRAS_API_KEY"
 )
 
-// Must stay byte-identical to core.security.Secrets so the runtime can decode.
+// Must match core.security.Secrets pepper/keystream byte-for-byte.
 private val SECRET_PEPPER: ByteArray = intArrayOf(
     0x53, 0x63, 0x6E, 0x6C, 0x79, 0x9A, 0x17, 0x42,
     0xC3, 0x08, 0xEE, 0x5B, 0x71, 0x2D, 0xF0, 0x64
@@ -59,7 +57,7 @@ private fun secretsKeystream(seed: ByteArray, len: Int): ByteArray {
     return out
 }
 
-// XOR-obfuscate + Base64 a bundled secret so it never ships as a plaintext string.
+// XOR + Base64 so secrets never ship as plaintext strings.
 fun encodeSecret(propertyKey: String): String {
     val plain = secretsProps.getProperty(propertyKey).orEmpty()
     if (plain.isEmpty()) return ""
@@ -69,8 +67,7 @@ fun encodeSecret(propertyKey: String): String {
     return Base64.getEncoder().encodeToString(xored)
 }
 
-// SHA-256 of the release signing cert; pins bundled keys to this build's signature.
-// Empty when the keystore is unavailable (e.g. CI without secrets) — pin then off.
+// Release cert SHA-256 for key pin; empty if keystore missing (pin off).
 fun releaseCertSha256(): String {
     return try {
         val path = secretsProps.getProperty("storeFile") ?: return ""
@@ -92,7 +89,7 @@ fun releaseCertSha256(): String {
 
 android {
     namespace = "com.skeler.scanely"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.skeler.scanely"
@@ -103,12 +100,10 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // Bundled free-tier keys, XOR+Base64 obfuscated and pinned to the release
-        // signature. Never plaintext in the APK; decoded at runtime by core.security.Secrets.
+        // Obfuscated free-tier keys; runtime decode in Secrets (signature-pinned).
         for (name in SECRET_PROPERTIES) {
             buildConfigField("String", name, "\"${encodeSecret(name)}\"")
         }
-        // Expected release-signing SHA-256; runtime refuses bundled keys on a mismatch.
         buildConfigField("String", "EXPECTED_SIGNATURE", "\"${releaseCertSha256()}\"")
     }
 
@@ -120,14 +115,12 @@ android {
         arg("room.schemaLocation", "$projectDir/schemas")
     }
 
-    // ABI splits - reduces APK size by ~50%
-    // Most devices are arm64-v8a (modern phones)
     splits {
         abi {
             isEnable = true
             reset()
             include("arm64-v8a", "armeabi-v7a", "x86_64")
-            isUniversalApk = true // Also build universal APK for fallback
+            isUniversalApk = true
         }
     }
 
@@ -143,7 +136,7 @@ android {
     buildTypes {
         debug {
             isDebuggable = true
-            // Own id so debug installs alongside the release-signed production app.
+            // Side-by-side with release-signed production install.
             applicationIdSuffix = ".debug"
             manifestPlaceholders["admobAppId"] = admobTestAppId
             buildConfigField("String", "ADMOB_REWARDED_AD_UNIT_ID", "\"$admobTestRewardedUnitId\"")
@@ -157,7 +150,7 @@ android {
                 "proguard-rules.pro"
             )
 
-            // Real AdMob ids from local.properties; test ids as fallback.
+            // Real AdMob from local.properties; test ids as fallback.
             manifestPlaceholders["admobAppId"] =
                 secretsProps.getProperty("ADMOB_APP_ID") ?: admobTestAppId
             buildConfigField(
@@ -183,14 +176,12 @@ android {
 }
 
 dependencies {
-    // Core Android
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
-    
-    // Compose
+
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
@@ -198,12 +189,6 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)
 
-    // Firebase (disabled - add google-services.json to re-enable)
-    // implementation(platform(libs.firebase.bom))
-    // implementation(libs.firebase.analytics)
-    // implementation(libs.firebase.crashlytics)
-
-    // Material Color Utilities (CorePalette for tonal palette generation)
     implementation(libs.material.color.utilities)
 
     implementation(libs.datastore.preferences)
@@ -214,51 +199,38 @@ dependencies {
     implementation(libs.hilt.work)
 
     implementation(libs.serialization.json)
-    // Navigation
     implementation(libs.navigation.compose)
     implementation(libs.androidx.work.runtime.ktx)
-    // CameraX
     implementation(libs.camerax.core)
     implementation(libs.camerax.camera2)
     implementation(libs.camerax.lifecycle)
     implementation(libs.camerax.view)
-    
-    // Coil for image loading
+
     implementation(libs.coil.compose)
-    
-    // Accompanist Permissions
     implementation(libs.accompanist.permissions)
-    
-    // Google Mobile Ads (rewarded ads for extra AI scans)
     implementation(libs.play.services.ads)
-
-    // Google ML Kit Barcode Scanning
     implementation(libs.mlkit.barcode)
-    
-    // Google ML Kit Text Recognition (On-Device)
+    implementation(libs.zxing.cpp)
     implementation(libs.mlkit.text.recognition)
-
-    // Google ML Kit Document Scanner (edge detection, perspective correction, auto-capture)
     implementation(libs.mlkit.document.scanner)
-    
-    // Retrofit for network
+    implementation(libs.onnxruntime.android)
+
     implementation(libs.retrofit)
     implementation(libs.okhttp)
     implementation(libs.retrofit.kotlinx.serialization)
-    
-    // Baseline Profile
+
     implementation(libs.profileinstaller)
     "baselineProfile"(project(":baselineprofile"))
-    
-    // Testing
+
     testImplementation(libs.junit)
+    // android.jar's org.json is a throwing stub; the real one lets us unit-test JSON export.
+    testImplementation(libs.json)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
-    // Leak detection in debug builds only; never ships in release.
     debugImplementation(libs.leakcanary)
 }
 

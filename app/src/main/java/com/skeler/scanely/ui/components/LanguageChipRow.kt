@@ -19,22 +19,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
-/**
- * Language chip row for instant switching between original and cached translations.
- * 
- * Layout: [Original] [Japanese] [French] ... [Translate ▼]
- * 
- * @param cachedLanguages Languages already translated and cached
- * @param currentLanguage Currently displayed language (null = Original)
- * @param showLanguageMenu Whether the language dropdown is visible
- * @param onShowLanguageMenu Opens the language dropdown
- * @param onDismissLanguageMenu Closes the language dropdown
- * @param onSelectOriginal Switches back to original text
- * @param onSelectCached Switches to a cached translation
- * @param allLanguages All available target languages
- * @param onNewLanguageSelected Called when user selects a new language to translate
- * @param onComposeText Opens the blank-canvas text-to-PDF composer
- */
 @Composable
 fun LanguageChipRow(
     cachedLanguages: List<String>,
@@ -47,7 +31,10 @@ fun LanguageChipRow(
     allLanguages: List<String>,
     onNewLanguageSelected: (String) -> Unit,
     onComposeText: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    showMarkdown: Boolean = false,
+    markdownSelected: Boolean = false,
+    onSelectMarkdown: () -> Unit = {}
 ) {
     Row(
         modifier = modifier
@@ -55,23 +42,28 @@ fun LanguageChipRow(
             .horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // Original chip
         FilterChip(
-            selected = currentLanguage == null,
+            selected = currentLanguage == null && !markdownSelected,
             onClick = onSelectOriginal,
             label = { Text("Original") }
         )
-        
-        // Cached language chips
+
+        if (showMarkdown) {
+            FilterChip(
+                selected = markdownSelected,
+                onClick = onSelectMarkdown,
+                label = { Text("Markdown") }
+            )
+        }
+
         cachedLanguages.forEach { language ->
             FilterChip(
-                selected = currentLanguage == language,
+                selected = currentLanguage == language && !markdownSelected,
                 onClick = { onSelectCached(language) },
                 label = { Text(language) }
             )
         }
         
-        // Add new language chip with dropdown
         Box {
             FilterChip(
                 selected = false,
@@ -83,7 +75,6 @@ fun LanguageChipRow(
                 expanded = showLanguageMenu,
                 onDismissRequest = onDismissLanguageMenu
             ) {
-                // Filter out already-cached languages
                 allLanguages.filterNot { it in cachedLanguages }.forEach { language ->
                     DropdownMenuItem(
                         text = { Text(language) },
@@ -93,7 +84,6 @@ fun LanguageChipRow(
             }
         }
 
-        // Blank-canvas text → PDF/CSV composer, wired to the same exporter.
         AssistChip(
             onClick = onComposeText,
             leadingIcon = {

@@ -16,26 +16,22 @@ internal data class ProviderConfig(
     val model: String,
     val apiKey: String,
     val url: String? = null, // required for OPENAI_COMPAT
-    val usesBundledKey: Boolean = false // true only when the key came from the bundled default, not the user
+    val usesBundledKey: Boolean = false // true only for bundled default, not user key
 ) {
     companion object {
         private const val MISTRAL_CHAT_MODEL = "mistral-small-latest"
 
-        /** App default Mistral OCR model — the only model eligible for the older-model retry. */
         const val MISTRAL_OCR_DEFAULT = "mistral-ocr-latest"
 
-        // Mistral's OCR endpoint can't translate or read plain text; use its chat API.
         fun mistralChat(apiKey: String) =
             ProviderConfig(ProviderKind.OPENAI_COMPAT, MISTRAL_CHAT_MODEL, apiKey, MistralApi.CHAT_URL)
     }
 }
 
-// Resolves endpoint/model/key per provider (settings, then bundled key) and the fallback order.
 @Singleton
 internal class ProviderConfigResolver @Inject constructor(
     private val settingsRepository: SettingsRepository
 ) {
-    // null when not usable yet: no key, or an unconfigured custom endpoint.
     suspend fun resolve(provider: AiProvider): ProviderConfig? = when (provider) {
         AiProvider.GEMINI -> {
             val userKey = settingValue(SettingsKeys.GEMINI_API_KEY)
@@ -52,7 +48,6 @@ internal class ProviderConfigResolver @Inject constructor(
         AiProvider.HUGGINGFACE -> {
             val userKey = settingValue(SettingsKeys.HUGGINGFACE_API_KEY)
             val key = userKey ?: Secrets.huggingFace.trim().ifBlank { null }
-            // A manual model override wins; otherwise the selected OCR engine decides.
             val engineModel = OcrEngine.fromId(settingValue(SettingsKeys.OCR_ENGINE)).model
             val model = settingValue(SettingsKeys.HUGGINGFACE_MODEL) ?: engineModel
             key?.let { ProviderConfig(ProviderKind.OPENAI_COMPAT, model, it, HUGGINGFACE_URL, usesBundledKey = userKey == null) }
@@ -76,8 +71,6 @@ internal class ProviderConfigResolver @Inject constructor(
             key?.let { ProviderConfig(ProviderKind.OPENAI_COMPAT, model, it, CEREBRAS_URL, usesBundledKey = userKey == null) }
         }
         AiProvider.CLOUDFLARE -> {
-            // A token is bound to its account, so key + account id travel as a pair:
-            // use the user's pair when both are set, else fall back to the bundled pair.
             val userKey = settingValue(SettingsKeys.CLOUDFLARE_API_KEY)
             val userAccount = settingValue(SettingsKeys.CLOUDFLARE_ACCOUNT_ID)
             val bundledKey = Secrets.cloudflareToken.trim().ifBlank { null }
@@ -116,14 +109,6 @@ internal class ProviderConfigResolver @Inject constructor(
         }
     }
 
-    // The selected provider is authoritative. It runs alone unless the user opted
-    // into cross-provider fallback, in which case other configured providers follow
-    // it. If the selected provider isn't configured (no key), the chain is empty and
-    // the caller surfaces a missing-key error — never a silent substitution.
-    //
-    // When the primary runs on the user's own key, the fallback is limited to
-    // providers the user also keyed themselves: it never drops down to a bundled
-    // built-in key. A user-key run therefore never leaks onto a developer key.
     suspend fun chain(selected: AiProvider): List<Pair<AiProvider, ProviderConfig>> {
         val primary = resolve(selected)?.let { selected to it } ?: return emptyList()
         if (!fallbackEnabled()) return listOf(primary)
@@ -135,12 +120,10 @@ internal class ProviderConfigResolver @Inject constructor(
         return listOf(primary) + rest
     }
 
-    // Cross-provider fallback is opt-in and off by default.
     private suspend fun fallbackEnabled(): Boolean =
         settingsRepository.getBoolean(SettingsKeys.AI_PROVIDER_FALLBACK).first()
 
-    // Providers on the bundled key right now (drops one when its user key is saved).
-    // The shared free-tier rate limit applies to exactly this set.
+    // Providers currently on the bundled key (shared free-tier rate limit).
     fun bundledKeyProviders(): Flow<Set<AiProvider>> = combine(
         settingsRepository.getString(SettingsKeys.GEMINI_API_KEY),
         settingsRepository.getString(SettingsKeys.MISTRAL_API_KEY),
@@ -158,15 +141,12 @@ internal class ProviderConfigResolver @Inject constructor(
             if (keys[2].isBlank() && BUNDLED_OPENROUTER) add(AiProvider.OPENROUTER)
             if (keys[3].isBlank() && BUNDLED_HUGGINGFACE) add(AiProvider.HUGGINGFACE)
             if (keys[4].isBlank() && BUNDLED_NVIDIA) add(AiProvider.NVIDIA)
-            // Cloudflare falls back to the bundled pair unless BOTH user fields are set
-            // (resolve() uses key + account id as an inseparable pair).
             if ((keys[5].isBlank() || keys[6].isBlank()) && BUNDLED_CLOUDFLARE) add(AiProvider.CLOUDFLARE)
             if (keys[7].isBlank() && BUNDLED_GROQ) add(AiProvider.GROQ)
             if (keys[8].isBlank() && BUNDLED_CEREBRAS) add(AiProvider.CEREBRAS)
         }
     }
 
-    // Conservative default before settings load: assume each is on the shared quota.
     val bundledCapableProviders: Set<AiProvider> = buildSet {
         if (BUNDLED_GEMINI) add(AiProvider.GEMINI)
         if (BUNDLED_MISTRAL) add(AiProvider.MISTRAL)
@@ -178,12 +158,10 @@ internal class ProviderConfigResolver @Inject constructor(
         if (BUNDLED_CEREBRAS) add(AiProvider.CEREBRAS)
     }
 
-    // Trimmed, or null if unset/blank.
     private suspend fun settingValue(key: SettingsKeys): String? =
         settingsRepository.getString(key).first().trim().ifBlank { null }
 
     companion object {
-        // All models below are vision-capable.
         private const val OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
         private const val OPENROUTER_MODEL = "google/gemma-4-26b-a4b-it:free"
         private const val HUGGINGFACE_URL = "https://router.huggingface.co/v1/chat/completions"
@@ -194,7 +172,7 @@ internal class ProviderConfigResolver @Inject constructor(
         private const val CEREBRAS_URL = "https://api.cerebras.ai/v1/chat/completions"
         private const val CEREBRAS_MODEL = "gemma-4-31b"
         private const val CLOUDFLARE_MODEL = "@cf/mistralai/mistral-small-3.1-24b-instruct"
-        // Workers AI OpenAI-compatible endpoint; the account id is part of the path.
+        // Account id is part of the Workers AI path.
         fun cloudflareUrl(accountId: String) =
             "https://api.cloudflare.com/client/v4/accounts/$accountId/ai/v1/chat/completions"
         private const val OPENAI_URL = "https://api.openai.com/v1/chat/completions"

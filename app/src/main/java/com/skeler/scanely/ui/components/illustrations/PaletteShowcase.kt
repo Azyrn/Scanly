@@ -37,15 +37,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
-/**
- * PaletteShowcase — a bespoke, theme-reactive hero for the Look & Feel screen.
- *
- * Replaces the previous stock "undraw" person illustration. Instead of a flat
- * clip-art scene it renders a fanned stack of squircle swatch cards drawn
- * entirely from the live [MaterialTheme.colorScheme], so the artwork *is* the
- * user's current theme. A gentle breathing rotation keeps it feeling alive in
- * the Material 3 Expressive spirit without leaning on default gradients.
- */
 @Composable
 fun PaletteShowcase(
     modifier: Modifier = Modifier,
@@ -53,7 +44,6 @@ fun PaletteShowcase(
 ) {
     val scheme = MaterialTheme.colorScheme
 
-    // Slow, subtle "breathing" so the fan feels alive but never distracting.
     val transition = rememberInfiniteTransition(label = "paletteBreath")
     val sway by transition.animateFloat(
         initialValue = -1.5f,
@@ -71,21 +61,18 @@ fun PaletteShowcase(
             .height(200.dp),
         contentAlignment = Alignment.Center
     ) {
-        // Back card — tertiary, tilted furthest to the left.
         SwatchCard(
             size = cardSize,
             color = scheme.tertiaryContainer,
             rotation = -18f + sway,
             xOffset = (-54).dp
         )
-        // Mid card — secondary, fanned to the right.
         SwatchCard(
             size = cardSize,
             color = scheme.secondaryContainer,
             rotation = 15f - sway,
             xOffset = 54.dp
         )
-        // Front hero card — primary, holding a palette preview + sparkle accent.
         SwatchCard(
             size = cardSize,
             color = scheme.primaryContainer,

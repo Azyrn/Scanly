@@ -18,20 +18,19 @@ import javax.inject.Singleton
 
 private const val TAG = "RateLimitManager"
 
-// Bundled-key burst budget, then a 60s cooldown. User keys aren't limited.
 private const val MAX_REQUESTS_BEFORE_COOLDOWN = 5
 private const val RATE_LIMIT_MS = 60_000L
 private const val RATE_LIMIT_SECONDS = 60
 
-// Separate from ScanUiState so countdown ticks don't recompose unrelated UI.
+// Kept out of ScanUiState so countdown ticks don't recompose unrelated UI.
 data class RateLimitState(
     val remainingSeconds: Int = 0,
-    val progress: Float = 1.0f, // 0.0 at cooldown start → 1.0 when ready
+    val progress: Float = 1.0f,
     val justBecameReady: Boolean = false,
     val requestCount: Int = 0
 )
 
-// Rate limits bundled-key AI scans; cooldown survives app restarts via DataStore.
+// Cooldown persists across restarts via DataStore.
 @Singleton
 class RateLimitManager @Inject constructor(
     private val settingsDataStore: SettingsDataStore
@@ -45,7 +44,7 @@ class RateLimitManager @Inject constructor(
     private var cooldownStartTimestamp: Long = 0L
     private var cooldownJob: Job? = null
 
-    // SupervisorJob: one failed persistence write can't cancel later ones.
+    // One failed write must not cancel later persistence.
     private val persistenceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     fun restoreState(scope: CoroutineScope) {
@@ -59,7 +58,6 @@ class RateLimitManager @Inject constructor(
 
                 when {
                     savedTimestamp > 0 && elapsed < RATE_LIMIT_MS -> {
-                        // Resume the interrupted cooldown where it left off.
                         cooldownStartTimestamp = savedTimestamp
                         val remaining = ((RATE_LIMIT_MS - elapsed) / 1000L).toInt().coerceAtLeast(1)
                         runCooldown(scope, remaining)
@@ -123,7 +121,6 @@ class RateLimitManager @Inject constructor(
         }
     }
 
-    // Runs onAllowed unless in cooldown; returns false (and shows sheet) if limited.
     fun triggerWithRateLimit(scope: CoroutineScope, onAllowed: () -> Unit): Boolean {
         if (_rateLimitState.value.remainingSeconds > 0) {
             _showRateLimitSheet.value = true
@@ -140,7 +137,7 @@ class RateLimitManager @Inject constructor(
 
         val newCount = _rateLimitState.value.requestCount + 1
 
-        onAllowed() // before state update, so the scan starts even at the limit
+        onAllowed()
 
         _rateLimitState.value = _rateLimitState.value.copy(requestCount = newCount)
         if (newCount >= MAX_REQUESTS_BEFORE_COOLDOWN) {
@@ -157,7 +154,6 @@ class RateLimitManager @Inject constructor(
         _showRateLimitSheet.value = false
     }
 
-    // Rewarded-ad reward: ends cooldown, leaving room for exactly one more scan.
     fun grantExtraScan() {
         cooldownJob?.cancel()
         cooldownStartTimestamp = 0L

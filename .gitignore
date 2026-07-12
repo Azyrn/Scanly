@@ -26,3 +26,6 @@ firebase.json
 .firebase/
 dataconnect/
 app/src/main/kotlin/com/google/firebase/dataconnect/generated/
+
+# Release build outputs copied by Studio
+/app/release/

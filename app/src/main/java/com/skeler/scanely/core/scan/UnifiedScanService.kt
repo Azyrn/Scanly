@@ -16,10 +16,17 @@ import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import com.skeler.scanely.core.actions.ScanAction
 import com.skeler.scanely.core.actions.ScanActionDetector
 import com.skeler.scanely.core.actions.WifiType
+import com.skeler.scanely.core.barcode.BarcodeEngine
+import com.skeler.scanely.core.barcode.ZxingBarcodeDecoder
 import com.skeler.scanely.core.ocr.OcrResult
 import com.skeler.scanely.core.ocr.TextBlockData
+import com.skeler.scanely.core.ocr.TextOcrEngine
+import com.skeler.scanely.core.ocr.TextOcrService
+import com.skeler.scanely.settings.data.SettingsKeys
+import com.skeler.scanely.settings.domain.repository.SettingsRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -28,18 +35,11 @@ import kotlin.coroutines.resume
 
 private const val TAG = "UnifiedScanService"
 
-/**
- * Unified scanning service that performs parallel OCR and barcode detection.
- * 
- * Features:
- * - Runs ML Kit Text Recognition and Barcode Scanning in parallel
- * - Combines results into a single UnifiedScanResult
- * - Supports barcode-only mode for camera screen gallery picker
- * - Detects smart actions (URLs, emails, phones) from OCR text
- */
 @Singleton
 class UnifiedScanService @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val settingsRepository: SettingsRepository,
+    private val textOcrService: TextOcrService
 ) {
     private val textRecognizer: TextRecognizer = 
         TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
@@ -64,10 +64,9 @@ class UnifiedScanService @Inject constructor(
             .build()
     )
 
-    /**
-     * Perform unified scan: Barcode detection first, OCR only if no barcodes.
-     * If both fail, retry with image preprocessing for difficult images.
-     */
+    private val zxingDecoder by lazy { ZxingBarcodeDecoder() }
+
+    /** Barcode first; OCR only if none. Empty result retries with preprocessing. */
     suspend fun scanImage(uri: Uri): UnifiedScanResult = withContext(Dispatchers.IO) {
         val bitmap = loadBitmapFromUri(uri)
             ?: return@withContext UnifiedScanResult(
@@ -77,10 +76,8 @@ class UnifiedScanService @Inject constructor(
             )
 
         try {
-            // First attempt: scan original image
             val result = scanBitmap(bitmap)
             
-            // If scan found nothing, retry with preprocessing
             if (result.isEmpty) {
                 Log.d(TAG, "Initial scan empty, retrying with preprocessing")
                 val preprocessed = com.skeler.scanely.core.image.ImagePreprocessor.preprocessForOcr(bitmap)
@@ -101,16 +98,9 @@ class UnifiedScanService @Inject constructor(
         }
     }
     
-    /**
-     * Internal scan helper for a bitmap.
-     */
     private suspend fun scanBitmap(bitmap: Bitmap): UnifiedScanResult {
-        val inputImage = InputImage.fromBitmap(bitmap, 0)
+        val barcodes = detectBarcodes(bitmap)
 
-        // Run barcode detection first
-        val barcodes = detectBarcodes(inputImage)
-
-        // If barcodes found, skip OCR (QR-only mode)
         if (barcodes.isNotEmpty()) {
             return UnifiedScanResult(
                 textResult = null,
@@ -119,10 +109,11 @@ class UnifiedScanService @Inject constructor(
             )
         }
 
-        // No barcodes - run OCR
-        val ocrResult = recognizeText(inputImage)
+        val ocrResult = when (textOcrService.engine()) {
+            TextOcrEngine.PADDLE -> textOcrService.recognize(bitmap)
+            TextOcrEngine.ML_KIT -> recognizeText(InputImage.fromBitmap(bitmap, 0))
+        }
 
-        // Detect smart actions from OCR text (stricter validation)
         val textActions = if (ocrResult is OcrResult.Success) {
             ScanActionDetector.detectActions(ocrResult.text)
         } else {
@@ -136,16 +127,12 @@ class UnifiedScanService @Inject constructor(
         )
     }
 
-    /**
-     * Barcode-only scan for camera screen gallery picker.
-     * No OCR to avoid noise.
-     */
+    /** Gallery picker path — barcodes only, no OCR noise. */
     suspend fun scanBarcodeOnly(uri: Uri): List<ScanAction> = withContext(Dispatchers.IO) {
         val bitmap = loadBitmapFromUri(uri) ?: return@withContext emptyList()
 
         try {
-            val inputImage = InputImage.fromBitmap(bitmap, 0)
-            detectBarcodes(inputImage)
+            detectBarcodes(bitmap)
         } finally {
             bitmap.recycle()
         }
@@ -195,11 +182,23 @@ class UnifiedScanService @Inject constructor(
                 }
         }
 
-    private suspend fun detectBarcodes(inputImage: InputImage): List<ScanAction> = 
+    private suspend fun detectBarcodes(bitmap: Bitmap): List<ScanAction> {
+        val engineId = settingsRepository.getString(SettingsKeys.BARCODE_ENGINE).first()
+        return when (BarcodeEngine.fromId(engineId)) {
+            BarcodeEngine.ZXING_CPP -> try {
+                zxingDecoder.decode(bitmap).flatMap { it.toActions() }
+            } catch (e: Exception) {
+                Log.e(TAG, "ZXing decode failed", e)
+                emptyList()
+            }
+            BarcodeEngine.ML_KIT -> detectBarcodesMlKit(InputImage.fromBitmap(bitmap, 0))
+        }
+    }
+
+    private suspend fun detectBarcodesMlKit(inputImage: InputImage): List<ScanAction> =
         suspendCancellableCoroutine { continuation ->
             barcodeScanner.process(inputImage)
                 .addOnSuccessListener { barcodes ->
-                    // Dedupe by raw value to prevent duplicate barcode entries
                     val uniqueBarcodes = barcodes
                         .distinctBy { it.rawValue ?: "" }
                         .filter { it.rawValue?.isNotBlank() == true }
@@ -219,7 +218,6 @@ class UnifiedScanService @Inject constructor(
     private fun mapBarcodeToActions(barcode: Barcode): List<ScanAction> {
         val rawValue = barcode.rawValue ?: return emptyList()
 
-        // Return ONLY the primary action for this barcode type (no duplicates)
         val primaryAction: ScanAction = when (barcode.valueType) {
             Barcode.TYPE_URL -> {
                 barcode.url?.let { url ->
@@ -287,7 +285,6 @@ class UnifiedScanService @Inject constructor(
                 } ?: ScanAction.CopyText(rawValue, "Copy")
             }
             else -> {
-                // For raw/unknown barcodes, just use Copy (cleaner than ShowRaw + Copy)
                 ScanAction.CopyText(rawValue, "Copy")
             }
         }
@@ -296,24 +293,17 @@ class UnifiedScanService @Inject constructor(
     }
 
     companion object {
-        /** Maximum dimension for loaded bitmaps to prevent OOM */
         private const val MAX_BITMAP_DIMENSION = 2048
     }
 
-    /**
-     * Load bitmap from URI with downsampling to prevent OOM on large images.
-     * Max dimension is capped at [MAX_BITMAP_DIMENSION] pixels.
-     */
     private fun loadBitmapFromUri(uri: Uri): Bitmap? {
         return try {
             context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                // First pass: decode bounds only to calculate sample size
                 val options = BitmapFactory.Options().apply {
                     inJustDecodeBounds = true
                 }
                 BitmapFactory.decodeStream(inputStream, null, options)
                 
-                // Calculate inSampleSize
                 options.inSampleSize = calculateInSampleSize(
                     options.outWidth, 
                     options.outHeight, 
@@ -321,7 +311,7 @@ class UnifiedScanService @Inject constructor(
                 )
                 options.inJustDecodeBounds = false
                 
-                // Re-open stream for actual decode (stream was consumed)
+                // Re-open stream (first pass consumed it).
                 context.contentResolver.openInputStream(uri)?.use { newStream ->
                     BitmapFactory.decodeStream(newStream, null, options)
                 }
@@ -332,10 +322,6 @@ class UnifiedScanService @Inject constructor(
         }
     }
 
-    /**
-     * Calculate optimal sample size for downsampling.
-     * Uses power-of-2 scaling for efficiency.
-     */
     private fun calculateInSampleSize(
         width: Int, 
         height: Int, 
@@ -347,7 +333,6 @@ class UnifiedScanService @Inject constructor(
             val halfWidth = width / 2
             val halfHeight = height / 2
             
-            // Calculate the largest inSampleSize that keeps dimensions > maxDimension
             while ((halfWidth / inSampleSize) >= maxDimension || 
                    (halfHeight / inSampleSize) >= maxDimension) {
                 inSampleSize *= 2
@@ -363,9 +348,6 @@ class UnifiedScanService @Inject constructor(
     }
 }
 
-/**
- * Combined result from unified scanning.
- */
 data class UnifiedScanResult(
     val textResult: OcrResult?,
     val barcodeActions: List<ScanAction>,

@@ -13,7 +13,6 @@ pluginManagement {
 }
 
 plugins {
-    // Resolves/auto-provisions JDK toolchains (Java toolchains + Gradle daemon JVM criteria).
     id("org.gradle.toolchains.foojay-resolver-convention") version "0.10.0"
 }
 

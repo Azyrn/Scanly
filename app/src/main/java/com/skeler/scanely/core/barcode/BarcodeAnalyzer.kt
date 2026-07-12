@@ -16,62 +16,49 @@ import com.skeler.scanely.core.actions.WifiType
 
 private const val TAG = "BarcodeAnalyzer"
 
-// Frames a barcode must repeat before it's accepted (stability gate).
+// Stability gate: frames a barcode must repeat before accept.
 private const val REQUIRED_CONSECUTIVE_MATCHES = 2
 
-/**
- * CameraX ImageAnalysis.Analyzer for real-time barcode detection using ML Kit.
- *
- * Features:
- * - Processes camera frames in real-time
- * - Detects QR codes and 1D/2D barcodes
- * - Maps detected barcodes to ScanAction types
- * - Throttles callbacks to prevent UI flooding
- */
 class BarcodeAnalyzer(
+    private val engine: BarcodeEngine = BarcodeEngine.ML_KIT,
     private val onBarcodeDetected: (List<ScanAction>) -> Unit
 ) : ImageAnalysis.Analyzer {
 
-    /**
-     * Applies an ML Kit zoom suggestion to the camera. Wired by the camera preview
-     * once a [androidx.camera.core.CameraControl] is available. Returns true if the
-     * zoom was applied. Auto-zoom helps decode small or distant codes.
-     */
+    // Set once CameraControl exists; true if zoom applied. ML Kit only — ZXing has no zoom hints.
     var onZoomSuggested: ((Float) -> Boolean)? = null
 
-    private val options = BarcodeScannerOptions.Builder()
-        .setBarcodeFormats(
-            // Only the formats the app actually acts on — narrower list = faster detection.
-            Barcode.FORMAT_QR_CODE,
-            Barcode.FORMAT_AZTEC,
-            Barcode.FORMAT_DATA_MATRIX,
-            Barcode.FORMAT_PDF417,
-            Barcode.FORMAT_EAN_13,
-            Barcode.FORMAT_EAN_8,
-            Barcode.FORMAT_UPC_A,
-            Barcode.FORMAT_UPC_E,
-            Barcode.FORMAT_CODE_128,
-            Barcode.FORMAT_CODE_39
+    private val scanner: BarcodeScanner? = if (engine == BarcodeEngine.ML_KIT) {
+        BarcodeScanning.getClient(
+            BarcodeScannerOptions.Builder()
+                .setBarcodeFormats(
+                    Barcode.FORMAT_QR_CODE,
+                    Barcode.FORMAT_AZTEC,
+                    Barcode.FORMAT_DATA_MATRIX,
+                    Barcode.FORMAT_PDF417,
+                    Barcode.FORMAT_EAN_13,
+                    Barcode.FORMAT_EAN_8,
+                    Barcode.FORMAT_UPC_A,
+                    Barcode.FORMAT_UPC_E,
+                    Barcode.FORMAT_CODE_128,
+                    Barcode.FORMAT_CODE_39
+                )
+                .setZoomSuggestionOptions(
+                    ZoomSuggestionOptions.Builder { zoomRatio ->
+                        onZoomSuggested?.invoke(zoomRatio) ?: false
+                    }.build()
+                )
+                .build()
         )
-        .setZoomSuggestionOptions(
-            ZoomSuggestionOptions.Builder { zoomRatio ->
-                onZoomSuggested?.invoke(zoomRatio) ?: false
-            }.build()
-        )
-        .build()
+    } else null
 
-    private val scanner: BarcodeScanner = BarcodeScanning.getClient(options)
+    private val zxingDecoder by lazy { ZxingBarcodeDecoder() }
 
-    // Throttle: minimum time between callbacks (ms)
     private var lastProcessedTime = 0L
     private val throttleInterval = 100L
 
-    // Stability gate: only accept a result after it repeats across consecutive frames,
-    // to avoid flickering / one-off misreads.
     private var lastRawValues: Set<String> = emptySet()
     private var consecutiveMatches = 0
 
-    @OptIn(ExperimentalGetImage::class)
     override fun analyze(imageProxy: ImageProxy) {
         val currentTime = System.currentTimeMillis()
         if (currentTime - lastProcessedTime < throttleInterval) {
@@ -79,6 +66,29 @@ class BarcodeAnalyzer(
             return
         }
 
+        when (engine) {
+            BarcodeEngine.ZXING_CPP -> analyzeWithZxing(imageProxy, currentTime)
+            BarcodeEngine.ML_KIT -> analyzeWithMlKit(imageProxy, currentTime)
+        }
+    }
+
+    private fun analyzeWithZxing(imageProxy: ImageProxy, currentTime: Long) {
+        val decoded = try {
+            zxingDecoder.decode(imageProxy)
+        } catch (e: Exception) {
+            Log.e(TAG, "ZXing decode failed", e)
+            emptyList()
+        } finally {
+            imageProxy.close()
+        }
+
+        handleStableDetection(decoded.map { it.text }.toSet(), currentTime) {
+            decoded.flatMap { it.toActions() }.distinctBy { it.label + getActionKey(it) }
+        }
+    }
+
+    @OptIn(ExperimentalGetImage::class)
+    private fun analyzeWithMlKit(imageProxy: ImageProxy, currentTime: Long) {
         val mediaImage = imageProxy.image
         if (mediaImage == null) {
             imageProxy.close()
@@ -90,46 +100,50 @@ class BarcodeAnalyzer(
             imageProxy.imageInfo.rotationDegrees
         )
 
-        scanner.process(inputImage)
-            .addOnSuccessListener { barcodes ->
-                val rawValues = barcodes.mapNotNull { it.rawValue }.toSet()
-                if (rawValues.isEmpty()) {
-                    // Nothing decodable this frame — reset the confirmation streak.
-                    lastRawValues = emptySet()
-                    consecutiveMatches = 0
-                    return@addOnSuccessListener
-                }
-
-                if (rawValues == lastRawValues) {
-                    consecutiveMatches++
-                } else {
-                    lastRawValues = rawValues
-                    consecutiveMatches = 1
-                }
-
-                if (consecutiveMatches >= REQUIRED_CONSECUTIVE_MATCHES) {
-                    lastProcessedTime = currentTime
-                    val actions = barcodes.flatMap { barcode ->
+        scanner?.process(inputImage)
+            ?.addOnSuccessListener { barcodes ->
+                handleStableDetection(barcodes.mapNotNull { it.rawValue }.toSet(), currentTime) {
+                    barcodes.flatMap { barcode ->
                         mapBarcodeToActions(barcode)
                     }.distinctBy { it.label + getActionKey(it) }
-
-                    if (actions.isNotEmpty()) {
-                        Log.d(TAG, "Confirmed ${actions.size} actions from ${barcodes.size} barcodes")
-                        onBarcodeDetected(actions)
-                    }
                 }
             }
-            .addOnFailureListener { e ->
+            ?.addOnFailureListener { e ->
                 Log.e(TAG, "Barcode scanning failed", e)
             }
-            .addOnCompleteListener {
+            ?.addOnCompleteListener {
                 imageProxy.close()
             }
     }
 
-    /**
-     * Map ML Kit Barcode to ScanAction list.
-     */
+    private fun handleStableDetection(
+        rawValues: Set<String>,
+        currentTime: Long,
+        buildActions: () -> List<ScanAction>
+    ) {
+        if (rawValues.isEmpty()) {
+            lastRawValues = emptySet()
+            consecutiveMatches = 0
+            return
+        }
+
+        if (rawValues == lastRawValues) {
+            consecutiveMatches++
+        } else {
+            lastRawValues = rawValues
+            consecutiveMatches = 1
+        }
+
+        if (consecutiveMatches >= REQUIRED_CONSECUTIVE_MATCHES) {
+            lastProcessedTime = currentTime
+            val actions = buildActions()
+            if (actions.isNotEmpty()) {
+                Log.d(TAG, "Confirmed ${actions.size} actions from ${rawValues.size} barcodes")
+                onBarcodeDetected(actions)
+            }
+        }
+    }
+
     private fun mapBarcodeToActions(barcode: Barcode): List<ScanAction> {
         val actions = mutableListOf<ScanAction>()
         val rawValue = barcode.rawValue ?: return actions
@@ -201,7 +215,6 @@ class BarcodeAnalyzer(
             }
 
             Barcode.TYPE_GEO -> {
-                // Geo links can be opened as URLs
                 actions.add(ScanAction.OpenUrl("geo:${barcode.geoPoint?.lat},${barcode.geoPoint?.lng}"))
             }
 
@@ -218,17 +231,14 @@ class BarcodeAnalyzer(
             }
 
             else -> {
-                // Offer product lookup for retail/ISBN symbologies (see helper).
                 if (shouldOfferProductLookup(barcode, rawValue)) {
                     actions.add(ScanAction.LookupProduct(rawValue))
                 }
 
-                // Also add raw text option
                 actions.add(ScanAction.ShowRaw(rawValue))
             }
         }
 
-        // Always add copy option for raw value
         if (rawValue.isNotBlank() && actions.none { it is ScanAction.CopyText }) {
             actions.add(ScanAction.CopyText(rawValue, "Copy Barcode"))
         }
@@ -236,15 +246,6 @@ class BarcodeAnalyzer(
         return actions
     }
 
-    /**
-     * Decide whether a barcode should offer product lookup.
-     *
-     * Fast path (O(1)): trust ML Kit's detected symbology/type for retail codes —
-     * EAN-8/13, UPC-A/E, and anything classified as ISBN. Only when the payload is
-     * otherwise unclassified do we run a cheap ISBN-10 shape check. No regexes and no
-     * allocations, so the per-frame hot path stays constant-time. Broad numeric strings
-     * are intentionally NOT treated as products.
-     */
     private fun shouldOfferProductLookup(barcode: Barcode, rawValue: String): Boolean {
         when (barcode.format) {
             Barcode.FORMAT_EAN_8,
@@ -253,14 +254,12 @@ class BarcodeAnalyzer(
             Barcode.FORMAT_UPC_E -> return true
         }
         if (barcode.valueType == Barcode.TYPE_ISBN) return true
-        // Fallback only for unclassified payloads that strongly match ISBN-10.
         return when (barcode.valueType) {
             Barcode.TYPE_TEXT, Barcode.TYPE_UNKNOWN -> isIsbn10(rawValue)
             else -> false
         }
     }
 
-    /** ISBN-10 shape: 10 chars, first 9 digits, last a digit or 'X'. O(1), no allocation. */
     private fun isIsbn10(value: String): Boolean {
         if (value.length != 10) return false
         for (i in 0 until 9) {
@@ -286,6 +285,6 @@ class BarcodeAnalyzer(
     }
 
     fun close() {
-        scanner.close()
+        scanner?.close()
     }
 }

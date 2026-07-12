@@ -11,15 +11,6 @@ import javax.inject.Singleton
 private const val TAG = "LookupOrchestrator"
 private const val ENGINE_TIMEOUT_MS = 10_000L
 
-/**
- * Orchestrates product lookups across multiple engines with fallback chaining.
- * 
- * Strategy:
- * 1. Filter engines that support the barcode format
- * 2. Query all supporting engines concurrently (each with timeout + retry)
- * 3. Await in priority order; return the highest-priority Found and cancel the rest
- * 4. If none found, aggregate NotFound/Errors
- */
 @Singleton
 class LookupOrchestrator @Inject constructor(
     private val engines: Set<@JvmSuppressWildcards LookupEngine>
@@ -30,12 +21,6 @@ class LookupOrchestrator @Inject constructor(
         maxDelayMs = 2000
     )
     
-    /**
-     * Look up a barcode across all registered engines.
-     * 
-     * @param barcode The barcode to look up
-     * @return LookupResult from the first engine that finds data, or aggregated failure
-     */
     suspend fun lookup(barcode: String): LookupResult = coroutineScope {
         val supportingEngines = engines
             .filter { it.supports(barcode) }
@@ -49,14 +34,12 @@ class LookupOrchestrator @Inject constructor(
         Log.d(TAG, "Looking up $barcode with ${supportingEngines.size} engines: " +
                 supportingEngines.joinToString { it.name })
 
-        // Fire all engines concurrently; each carries its own timeout + retry.
         val jobs = supportingEngines.map { engine ->
             async { lookupWithRetry(engine, barcode) }
         }
 
         val errors = mutableListOf<String>()
 
-        // Await in priority order so the highest-priority Found always wins.
         jobs.forEachIndexed { index, job ->
             when (val result = job.await()) {
                 is LookupResult.Found -> {
@@ -77,9 +60,6 @@ class LookupOrchestrator @Inject constructor(
         }
     }
     
-    /**
-     * Execute lookup with timeout and retry.
-     */
     private suspend fun lookupWithRetry(engine: LookupEngine, barcode: String): LookupResult {
         return try {
             withRetry(retryConfig) {

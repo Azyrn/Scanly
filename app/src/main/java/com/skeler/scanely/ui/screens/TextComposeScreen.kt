@@ -43,12 +43,6 @@ import com.skeler.scanely.navigation.LocalNavController
 import com.skeler.scanely.ui.components.TextExportFormat
 import com.skeler.scanely.ui.components.rememberTextExporter
 
-/**
- * Blank-canvas composer: type (or paste) arbitrary text and export it straight
- * to PDF or CSV through the shared exporter and system share sheet. Uses the same
- * 17sp/28sp reading typography and word/character footer as the extracted-text
- * views so writing here feels continuous with reading a scan.
- */
 @Composable
 fun TextComposeScreen() {
     val navController = LocalNavController.current
@@ -104,6 +98,13 @@ fun TextComposeScreen() {
                                 onClick = {
                                     exportMenuOpen = false
                                     exportText(text, TextExportFormat.PDF)
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Save as Word (.docx)") },
+                                onClick = {
+                                    exportMenuOpen = false
+                                    exportText(text, TextExportFormat.WORD)
                                 }
                             )
                             DropdownMenuItem(

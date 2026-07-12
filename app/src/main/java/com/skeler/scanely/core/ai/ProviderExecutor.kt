@@ -15,18 +15,10 @@ import kotlin.random.Random
 internal sealed interface ProviderOutcome {
     data class Success(val text: String) : ProviderOutcome
 
-    /** Retries exhausted; [networkProblem] = failures were I/O, not provider responses. */
     data class Exhausted(val networkProblem: Boolean = false) : ProviderOutcome
     data class Fatal(val error: AiResult.Error) : ProviderOutcome
 }
 
-/**
- * Runs all attempts against one provider with exponential backoff + jitter on
- * 429/5xx. Streaming is used first; if the stream fails before yielding any
- * text (some OpenAI-compatible endpoints don't implement SSE), remaining
- * attempts degrade to plain requests. Every attempt runs under a timeout that
- * scales with payload size.
- */
 @Singleton
 internal class ProviderExecutor @Inject constructor(
     private val client: ProviderClient,
@@ -75,9 +67,6 @@ internal class ProviderExecutor @Inject constructor(
                 }
                 aiDebug { "$name attempt ${attempt + 1} ok in ${SystemClock.elapsedRealtime() - start} ms" }
                 if (text.isNotBlank()) return ProviderOutcome.Success(text)
-                // A 200 stream that never carried an SSE data line means the endpoint
-                // doesn't implement streaming — degrade the remaining attempts to
-                // plain requests instead of failing the whole chain.
                 if (useStreaming && !streamedAnything[0]) {
                     aiDebug { "$name returned 200 with no SSE data; degrading to plain requests" }
                     useStreaming = false
@@ -88,7 +77,6 @@ internal class ProviderExecutor @Inject constructor(
             } catch (e: TimeoutCancellationException) {
                 aiDebug { "$name attempt ${attempt + 1} timed out after $timeoutMs ms" }
                 lastFailureWasNetwork = false
-                // Partial text means the stream was alive but too slow; a retry won't be faster.
                 if (streamedAnything[0]) return ProviderOutcome.Exhausted()
             } catch (e: CancellationException) {
                 throw e
@@ -112,7 +100,6 @@ internal class ProviderExecutor @Inject constructor(
                 if (!networkObserver.isCurrentlyOnline()) {
                     return ProviderOutcome.Exhausted(networkProblem = true)
                 }
-                // Stream that broke before any text may mean no SSE support.
                 if (useStreaming && !streamedAnything[0]) useStreaming = false
             }
         }
@@ -130,7 +117,6 @@ internal class ProviderExecutor @Inject constructor(
     private fun httpErrorMessage(code: Int): String = when (code) {
         429 -> "Provider is rate-limited right now. Try again shortly, or add " +
             "your own API key in Settings → AI Providers."
-        // Billing/quota exhaustion on the user's own key — never a key problem.
         402 -> "Your API key has hit its usage or billing limit. Check your plan " +
             "with the provider, then try again."
         401, 403 -> "Invalid or unauthorized API key. Check it in Settings → AI Providers."
@@ -138,12 +124,10 @@ internal class ProviderExecutor @Inject constructor(
     }
 
     companion object {
-        /** Retry policy: exponential backoff with jitter on 429/5xx. */
         private const val MAX_ATTEMPTS = 3
         private const val BACKOFF_BASE_MS = 1200L
         private const val BACKOFF_JITTER_MS = 600L
 
-        /** Attempt timeout scales with payload; streamed deltas keep it honest. */
         private const val ATTEMPT_TIMEOUT_BASE_MS = 90_000L
         private const val ATTEMPT_TIMEOUT_PER_EXTRA_IMAGE_MS = 20_000L
         private const val ATTEMPT_TIMEOUT_MAX_MS = 240_000L

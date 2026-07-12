@@ -8,14 +8,20 @@ import android.net.Uri
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.camera.core.Camera
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.FocusMeteringAction
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
-import androidx.camera.core.CameraSelector
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
-import androidx.compose.foundation.Canvas
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -24,20 +30,20 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.rounded.CameraAlt
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.TouchApp
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.LargeFloatingActionButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -49,12 +55,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
@@ -66,26 +77,18 @@ import com.google.accompanist.permissions.rememberPermissionState
 import com.skeler.scanely.navigation.LocalNavController
 import com.skeler.scanely.navigation.Routes
 import com.skeler.scanely.ui.viewmodel.DocumentScanViewModel
+import kotlinx.coroutines.delay
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Locale
+import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
+import kotlin.math.roundToInt
 
 private const val TAG = "CameraScreen"
 
-/**
- * CameraX capture fallback for the Smart Document Scanner, used when Google Play
- * services (and therefore the ML Kit document scanner) is unavailable — e.g. on
- * degoogled / GMS-less devices. Captures a frame, enhances it via
- * [DocumentScanViewModel.loadCapturedPages], then drops into the same review /
- * filter / export flow the ML Kit path uses.
- *
- * Edge detection, auto-crop and straightening are GMS-only, so a header banner
- * tells the user to frame the page themselves rather than pretending a crop that
- * cannot happen here.
- */
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun DocumentCaptureScreen() {
@@ -97,6 +100,11 @@ fun DocumentCaptureScreen() {
 
     var isCapturing by remember { mutableStateOf(false) }
     var imageCapture by remember { mutableStateOf<ImageCapture?>(null) }
+    var camera by remember { mutableStateOf<Camera?>(null) }
+    var focusRing by remember { mutableStateOf<Offset?>(null) }
+    val previewView = remember {
+        PreviewView(context).apply { scaleType = PreviewView.ScaleType.FILL_CENTER }
+    }
 
     LaunchedEffect(Unit) {
         if (!cameraPermissionState.status.isGranted) {
@@ -110,87 +118,53 @@ fun DocumentCaptureScreen() {
             .background(Color.Black)
     ) {
         if (cameraPermissionState.status.isGranted) {
-            CameraPreviewContent { capture -> imageCapture = capture }
+            AndroidView(factory = { previewView }, modifier = Modifier.fillMaxSize())
 
-            FramingOverlay()
-
-            // ---- Top: scrim + close + auto-crop-unavailable notice ----
-            Column(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .fillMaxWidth()
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(Color.Black.copy(alpha = 0.6f), Color.Transparent)
-                        )
-                    )
-                    .statusBarsPadding()
-                    .padding(horizontal = 16.dp)
-                    .padding(top = 8.dp, bottom = 28.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    FilledIconButton(
-                        onClick = { navController.popBackStack() },
-                        colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = Color.White.copy(alpha = 0.15f),
-                            contentColor = Color.White
-                        )
-                    ) {
-                        Icon(Icons.Rounded.Close, contentDescription = "Close")
-                    }
-                    Spacer(Modifier.size(12.dp))
-                    Text(
-                        text = "Capture document",
-                        color = Color.White,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-
-                Spacer(Modifier.height(16.dp))
-
-                Surface(
-                    color = MaterialTheme.colorScheme.tertiaryContainer,
-                    shape = MaterialTheme.shapes.large,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Info,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onTertiaryContainer,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(Modifier.size(12.dp))
-                        Text(
-                            text = "Auto-crop and straightening need Google Play services. " +
-                                "Line the page up with the frame for the cleanest scan.",
-                            color = MaterialTheme.colorScheme.onTertiaryContainer,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                }
+            BindCamera(previewView) { boundCapture, boundCamera ->
+                imageCapture = boundCapture
+                camera = boundCamera
             }
 
-            // ---- Bottom: scrim + shutter ----
+            // Tap-to-focus: sits under the controls, so shutter/close taps still win.
             Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(camera) {
+                        detectTapGestures { offset ->
+                            val cam = camera ?: return@detectTapGestures
+                            val point = previewView.meteringPointFactory
+                                .createPoint(offset.x, offset.y)
+                            val action = FocusMeteringAction.Builder(point)
+                                .setAutoCancelDuration(3, TimeUnit.SECONDS)
+                                .build()
+                            runCatching { cam.cameraControl.startFocusAndMetering(action) }
+                            focusRing = offset
+                        }
+                    }
+            )
+
+            focusRing?.let { point ->
+                FocusRing(point) { focusRing = null }
+            }
+
+            CaptureTopBar(onClose = { navController.popBackStack() })
+
+            Column(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
                     .background(
                         Brush.verticalGradient(
-                            listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f))
+                            listOf(Color.Transparent, Color.Black.copy(alpha = 0.65f))
                         )
                     )
                     .navigationBarsPadding()
-                    .padding(top = 40.dp, bottom = 36.dp),
-                contentAlignment = Alignment.Center
+                    .padding(top = 44.dp, bottom = 32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                FocusHint()
+                Spacer(Modifier.height(18.dp))
                 ShutterButton(
-                    modifier = Modifier.size(84.dp),
                     isCapturing = isCapturing,
                     onClick = {
                         val capture = imageCapture
@@ -234,64 +208,153 @@ fun DocumentCaptureScreen() {
 }
 
 @Composable
-private fun ShutterButton(
-    modifier: Modifier = Modifier,
-    isCapturing: Boolean,
-    onClick: () -> Unit
-) {
-    LargeFloatingActionButton(
-        onClick = onClick,
-        shape = CircleShape,
-        containerColor = if (isCapturing) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.primary,
-        contentColor = if (isCapturing) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onPrimary,
-        modifier = modifier
+private fun CaptureTopBar(onClose: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                Brush.verticalGradient(
+                    listOf(Color.Black.copy(alpha = 0.65f), Color.Transparent)
+                )
+            )
+            .statusBarsPadding()
+            .padding(horizontal = 16.dp)
+            .padding(top = 8.dp, bottom = 32.dp)
     ) {
-        if (isCapturing) {
-            CircularWavyProgressIndicator(modifier = Modifier.size(40.dp))
-        } else {
-            Icon(
-                imageVector = Icons.Rounded.CameraAlt,
-                contentDescription = "Capture",
-                modifier = Modifier.size(36.dp)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            FilledIconButton(
+                onClick = onClose,
+                colors = IconButtonDefaults.filledIconButtonColors(
+                    containerColor = Color.White.copy(alpha = 0.15f),
+                    contentColor = Color.White
+                )
+            ) {
+                Icon(Icons.Rounded.Close, contentDescription = "Close")
+            }
+            Spacer(Modifier.size(12.dp))
+            Text(
+                text = "Capture document",
+                color = Color.White,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold
             )
         }
     }
 }
 
 @Composable
-private fun FramingOverlay() {
-    Canvas(modifier = Modifier.fillMaxSize()) {
-        val strokeWidth = 2.dp.toPx()
-        val color = Color.White.copy(alpha = 0.5f)
-        val cornerLength = 40.dp.toPx()
-        val margin = 48.dp.toPx()
-        val right = size.width - margin
-        val bottom = size.height - margin
-
-        // Top Left
-        drawLine(color, Offset(margin, margin), Offset(margin + cornerLength, margin), strokeWidth)
-        drawLine(color, Offset(margin, margin), Offset(margin, margin + cornerLength), strokeWidth)
-        // Top Right
-        drawLine(color, Offset(right, margin), Offset(right - cornerLength, margin), strokeWidth)
-        drawLine(color, Offset(right, margin), Offset(right, margin + cornerLength), strokeWidth)
-        // Bottom Left
-        drawLine(color, Offset(margin, bottom), Offset(margin + cornerLength, bottom), strokeWidth)
-        drawLine(color, Offset(margin, bottom), Offset(margin, bottom - cornerLength), strokeWidth)
-        // Bottom Right
-        drawLine(color, Offset(right, bottom), Offset(right - cornerLength, bottom), strokeWidth)
-        drawLine(color, Offset(right, bottom), Offset(right, bottom - cornerLength), strokeWidth)
+private fun FocusHint() {
+    Surface(
+        color = Color.Black.copy(alpha = 0.4f),
+        shape = CircleShape
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.TouchApp,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(Modifier.size(8.dp))
+            Text(
+                text = "Tap to focus · line the page up with the edges",
+                color = Color.White,
+                style = MaterialTheme.typography.labelMedium
+            )
+        }
     }
 }
 
 @Composable
-private fun CameraPreviewContent(
-    onCameraReady: (imageCapture: ImageCapture) -> Unit
+private fun ShutterButton(
+    isCapturing: Boolean,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(104.dp)
+            .background(Color.Black.copy(alpha = 0.32f), CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .size(84.dp)
+                .border(4.dp, Color.White.copy(alpha = 0.9f), CircleShape)
+                .padding(6.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Surface(
+                onClick = onClick,
+                shape = CircleShape,
+                color = if (isCapturing) {
+                    MaterialTheme.colorScheme.surfaceVariant
+                } else {
+                    MaterialTheme.colorScheme.primary
+                },
+                modifier = Modifier.fillMaxSize()
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    if (isCapturing) {
+                        CircularWavyProgressIndicator(modifier = Modifier.size(36.dp))
+                    } else {
+                        Icon(
+                            imageVector = Icons.Rounded.CameraAlt,
+                            contentDescription = "Capture",
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(34.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FocusRing(point: Offset, onFinished: () -> Unit) {
+    val ringPx = with(LocalDensity.current) { 76.dp.toPx() }
+    val scale = remember(point) { Animatable(1.35f) }
+    val alpha = remember(point) { Animatable(1f) }
+
+    LaunchedEffect(point) {
+        scale.animateTo(1f, tween(220))
+        delay(500)
+        alpha.animateTo(0f, tween(200))
+        onFinished()
+    }
+
+    Box(
+        modifier = Modifier
+            .offset {
+                IntOffset(
+                    (point.x - ringPx / 2f).roundToInt(),
+                    (point.y - ringPx / 2f).roundToInt()
+                )
+            }
+            .size(76.dp)
+            .graphicsLayer { this.alpha = alpha.value }
+            .scale(scale.value)
+            .border(2.dp, Color.White, CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .size(6.dp)
+                .border(3.dp, Color.White, CircleShape)
+        )
+    }
+}
+
+@Composable
+private fun BindCamera(
+    previewView: PreviewView,
+    onCameraReady: (ImageCapture, Camera) -> Unit
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val previewView = remember {
-        PreviewView(context).apply { scaleType = PreviewView.ScaleType.FILL_CENTER }
-    }
 
     LaunchedEffect(Unit) {
         try {
@@ -306,20 +369,18 @@ private fun CameraPreviewContent(
                 .build()
 
             cameraProvider.unbindAll()
-            cameraProvider.bindToLifecycle(
+            val camera = cameraProvider.bindToLifecycle(
                 lifecycleOwner,
                 CameraSelector.DEFAULT_BACK_CAMERA,
                 preview,
                 imageCapture
             )
 
-            onCameraReady(imageCapture)
+            onCameraReady(imageCapture, camera)
         } catch (e: Exception) {
             Log.e(TAG, "Camera binding failed", e)
         }
     }
-
-    AndroidView(factory = { previewView }, modifier = Modifier.fillMaxSize())
 }
 
 private fun captureImage(

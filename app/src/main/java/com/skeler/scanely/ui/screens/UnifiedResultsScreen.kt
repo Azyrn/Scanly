@@ -48,23 +48,19 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.skeler.scanely.core.actions.ActionExecutor
 import com.skeler.scanely.core.actions.ScanAction
 import com.skeler.scanely.navigation.LocalNavController
 import com.skeler.scanely.ui.components.ExtractedTextActions
 import com.skeler.scanely.ui.components.ExtractedTextSection
 import com.skeler.scanely.ui.components.ScanResultSkeleton
-import com.skeler.scanely.ui.components.TextExportFormat
+import com.skeler.scanely.ui.components.PADDLE_EXPORT_FORMATS
+import com.skeler.scanely.ui.components.TEXT_EXPORT_FORMATS
 import com.skeler.scanely.ui.components.rememberExtractedTextState
 import com.skeler.scanely.ui.components.rememberTextExporter
 import com.skeler.scanely.ui.viewmodel.UnifiedScanViewModel
 
-/**
- * Unified Results Screen — floating back over free-scrolling content, a minimal
- * centered "Results" title, and an "Extracted Text" ⟷ "Quick Actions" control
- * row above the raw text. No surfaces: the text sits directly on the page.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UnifiedResultsScreen() {
@@ -74,7 +70,11 @@ fun UnifiedResultsScreen() {
     val navController = LocalNavController.current
 
     val uiState by unifiedViewModel.uiState.collectAsState()
-    val exportText = rememberTextExporter()
+    val exportText = rememberTextExporter(
+        blocks = uiState.textBlocks,
+        markdown = uiState.markdown
+    )
+    val exportFormats = if (uiState.isOfflineOcr) PADDLE_EXPORT_FORMATS else TEXT_EXPORT_FORMATS
 
     val extracted = uiState.extractedText.orEmpty()
     val textState = rememberExtractedTextState(extracted)
@@ -89,8 +89,7 @@ fun UnifiedResultsScreen() {
         navController.popBackStack()
     }
 
-    // Barcode + smart-text actions folded into one Quick Actions menu (Copy/ShowRaw
-    // dropped, unique only, capped at 6). Remembered so it isn't rebuilt on scroll.
+    // Merge barcode + smart-text actions; drop Copy/ShowRaw; distinct, max 6.
     val quickActions = remember(uiState.barcodeActions, uiState.textActions) {
         val smart = uiState.textActions
             .filter { it !is ScanAction.CopyText && it !is ScanAction.ShowRaw }
@@ -121,7 +120,6 @@ fun UnifiedResultsScreen() {
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp)
         ) {
-            // Minimal centered title; the floating back button overlays its left.
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -157,9 +155,6 @@ fun UnifiedResultsScreen() {
                 else -> {
                     Spacer(modifier = Modifier.height(4.dp))
 
-                    // Mirrors the online results header: Notes + title left,
-                    // Actions / Edit / Save / Copy cluster right. Cluster shrinks
-                    // when the Actions button is present so it doesn't crowd.
                     val hasActions = quickActions.isNotEmpty()
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -187,6 +182,7 @@ fun UnifiedResultsScreen() {
                                     text = extracted,
                                     onCopy = onCopyExtracted,
                                     onExport = { exportText(extracted, it) },
+                                    exportFormats = exportFormats,
                                     onSaveEdit = { unifiedViewModel.updateExtractedText(it) },
                                     compact = hasActions,
                                     leading = if (hasActions) {
@@ -212,7 +208,6 @@ fun UnifiedResultsScreen() {
                         Spacer(modifier = Modifier.height(10.dp))
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                         Spacer(modifier = Modifier.height(16.dp))
-                        // Raw text directly on the page — no card, no surface.
                         ExtractedTextSection(state = textState, text = extracted)
                     }
                 }
@@ -221,7 +216,6 @@ fun UnifiedResultsScreen() {
             Spacer(modifier = Modifier.height(48.dp))
         }
 
-        // Floating back — hovers above the content, which scrolls freely beneath.
         FilledTonalIconButton(
             onClick = onBack,
             shape = RoundedCornerShape(16.dp),
@@ -239,7 +233,6 @@ fun UnifiedResultsScreen() {
     }
 }
 
-/** Actions slot (mirrors the online Edit button) opening the smart-actions menu. */
 @Composable
 private fun ActionsButton(
     actions: List<ScanAction>,

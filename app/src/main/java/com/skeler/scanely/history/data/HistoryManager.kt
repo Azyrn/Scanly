@@ -21,15 +21,6 @@ data class HistoryItem(
     val timestamp: Long = System.currentTimeMillis()
 )
 
-/**
- * Manages scan history with persistent image storage.
- *
- * ULTRATHINK Image Persistence:
- * - Content URIs become invalid after app restart
- * - Solution: Copy image to internal app storage
- * - File path stored in JSON instead of content URI
- * - Images auto-cleaned when history item deleted
- */
 @Singleton
 class HistoryManager @Inject constructor(
     @ApplicationContext private val context: Context
@@ -37,20 +28,12 @@ class HistoryManager @Inject constructor(
     private val historyFile = File(context.filesDir, "scan_history.json")
     private val imagesDir = File(context.filesDir, "history_images").also { it.mkdirs() }
 
-    /**
-     * Save a history item with persistent image copy.
-     *
-     * @param text The extracted/translated text
-     * @param imageUri Original content URI of the image
-     */
     fun saveItem(text: String, imageUri: String): HistoryItem {
-        // Copy image to internal storage for persistence
         val persistentUri = copyImageToInternalStorage(imageUri)
 
         val item = HistoryItem(text = text, imageUri = persistentUri)
         val currentList = getHistory().toMutableList()
         currentList.add(0, item)
-        // Keep only last 50 items (delete old images too)
         if (currentList.size > 50) {
             val removed = currentList.drop(50)
             removed.forEach { old -> deleteImage(old.imageUri) }
@@ -60,11 +43,6 @@ class HistoryManager @Inject constructor(
         return item
     }
 
-    /**
-     * Replace the stored text of the item with [id] (used when the user corrects
-     * imperfect OCR). No-op if the item is no longer in history. The image and
-     * timestamp are left untouched.
-     */
     fun updateItemText(id: String, text: String) {
         if (id.isBlank()) return
         val currentList = getHistory().toMutableList()
@@ -74,10 +52,6 @@ class HistoryManager @Inject constructor(
         saveHistory(currentList)
     }
 
-    /**
-     * Copy image from content URI to internal storage.
-     * Returns file:// URI that persists across app restarts.
-     */
     private fun copyImageToInternalStorage(sourceUri: String): String {
         return try {
             val uri = sourceUri.toUri()
@@ -90,18 +64,13 @@ class HistoryManager @Inject constructor(
                 }
             }
             
-            // Return file:// URI
             destFile.toUri().toString()
         } catch (e: Exception) {
-            // If copy fails, return original URI (may not persist)
             Log.w(TAG, "Image copy failed, using original URI", e)
             sourceUri
         }
     }
 
-    /**
-     * Delete image file from internal storage.
-     */
     private fun deleteImage(imageUri: String) {
         try {
             if (imageUri.startsWith("file://")) {
@@ -111,7 +80,6 @@ class HistoryManager @Inject constructor(
                 }
             }
         } catch (e: Exception) {
-            // Ignore deletion errors
         }
     }
 
@@ -141,7 +109,6 @@ class HistoryManager @Inject constructor(
     }
     
     fun clearHistory() {
-        // Delete all images
         imagesDir.listFiles()?.forEach { it.delete() }
         
         if (historyFile.exists()) {

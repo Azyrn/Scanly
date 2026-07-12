@@ -21,12 +21,6 @@ private const val TAG = "OpenPetFoodFactsEngine"
 private const val FIELDS =
     "product_name,brands,image_front_url,ingredients_text,nutriments"
 
-/**
- * Lookup engine for pet food products using Open Pet Food Facts API.
- *
- * Supports: EAN-8, EAN-13, UPC-A barcodes
- * Data: Pet food nutrition, ingredients
- */
 @Singleton
 class OpenPetFoodFactsEngine @Inject constructor(
     private val okHttpClient: OkHttpClient

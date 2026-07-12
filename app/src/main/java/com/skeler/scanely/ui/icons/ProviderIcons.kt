@@ -7,21 +7,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.addPathNodes
 import androidx.compose.ui.unit.dp
 
-/**
- * Real AI-provider wordmarks for the AI Providers screen, traced from
- * lobehub's MIT-licensed icons-static-svg set (github.com/lobehub/lobe-icons)
- * — the set most AI tooling uses for this exact purpose — instead of generic
- * Material glyphs (Bolt, Memory, AutoAwesome...) standing in for a brand.
- * Each is a single-color, 24dp-viewport path tinted by the caller like any
- * other [androidx.compose.material3.Icon]; fill rule is even-odd throughout,
- * matching the source SVGs' own `fill-rule="evenodd"`.
- *
- * Path data is written with every command and flag space-separated (never
- * SVG's terser glued-flag shorthand like "01-4.45"). Compose's PathParser
- * misreads that shorthand on elliptical-arc commands — it renders a distorted
- * blob instead of the curve — so anyone adding an icon here should keep new
- * paths in this same explicit, space-delimited form.
- */
+// lobehub icons-static-svg (MIT). Space-delimit path commands — Compose PathParser misreads SVG glued-flag shorthand.
 object ProviderIcons {
 
     val Gemini: ImageVector by lazy {
@@ -168,7 +154,7 @@ object ProviderIcons {
             "Provider.Nvidia",
             "M 10.212 8.976 V 7.62 c .127 -.01 .256 -.017 .388 -.021 3.596 -.117 5.957 3.184 5.957 " +
                 "3.184 s -2.548 3.647 -5.282 3.647 a 3.227 3.227 0 0 1 -1.063 -.175 v -4.109 c 1.4 .174 " +
-                "1.681 .812 2.523 2.258 l 1.873 -1.627 a 4.905 4.905 0 0 0 -3.67 -1.846 6.594 6.594 0 0 0 " +
+                "1.681 .812 2.523 2.258 l 1.873 -1.627 a 4.905 4.905 0 0 0 -3.67 -1.846 a 6.594 6.594 0 0 0 " +
                 "-.729 .044 m 0 -4.476 v 2.025 c .13 -.01 .259 -.019 .388 -.024 5.002 -.174 8.261 4.226 " +
                 "8.261 4.226 s -3.743 4.69 -7.643 4.69 c -.338 0 -.675 -.031 -1.007 -.092 v 1.25 c .278 " +
                 ".038 .558 .057 .838 .057 3.629 0 6.253 -1.91 8.794 -4.169 .421 .347 2.146 1.193 2.501 " +

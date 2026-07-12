@@ -4,11 +4,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Shapes
 import androidx.compose.ui.unit.dp
 
-/**
- * Material 3 Expressive leans into rounder, softer geometry. Bumping the scale
- * gives cards, chips, buttons and sheets a friendlier, more premium feel while
- * staying within the M3 token roles.
- */
 val ScanelyShapes = Shapes(
     extraSmall = RoundedCornerShape(8.dp),
     small = RoundedCornerShape(12.dp),

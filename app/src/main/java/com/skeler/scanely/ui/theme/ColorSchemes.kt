@@ -16,14 +16,6 @@ import androidx.core.graphics.ColorUtils
 import com.google.android.material.color.utilities.CorePalette
 import com.google.android.material.color.utilities.Hct
 
-// =============================================================================
-// TONAL PALETTES
-//
-// A SeedColor is expanded into Material 3 HCT tonal palettes via CorePalette
-// (the same colour science behind Material You). Each of the three seed anchors
-// contributes its own accent ramp; neutrals/errors derive from the primary.
-// =============================================================================
-
 private class TonalPalettes(seed: SeedColor) {
     private val mono = seed.monochrome
     private val primaryCore = CorePalette.of(seed.primary)
@@ -33,36 +25,24 @@ private class TonalPalettes(seed: SeedColor) {
     /** Chroma-0 gray at [tone]; CorePalette would otherwise force accents to chroma≥48. */
     private fun gray(tone: Int): Color = Color(Hct.from(0.0, 0.0, tone.toDouble()).toInt())
 
-    /** Primary accent ramp. */
     fun a1(tone: Int): Color = if (mono) gray(tone) else Color(primaryCore.a1.tone(tone))
 
-    /** Secondary accent ramp (from the secondary seed's own vivid a1). */
     fun a2(tone: Int): Color = if (mono) gray(tone) else Color(secondaryCore.a1.tone(tone))
 
-    /** Tertiary accent ramp (from the tertiary seed's own vivid a1). */
     fun a3(tone: Int): Color = if (mono) gray(tone) else Color(tertiaryCore.a1.tone(tone))
 
-    /** Neutral ramp for surfaces/backgrounds. */
     fun n1(tone: Int): Color = if (mono) gray(tone) else Color(primaryCore.n1.tone(tone))
 
-    /** Neutral-variant ramp for outlines/surface variants. */
     fun n2(tone: Int): Color = if (mono) gray(tone) else Color(primaryCore.n2.tone(tone))
 
-    /** Standard error ramp. */
     fun error(tone: Int): Color = Color(primaryCore.error.tone(tone))
 }
 
-/** Fraction of primary blended into secondary/tertiary for a cohesive, harmonized set. */
 private const val HarmonizeFraction = 0.1f
 
-/** Non-black dark surfaces used when a dynamic scheme resolves to pure black but OLED is off. */
+/** Non-black dark surfaces when OLED is off. */
 private val DarkSurface = Color(0xFF141218)
 
-// =============================================================================
-// SEED-BASED SCHEMES — the single pipeline for all non-dynamic themes
-// =============================================================================
-
-/** Build a full Material 3 [ColorScheme] from [seed] for the requested brightness. */
 fun seedColorScheme(seed: SeedColor, dark: Boolean): ColorScheme {
     val palettes = TonalPalettes(seed)
     return if (dark) darkSeedScheme(palettes) else lightSeedScheme(palettes)
@@ -162,14 +142,7 @@ private fun darkSeedScheme(p: TonalPalettes): ColorScheme {
     )
 }
 
-// =============================================================================
-// SURFACE TRANSFORMS — applied uniformly to any dark scheme (seed OR dynamic)
-// =============================================================================
-
-/**
- * Force a true-black OLED scheme: blacken the base surfaces and push the elevation
- * ladder down one step so cards keep a subtle, layered separation from pure black.
- */
+/** OLED: true-black surfaces; keep slight card elevation. */
 fun ColorScheme.toOledBlack(): ColorScheme = copy(
     background = Color.Black,
     surface = Color.Black,
@@ -181,18 +154,8 @@ fun ColorScheme.toOledBlack(): ColorScheme = copy(
     surfaceContainerHighest = surfaceContainerHigh,
 )
 
-/**
- * Bring any non-OLED dark scheme to life. Wallpaper-derived (dynamic) neutrals
- * often resolve to a flat, near-black gray-brown with almost no separation between
- * background and cards — the classic "sad" dark theme. This rebuilds the surface
- * elevation ladder from a single anchor, widening the steps so cards read clearly,
- * and folds a hint of the scheme's own accent into every surface so the dark tone
- * feels tinted and intentional instead of dead. The accent tint keeps dynamic
- * schemes on-hue while making seed schemes richer.
- */
 fun ColorScheme.enlivenDark(): ColorScheme {
-    // Anchor the darkest surface; lift a dynamic scheme off (near-)black since OLED
-    // mode owns the true-black look via toOledBlack().
+    // Lift non-OLED dark schemes off pure black (OLED uses toOledBlack).
     val base = if (surface.luminance() < 0.02f) DarkSurface else surface
     val tint = primary
 
@@ -213,14 +176,8 @@ fun ColorScheme.enlivenDark(): ColorScheme {
     )
 }
 
-// =============================================================================
-// COLOR UTILITIES
-// =============================================================================
-
-/** Blend [HarmonizeFraction] of [primary] into this accent for a cohesive scheme. */
 private fun Color.harmonize(primary: Color): Color = blend(primary, HarmonizeFraction)
 
-/** Blend this colour toward [other] by [fraction] (0 = unchanged, 1 = fully [other]). */
 fun Color.blend(
     other: Color,
     @FloatRange(from = 0.0, to = 1.0) fraction: Float = 0.1f

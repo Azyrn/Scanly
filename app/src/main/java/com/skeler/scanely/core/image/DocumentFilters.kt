@@ -6,34 +6,14 @@ import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
 import android.graphics.Paint
 
-/**
- * Quick enhancement filters applied on top of the ML Kit scanned pages so the
- * final scan "looks like it came from a professional scanner". These run on a
- * background dispatcher (see DocumentScanViewModel) and never mutate the source
- * bitmap.
- */
 enum class ScanFilter(val label: String) {
-    /** The scanner's own cleaned output, untouched. */
     ORIGINAL("Original"),
-
-    /** Balanced auto contrast + brightness lift for everyday readability. */
     AUTO("Auto"),
-
-    /** Vivid, punchy colour — great for coloured forms and receipts. */
     MAGIC_COLOR("Magic Color"),
-
-    /** High-contrast pure black & white, ideal for text & printing. */
     BLACK_WHITE("Black & White"),
-
-    /** Neutral greyscale. */
     GRAYSCALE("Grayscale")
 }
 
-/**
- * Stateless filter engine. Colour operations are done with [ColorMatrix] for
- * speed; Black & White additionally binarises via a global luminance threshold
- * derived from the image itself (a lightweight Otsu-style mean).
- */
 object DocumentFilters {
 
     fun apply(source: Bitmap, filter: ScanFilter): Bitmap = when (filter) {
@@ -54,7 +34,6 @@ object DocumentFilters {
         return result
     }
 
-    /** Gentle contrast (1.18x) with a small brightness lift. */
     private fun autoMatrix(): ColorMatrix {
         val scale = 1.18f
         val translate = (1f - scale) / 2f * 255f + 8f
@@ -68,7 +47,6 @@ object DocumentFilters {
         )
     }
 
-    /** Saturation boost stacked with a firm contrast curve for vivid output. */
     private fun magicColorMatrix(): ColorMatrix {
         val saturation = ColorMatrix().apply { setSaturation(1.35f) }
         val scale = 1.28f
@@ -89,45 +67,59 @@ object DocumentFilters {
 
     private fun grayscaleMatrix(): ColorMatrix = ColorMatrix().apply { setSaturation(0f) }
 
-    /**
-     * Convert to pure black & white using a global luminance threshold. The
-     * threshold is the mean luminance of a down-sampled scan of the pixels, which
-     * adapts to lighting without the cost of a full per-pixel adaptive pass.
-     */
+    // Local adaptive threshold: a global one turns uneven lighting/edge shadows into
+    // black bands; a local mean tracks lighting while preserving text and fine lines.
     private fun binarize(source: Bitmap): Bitmap {
         val width = source.width
         val height = source.height
         val pixels = IntArray(width * height)
         source.getPixels(pixels, 0, width, 0, 0, width, height)
 
-        // Estimate threshold from a sparse sample (every ~16th pixel).
-        var sum = 0L
-        var count = 0
-        val step = maxOf(1, pixels.size / 4096)
-        var i = 0
-        while (i < pixels.size) {
-            val p = pixels[i]
-            val r = (p shr 16) and 0xFF
-            val g = (p shr 8) and 0xFF
-            val b = p and 0xFF
-            sum += (r * 30 + g * 59 + b * 11) / 100
-            count++
-            i += step
+        // Pages max 2200px/side keeps this luminance table under Int.MAX_VALUE; O(1) local-mean lookups.
+        val stride = width + 1
+        val integral = IntArray(stride * (height + 1))
+        for (y in 0 until height) {
+            var rowSum = 0
+            val integralRow = (y + 1) * stride
+            val previousRow = y * stride
+            val pixelRow = y * width
+            for (x in 0 until width) {
+                val p = pixels[pixelRow + x]
+                val luminance = ((p shr 16 and 0xFF) * 30 +
+                    (p shr 8 and 0xFF) * 59 +
+                    (p and 0xFF) * 11) / 100
+                rowSum += luminance
+                integral[integralRow + x + 1] = integral[previousRow + x + 1] + rowSum
+            }
         }
-        val threshold = if (count == 0) 128 else (sum / count).toInt()
 
-        for (j in pixels.indices) {
-            val p = pixels[j]
-            val r = (p shr 16) and 0xFF
-            val g = (p shr 8) and 0xFF
-            val b = p and 0xFF
-            val lum = (r * 30 + g * 59 + b * 11) / 100
-            val v = if (lum >= threshold) 0xFF else 0x00
-            pixels[j] = (0xFF shl 24) or (v shl 16) or (v shl 8) or v
+        val radius = (minOf(width, height) / 18).coerceIn(24, 96)
+        for (y in 0 until height) {
+            val top = (y - radius).coerceAtLeast(0)
+            val bottom = (y + radius + 1).coerceAtMost(height)
+            for (x in 0 until width) {
+                val left = (x - radius).coerceAtLeast(0)
+                val right = (x + radius + 1).coerceAtMost(width)
+                val area = (right - left) * (bottom - top)
+                val localMean = (
+                    integral[bottom * stride + right] -
+                        integral[top * stride + right] -
+                        integral[bottom * stride + left] +
+                        integral[top * stride + left]
+                    ) / area
+                val p = pixels[y * width + x]
+                val luminance = ((p shr 16 and 0xFF) * 30 +
+                    (p shr 8 and 0xFF) * 59 +
+                    (p and 0xFF) * 11) / 100
+                val value = if (luminance >= localMean - BLACK_WHITE_BIAS) 0xFF else 0x00
+                pixels[y * width + x] = (0xFF shl 24) or (value shl 16) or (value shl 8) or value
+            }
         }
 
         val result = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         result.setPixels(pixels, 0, width, 0, 0, width, height)
         return result
     }
+
+    private const val BLACK_WHITE_BIAS = 16
 }

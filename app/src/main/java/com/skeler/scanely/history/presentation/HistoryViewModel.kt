@@ -11,10 +11,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/**
- * ViewModel for History screen.
- * Uses Hilt-injected HistoryManager for consistent data access.
- */
 @HiltViewModel
 class HistoryViewModel @Inject constructor(
     private val historyManager: HistoryManager

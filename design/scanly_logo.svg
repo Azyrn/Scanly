@@ -1,0 +1,160 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <path id="sPath" d="M 820 178 L 781 224 L 800 212 C 761 262 700 330 658 402 C 690 402 725 410 752 424 C 714 446 646 450 574 444 C 550 441 528 436 512 431 C 550 426 582 412 598 390 C 612 366 606 344 586 336 C 563 327 534 331 512 349 C 492 366 477 392 472 412 C 470 421 471 426 475 428 C 522 456 608 476 664 492 C 716 508 742 532 744 560 C 746 594 720 634 682 660 C 620 698 480 736 358 764 C 310 777 262 800 226 832 C 258 798 320 726 350 692 C 366 674 379 648 383 626 C 368 602 332 580 292 561 C 352 552 430 549 497 549 C 478 563 462 584 457 606 C 452 632 470 650 502 653 C 534 655 564 638 574 612 C 582 590 582 564 566 547 C 549 529 514 519 486 521 C 452 496 408 490 374 499 C 358 478 349 458 348 437 C 348 414 359 391 378 373 C 400 351 432 331 466 318 C 545 291 642 264 703 242 C 748 224 792 200 820 178 Z"/>
+    <clipPath id="sClip"><use xlink:href="#sPath" href="#sPath"/></clipPath>
+
+    <radialGradient id="bg" cx="0.5" cy="0.22" r="0.95">
+      <stop offset="0" stop-color="#3a1145"/>
+      <stop offset="0.45" stop-color="#1e0826"/>
+      <stop offset="1" stop-color="#0a020e"/>
+    </radialGradient>
+    <radialGradient id="frameBloom" cx="0.5" cy="0.35" r="0.65">
+      <stop offset="0" stop-color="#b23ad2" stop-opacity="0.6"/>
+      <stop offset="0.6" stop-color="#8a26aa" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#8322a4" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="glass" x1="0.5" y1="0" x2="0.5" y2="1">
+      <stop offset="0" stop-color="#4d1462"/>
+      <stop offset="0.35" stop-color="#2e0a3c"/>
+      <stop offset="0.8" stop-color="#160420"/>
+      <stop offset="1" stop-color="#22072c"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="0.5" y1="0" x2="0.5" y2="1">
+      <stop offset="0" stop-color="#f0a6f6"/>
+      <stop offset="0.5" stop-color="#ad42ca"/>
+      <stop offset="1" stop-color="#6a1884"/>
+    </linearGradient>
+    <radialGradient id="innerBloom" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#cc45e0" stop-opacity="0.62"/>
+      <stop offset="0.7" stop-color="#b035c8" stop-opacity="0.24"/>
+      <stop offset="1" stop-color="#b035c8" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="sBase" x1="420" y1="290" x2="690" y2="780" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff2fe"/>
+      <stop offset="0.3" stop-color="#fbcaf6"/>
+      <stop offset="0.6" stop-color="#f0a2ec"/>
+      <stop offset="1" stop-color="#d873da"/>
+    </linearGradient>
+    <radialGradient id="loopSheen" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.75"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="lobeSheen" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="heartG" x1="0.3" y1="0.1" x2="0.7" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.55" stop-color="#fbd2f8"/>
+      <stop offset="1" stop-color="#eda2ec"/>
+    </linearGradient>
+    <radialGradient id="softGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ffd6fb" stop-opacity="0.8"/>
+      <stop offset="0.5" stop-color="#ef8df2" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#ef8df2" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="sparkG" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.6" stop-color="#fbd7fa"/>
+      <stop offset="1" stop-color="#eda6f2"/>
+    </radialGradient>
+  </defs>
+
+  <rect id="background" width="1024" height="1024" fill="url(#bg)"/>
+  <ellipse id="ambient-bloom" cx="512" cy="400" rx="520" ry="440" fill="url(#frameBloom)"/>
+
+  <g id="frame">
+    <rect x="112" y="98" width="800" height="812" rx="168" fill="none" stroke="#b13ecb" stroke-opacity="0.14" stroke-width="56"/>
+    <rect x="112" y="98" width="800" height="812" rx="168" fill="none" stroke="#c04ad6" stroke-opacity="0.28" stroke-width="26"/>
+    <rect x="112" y="98" width="800" height="812" rx="168" fill="url(#glass)" stroke="#2e0b3a" stroke-width="16"/>
+    <rect x="112" y="98" width="800" height="812" rx="168" fill="none" stroke="url(#rim)" stroke-width="6"/>
+    <path id="frame-top-highlight" d="M 300 98 L 724 98" fill="none" stroke="#f8d2fb" stroke-opacity="0.8" stroke-width="4" stroke-linecap="round"/>
+    <path id="frame-bottom-reflection" d="M 300 884 C 400 896 624 896 724 884" fill="none" stroke="#c46bd6" stroke-opacity="0.35" stroke-width="4" stroke-linecap="round"/>
+  </g>
+
+  <ellipse id="inner-bloom" cx="515" cy="495" rx="340" ry="325" fill="url(#innerBloom)"/>
+
+  <g id="orbit-ring" transform="rotate(-14 523 468)" fill="none" stroke-linecap="round">
+    <g id="ring-glow-wide" stroke="#c937dd" stroke-opacity="0.22" stroke-width="34">
+      <path d="M 406 265 A 288 222 0 0 1 631 262"/>
+      <path d="M 797 399 A 288 222 0 0 1 708 638"/>
+      <path d="M 583 685 A 288 222 0 0 1 434 679"/>
+      <path d="M 345 643 A 288 222 0 0 1 240 506"/>
+      <path d="M 252 392 A 288 222 0 0 1 316 314"/>
+    </g>
+    <g id="ring-glow" stroke="#d848e8" stroke-opacity="0.4" stroke-width="18">
+      <path d="M 406 265 A 288 222 0 0 1 631 262"/>
+      <path d="M 797 399 A 288 222 0 0 1 708 638"/>
+      <path d="M 583 685 A 288 222 0 0 1 434 679"/>
+      <path d="M 345 643 A 288 222 0 0 1 240 506"/>
+      <path d="M 252 392 A 288 222 0 0 1 316 314"/>
+    </g>
+    <g id="ring-core" stroke="#f6b3f9" stroke-width="9">
+      <path d="M 406 265 A 288 222 0 0 1 631 262"/>
+      <path d="M 797 399 A 288 222 0 0 1 708 638"/>
+      <path d="M 583 685 A 288 222 0 0 1 434 679"/>
+      <path d="M 345 643 A 288 222 0 0 1 240 506"/>
+      <path d="M 252 392 A 288 222 0 0 1 316 314"/>
+    </g>
+    <g id="ring-echo" stroke="#e07df0" stroke-width="4.5" stroke-opacity="0.9">
+      <path d="M 442 280 A 262 198 0 0 1 595 278"/>
+      <path d="M 560 664 A 262 198 0 0 1 459 660"/>
+    </g>
+  </g>
+
+  <g id="letter-s">
+    <g id="s-glow" fill="none" stroke-linejoin="round">
+      <use xlink:href="#sPath" href="#sPath" stroke="#c33bda" stroke-opacity="0.12" stroke-width="104"/>
+      <use xlink:href="#sPath" href="#sPath" stroke="#cc3ee2" stroke-opacity="0.18" stroke-width="76"/>
+      <use xlink:href="#sPath" href="#sPath" stroke="#d848e8" stroke-opacity="0.28" stroke-width="52"/>
+      <use xlink:href="#sPath" href="#sPath" stroke="#ea5ff2" stroke-opacity="0.45" stroke-width="30"/>
+      <use xlink:href="#sPath" href="#sPath" stroke="#f895fa" stroke-opacity="0.75" stroke-width="14"/>
+    </g>
+    <use id="s-body" xlink:href="#sPath" href="#sPath" fill="url(#sBase)"/>
+    <g id="s-shading" clip-path="url(#sClip)">
+      <ellipse id="loop-sheen" cx="505" cy="385" rx="110" ry="72" transform="rotate(-18 505 385)" fill="url(#loopSheen)"/>
+      <ellipse id="lobe-sheen" cx="652" cy="550" rx="88" ry="60" transform="rotate(-12 652 550)" fill="url(#lobeSheen)"/>
+      <g id="s-dark-bands" fill="none" stroke="#9a2fae" stroke-linecap="round">
+        <path d="M 390 455 C 378 402 400 360 450 336 C 525 302 625 278 700 252" stroke-width="13" stroke-opacity="0.7"/>
+        <path d="M 778 232 C 740 278 704 330 678 380" stroke-width="11" stroke-opacity="0.7"/>
+        <path d="M 500 468 C 588 488 672 512 714 552" stroke-width="9" stroke-opacity="0.7"/>
+        <path d="M 708 588 C 702 624 660 654 598 677 C 518 705 420 728 342 752" stroke-width="13" stroke-opacity="0.85"/>
+        <path d="M 688 572 C 678 600 644 626 590 647" stroke-width="7" stroke-opacity="0.6"/>
+        <path d="M 302 572 C 352 564 410 559 458 557" stroke-width="8" stroke-opacity="0.7"/>
+        <path d="M 265 798 C 302 757 336 716 358 688" stroke-width="7" stroke-opacity="0.7"/>
+      </g>
+      <g id="s-glazes" fill="#ffffff" fill-opacity="0.95">
+        <path id="glaze-loop" d="M 400 382 C 452 328 556 294 666 258 C 580 316 488 360 428 392 Z"/>
+        <path id="glaze-spike" d="M 802 194 C 760 240 716 298 692 344 C 724 288 762 234 796 188 Z"/>
+        <path id="glaze-midbar" d="M 482 446 C 570 462 668 494 724 540 C 660 514 560 486 484 470 Z"/>
+        <path id="glaze-lobe" d="M 414 726 C 512 700 610 668 662 628 C 604 682 508 712 422 734 Z"/>
+      </g>
+      <g id="s-rimlights" fill="none" stroke="#ffffff" stroke-opacity="0.75" stroke-linecap="round" stroke-width="3.5">
+        <path d="M 380 370 C 404 347 436 326 468 316 C 546 289 642 262 700 242"/>
+        <path d="M 706 240 C 748 222 790 200 814 182"/>
+        <path d="M 660 405 C 690 404 722 411 746 422"/>
+      </g>
+      <g id="s-highlights" fill="none" stroke="#ffffff" stroke-linecap="round">
+        <path d="M 372 442 C 371 415 382 392 401 375" stroke-width="11" stroke-opacity="0.9"/>
+        <path d="M 565 437 C 625 441 692 437 736 428" stroke-width="6" stroke-opacity="0.85"/>
+        <path d="M 260 804 C 297 762 331 723 357 691" stroke-width="6" stroke-opacity="0.9"/>
+        <path d="M 316 565 C 360 558 410 554 448 552" stroke-width="5" stroke-opacity="0.85"/>
+      </g>
+    </g>
+    <use id="s-outline" xlink:href="#sPath" href="#sPath" fill="none" stroke="#64106e" stroke-width="8" stroke-linejoin="round"/>
+    <g id="heart" transform="translate(648 566) rotate(-8) scale(1.7)">
+      <circle r="30" fill="url(#softGlow)"/>
+      <path d="M 0 14 C -14 2 -20 -8 -13 -15 C -7 -21 0 -17 0 -9 C 0 -17 7 -21 13 -15 C 20 -8 14 2 0 14 Z" fill="url(#heartG)"/>
+      <ellipse cx="-7" cy="-10" rx="4" ry="2.6" transform="rotate(-25 -7 -10)" fill="#ffffff" fill-opacity="0.9"/>
+    </g>
+  </g>
+
+  <g id="sparkles">
+    <circle cx="345" cy="282" r="75" fill="url(#softGlow)" opacity="0.7"/>
+    <path id="sparkle-big" d="M 345 218 Q 353 270 387 282 Q 353 294 345 346 Q 337 294 303 282 Q 337 270 345 218 Z" fill="url(#sparkG)"/>
+    <circle cx="727" cy="380" r="34" fill="url(#softGlow)" opacity="0.6"/>
+    <path id="sparkle-right" d="M 727 353 Q 730 375 745 380 Q 730 385 727 407 Q 724 385 709 380 Q 724 375 727 353 Z" fill="url(#sparkG)"/>
+    <circle cx="700" cy="700" r="48" fill="url(#softGlow)" opacity="0.65"/>
+    <path id="sparkle-bottom" d="M 700 658 Q 705 692 727 700 Q 705 708 700 742 Q 695 708 673 700 Q 695 692 700 658 Z" fill="url(#sparkG)"/>
+  </g>
+</svg>

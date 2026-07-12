@@ -16,26 +16,8 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
 
-/**
- * Utility object to execute ScanAction items.
- *
- * Handles:
- * - Open URL in browser
- * - Copy text to clipboard
- * - Make phone call
- * - Send email
- * - Send SMS
- * - Connect to WiFi
- * - Add contact
- */
 object ActionExecutor {
 
-    /**
-     * Execute a ScanAction.
-     *
-     * @param context Android context
-     * @param action The action to execute
-     */
     fun execute(context: Context, action: ScanAction) {
         when (action) {
             is ScanAction.OpenUrl -> openUrl(context, action.url)
@@ -47,7 +29,7 @@ object ActionExecutor {
             is ScanAction.AddContact -> addContact(context, action)
             is ScanAction.AddEvent -> addEvent(context, action)
             is ScanAction.ShowRaw -> copyText(context, action.text)
-            is ScanAction.LookupProduct -> { /* Handled separately in BarcodeScannerScreen */ }
+            is ScanAction.LookupProduct -> { /* Handled in BarcodeScannerScreen */ }
         }
     }
 
@@ -115,7 +97,6 @@ object ActionExecutor {
     private fun connectWifi(context: Context, ssid: String, password: String?, type: WifiType) {
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                // Android 10+ - use WiFi suggestion API
                 val suggestion = WifiNetworkSuggestion.Builder()
                     .setSsid(ssid)
                     .apply {
@@ -128,13 +109,11 @@ object ActionExecutor {
                 val wifiManager = context.getSystemService(Context.WIFI_SERVICE) as WifiManager
                 wifiManager.addNetworkSuggestions(listOf(suggestion))
                 
-                // Open WiFi settings for user to connect
                 val intent = Intent(Settings.ACTION_WIFI_SETTINGS)
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 context.startActivity(intent)
                 Toast.makeText(context, "WiFi suggestion added: $ssid", Toast.LENGTH_SHORT).show()
             } else {
-                // Pre-Android 10 - open WiFi settings
                 val intent = Intent(Settings.ACTION_WIFI_SETTINGS)
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 context.startActivity(intent)
@@ -182,11 +161,7 @@ object ActionExecutor {
         }
     }
 
-    /**
-     * Parse an ML Kit calendar-event date string into epoch millis.
-     * Handles the iCalendar basic formats "yyyyMMdd'T'HHmmss'Z'" (UTC),
-     * "yyyyMMdd'T'HHmmss" (local), and date-only "yyyyMMdd". Returns null if unparseable.
-     */
+    /** iCal basic: yyyyMMdd['T'HHmmss['Z']]; null if unparseable. */
     private fun parseEventMillis(raw: String?): Long? {
         if (raw.isNullOrBlank()) return null
         val value = raw.trim()

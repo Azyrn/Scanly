@@ -21,8 +21,7 @@ class MainActivity : ComponentActivity() {
     private val settingsViewModel: SettingsViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Hold the splash until settings load so the first visible frame is real
-        // content, not the blank pre-settings composition.
+        // Hold splash until settings load (avoid blank first frame).
         installSplashScreen().setKeepOnScreenCondition {
             settingsViewModel.settingsUiState.value == null
         }

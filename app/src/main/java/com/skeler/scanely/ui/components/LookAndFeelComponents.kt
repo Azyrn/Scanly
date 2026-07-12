@@ -36,6 +36,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
@@ -47,19 +48,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-/**
- * Reusable building blocks for the Look & Feel settings screen.
- *
- * The visual language mirrors [com.skeler.scanely.ui.components.illustrations.PaletteShowcase]:
- * Material 3 Expressive squircles, tonal container surfaces, hairline borders drawn
- * from `onSurface`, and quiet motion. Every surface derives its colour from the live
- * [MaterialTheme.colorScheme], so these components re-tint instantly when the user
- * switches palette.
- */
-
-/**
- * A small, accent-tinted section label that introduces a group of settings.
- */
 @Composable
 fun SettingsSectionHeader(
     text: String,
@@ -75,10 +63,6 @@ fun SettingsSectionHeader(
     )
 }
 
-/**
- * A tonal-elevated container that visually groups a stack of setting tiles onto a
- * single rounded surface, in the M3 Expressive "card of tiles" idiom.
- */
 @Composable
 fun SettingsGroup(
     modifier: Modifier = Modifier,
@@ -100,9 +84,6 @@ fun SettingsGroup(
     }
 }
 
-/**
- * A hairline, inset divider used to separate adjacent tiles inside a [SettingsGroup].
- */
 @Composable
 fun SettingsTileDivider(modifier: Modifier = Modifier) {
     HorizontalDivider(
@@ -112,10 +93,6 @@ fun SettingsTileDivider(modifier: Modifier = Modifier) {
     )
 }
 
-/**
- * A single toggleable setting row: a leading icon in a tonal squircle, a title with
- * an optional subtitle, and a trailing [Switch]. The whole row is tappable.
- */
 @Composable
 fun SettingSwitchTile(
     title: String,
@@ -123,7 +100,8 @@ fun SettingSwitchTile(
     icon: ImageVector,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
 ) {
     val iconContainer = if (checked) {
         MaterialTheme.colorScheme.primaryContainer
@@ -138,7 +116,8 @@ fun SettingSwitchTile(
 
     Row(
         modifier = modifier
-            .clickable { onCheckedChange(!checked) }
+            .clickable(enabled = enabled) { onCheckedChange(!checked) }
+            .alpha(if (enabled) 1f else 0.38f)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -180,6 +159,7 @@ fun SettingSwitchTile(
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
+            enabled = enabled,
             colors = SwitchDefaults.colors(
                 checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
                 checkedTrackColor = MaterialTheme.colorScheme.primary
@@ -188,12 +168,6 @@ fun SettingSwitchTile(
     }
 }
 
-/**
- * A single navigation setting row: a leading icon in a tonal squircle, a title
- * with an optional subtitle, and a quiet trailing affordance. Use
- * [Icons.AutoMirrored.Rounded.KeyboardArrowRight] (default) for in-app
- * destinations and an "open in new" glyph for links that leave the app.
- */
 @Composable
 fun SettingsNavTile(
     title: String,
@@ -265,13 +239,6 @@ fun SettingsNavTile(
     }
 }
 
-/**
- * A selectable palette pill showing a colour swatch and label.
- *
- * When [dotColor] is [Color.Unspecified] (e.g. the "Dynamic" / wallpaper option) the
- * swatch is drawn as a sweep of theme colours to signal that it is generated, not fixed.
- * Selection is expressed with a filled primary container, an accent border, and a check.
- */
 @Composable
 fun PaletteChip(
     label: String,
@@ -291,7 +258,6 @@ fun PaletteChip(
     )
     val borderColor = if (isSelected) scheme.primary else scheme.onSurface.copy(alpha = 0.08f)
 
-    // Sweep of theme tones used for the "Dynamic" swatch.
     val dynamicBrush = Brush.sweepGradient(
         listOf(scheme.primary, scheme.tertiary, scheme.secondary, scheme.primary)
     )
@@ -320,7 +286,6 @@ fun PaletteChip(
                     Box(modifier = dotModifier.background(dotColor))
                 }
 
-                // A check badge blooms over the swatch on selection.
                 val checkScale by animateFloatAsState(
                     targetValue = if (isSelected) 1f else 0f,
                     animationSpec = tween(200),

@@ -10,29 +10,13 @@ import android.util.Log
 
 private const val TAG = "ImagePreprocessor"
 
-/**
- * Image preprocessing utilities for enhanced OCR and barcode detection.
- * 
- * These operations help ML Kit perform better on:
- * - Low contrast documents
- * - Tilted/rotated images
- * - Partially visible barcodes
- */
 object ImagePreprocessor {
 
-    /**
-     * Apply contrast enhancement for better OCR on faded documents.
-     * 
-     * @param bitmap Source bitmap
-     * @param contrast Contrast factor (1.0 = no change, 1.5 = 50% more contrast)
-     * @return New bitmap with enhanced contrast
-     */
     fun enhanceContrast(bitmap: Bitmap, contrast: Float = 1.4f): Bitmap {
         val result = Bitmap.createBitmap(bitmap.width, bitmap.height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(result)
         val paint = Paint()
         
-        // Contrast matrix: scale colors away from 0.5 (middle gray)
         val scale = contrast
         val translate = (1.0f - scale) / 2.0f * 255f
         
@@ -50,9 +34,6 @@ object ImagePreprocessor {
         return result
     }
 
-    /**
-     * Convert to grayscale for faster processing and sometimes better OCR.
-     */
     fun toGrayscale(bitmap: Bitmap): Bitmap {
         val result = Bitmap.createBitmap(bitmap.width, bitmap.height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(result)
@@ -68,10 +49,6 @@ object ImagePreprocessor {
         return result
     }
 
-    /**
-     * Rotate bitmap by given degrees.
-     * Useful for correcting document orientation.
-     */
     fun rotate(bitmap: Bitmap, degrees: Float): Bitmap {
         if (degrees == 0f) return bitmap
         
@@ -86,16 +63,12 @@ object ImagePreprocessor {
         )
     }
 
-    /**
-     * Scale bitmap to target size while maintaining aspect ratio.
-     * Larger images give better OCR but use more memory.
-     */
     fun scaleToMinDimension(bitmap: Bitmap, minDimension: Int = 1024): Bitmap {
         val width = bitmap.width
         val height = bitmap.height
         
         if (width >= minDimension && height >= minDimension) {
-            return bitmap // Already large enough
+            return bitmap
         }
         
         val scale = minDimension.toFloat() / minOf(width, height)
@@ -107,11 +80,6 @@ object ImagePreprocessor {
         return Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
     }
 
-    /**
-     * Apply brightness adjustment.
-     * 
-     * @param brightness Value from -100 (darker) to 100 (brighter)
-     */
     fun adjustBrightness(bitmap: Bitmap, brightness: Float = 20f): Bitmap {
         val result = Bitmap.createBitmap(bitmap.width, bitmap.height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(result)
@@ -130,14 +98,6 @@ object ImagePreprocessor {
         return result
     }
 
-    /**
-     * Apply full preprocessing pipeline optimized for document OCR.
-     * 
-     * Pipeline:
-     * 1. Scale to minimum 1024px on shortest edge
-     * 2. Enhance contrast by 40%
-     * 3. Slight brightness boost
-     */
     fun preprocessForOcr(bitmap: Bitmap): Bitmap {
         var processed = scaleToMinDimension(bitmap, 1024)
         processed = enhanceContrast(processed, 1.4f)
@@ -145,28 +105,13 @@ object ImagePreprocessor {
         return processed
     }
 
-    /**
-     * Apply full preprocessing pipeline optimized for barcode detection.
-     *
-     * Pipeline:
-     * 1. Convert to grayscale (barcodes are B&W)
-     * 2. High contrast enhancement
-     */
     fun preprocessForBarcode(bitmap: Bitmap): Bitmap {
         var processed = toGrayscale(bitmap)
         processed = enhanceContrast(processed, 1.6f)
         return processed
     }
 
-    /**
-     * Document pipeline for the CameraX capture fallback (used when Google Play
-     * services / the ML Kit document scanner is unavailable). Edge detection,
-     * auto-crop and perspective straightening are GMS-only features with no
-     * reliable non-GMS equivalent, so the fallback deliberately does NOT fake a
-     * crop — it only lifts contrast/brightness and ensures enough resolution for
-     * OCR. The capture screen tells the user to frame the page themselves, and
-     * the user-selectable ScanFilter (DocumentFilters) runs afterwards in review.
-     */
+    /** GMS-less fallback: contrast/scale only (no edge crop). */
     fun preprocessForDocument(bitmap: Bitmap): Bitmap {
         var processed = scaleToMinDimension(bitmap, 1400)
         processed = enhanceContrast(processed, 1.25f)

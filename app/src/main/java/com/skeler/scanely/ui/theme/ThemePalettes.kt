@@ -1,12 +1,5 @@
 package com.skeler.scanely.ui.theme
 
-/**
- * A palette seed: three HCT anchors that drive the full Material 3 tonal scheme.
- *
- * Only the hue of each anchor really matters — [ColorSchemes] boosts chroma when
- * it expands these into tonal palettes, so even a muted hex resolves to a vibrant
- * accent. Pick hues that are distinct from one another for an elegant, modern feel.
- */
 data class SeedColor(
     val name: String,
     val primary: Int,
@@ -16,13 +9,6 @@ data class SeedColor(
     val monochrome: Boolean = false
 )
 
-/**
- * Curated, ordered set of premium palettes.
- *
- * Primaries walk the colour wheel (warm → cool → magenta) so the picker reads as
- * one intentional spectrum. Each palette pairs its primary with saturated,
- * clearly-separated secondary/tertiary hues so no two palettes look alike.
- */
 object SeedPalettes {
     val CeruleanWave = SeedColor(
         name = "Cerulean Wave",
@@ -66,7 +52,6 @@ object SeedPalettes {
         RoseBlush, CeruleanWave, LavenderVolt, AmethystHaze, EmeraldGrove, SunsetCoral
     )
 
-    /** Purple-leaning anchor that reads as the classic Material 3 default. */
     val DEFAULT: SeedColor = LavenderVolt
 
     /** Persisted index that selects [DEFAULT]; the single source of truth for defaults. */

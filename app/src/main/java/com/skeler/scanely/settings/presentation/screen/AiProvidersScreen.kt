@@ -91,11 +91,6 @@ import com.skeler.scanely.ui.components.SettingsGroup
 import com.skeler.scanely.ui.components.SettingsSectionHeader
 import com.skeler.scanely.ui.icons.ProviderIcons
 
-/**
- * Lets the user store their own API keys for each AI provider. Keys are kept
- * on-device (DataStore) and never shipped with the app. Choosing which provider
- * to use happens per-scan in the AI mode sheet.
- */
 @Composable
 fun AiProvidersScreen(
     settingsViewModel: SettingsViewModel = hiltViewModel(),
@@ -208,7 +203,6 @@ fun AiProvidersScreen(
     }
 }
 
-/** Tonal note explaining that scans run on a shared free-tier key until the user adds their own. */
 @Composable
 private fun BundledKeyNote() {
     Surface(
@@ -236,12 +230,10 @@ private fun BundledKeyNote() {
     }
 }
 
-/** Declarative description of a single built-in provider. */
 private data class ProviderSpec(
     val provider: AiProvider,
     val settingsKey: SettingsKeys,
     val modelKey: SettingsKeys,
-    /** Built-in model used when the model field is left blank; shown as its placeholder. */
     val defaultModel: String,
     val name: String,
     val icon: ImageVector,
@@ -352,11 +344,6 @@ private val PROVIDERS = listOf(
     )
 )
 
-/**
- * A single provider on its own tonal card: identity header with a live status,
- * a masked key field, and an elegant secondary "Get key" action. The card border
- * blooms to the accent colour while its field holds focus.
- */
 @Composable
 private fun ProviderCard(
     settingsViewModel: SettingsViewModel,
@@ -429,11 +416,6 @@ private fun ProviderCard(
     }
 }
 
-/**
- * Cloudflare Workers AI: account id + token + model. The account id is folded
- * into the run URL rather than typed as a full endpoint, so it gets its own
- * plain field and is passed to verification as the "custom URL".
- */
 @Composable
 private fun CloudflareProviderCard(
     settingsViewModel: SettingsViewModel,
@@ -532,10 +514,6 @@ private fun CloudflareProviderCard(
     }
 }
 
-/**
- * Custom OpenAI-compatible endpoint: base URL + model + key, all user-supplied,
- * grouped on one card that matches the built-in providers.
- */
 @Composable
 private fun CustomProviderCard(
     settingsViewModel: SettingsViewModel,
@@ -632,7 +610,6 @@ private fun CustomProviderCard(
     }
 }
 
-/** Tonal card shell shared by every provider; its border animates on focus. */
 @Composable
 private fun ProviderContainer(
     focused: Boolean,
@@ -662,7 +639,6 @@ private fun ProviderContainer(
     }
 }
 
-/** Identity row: tonal icon squircle, name + description, and a live status chip. */
 @Composable
 private fun ProviderHeader(
     name: String,
@@ -670,7 +646,6 @@ private fun ProviderHeader(
     description: String?,
     verifyState: VerifyState
 ) {
-    // Only a confirmed-valid key lights the icon up; a merely-present key does not.
     val verified = verifyState is VerifyState.Verified
     val iconContainer by animateColorAsState(
         targetValue = if (verified) {
@@ -727,7 +702,6 @@ private fun ProviderHeader(
     }
 }
 
-/** Visual style for a [StatusChip], derived from the current [VerifyState]. */
 private data class ChipStyle(
     val label: String,
     val icon: ImageVector?,
@@ -769,7 +743,6 @@ private fun chipStyleFor(state: VerifyState): ChipStyle? {
     }
 }
 
-/** A status chip that animates in/out as verification progresses. */
 @Composable
 private fun StatusChip(verifyState: VerifyState) {
     val style = chipStyleFor(verifyState)
@@ -814,7 +787,6 @@ private fun StatusChip(verifyState: VerifyState) {
     }
 }
 
-/** Action row: a state-aware "Verify" button and an optional "Get key" link. */
 @Composable
 private fun ProviderActions(
     verifyState: VerifyState,
@@ -822,7 +794,6 @@ private fun ProviderActions(
     onVerify: () -> Unit,
     onGetKey: (() -> Unit)?
 ) {
-    // Nothing to verify or open when no key is present and there's no key page.
     if (verifyState is VerifyState.NotConfigured && getKeyLabel == null) return
 
     Row(
@@ -839,11 +810,6 @@ private fun ProviderActions(
     }
 }
 
-/**
- * Primary action for a provider: triggers verification. Disabled (with a spinner)
- * while a check is running and while a key is already verified, so repeat taps
- * can't fire redundant requests.
- */
 @Composable
 private fun VerifyButton(verifyState: VerifyState, onClick: () -> Unit) {
     val verifying = verifyState is VerifyState.Verifying
@@ -887,14 +853,12 @@ private fun VerifyButton(verifyState: VerifyState, onClick: () -> Unit) {
     }
 }
 
-/** Supporting message shown under the key field for error states. */
 private fun statusMessage(state: VerifyState): String? = when (state) {
     is VerifyState.Invalid -> state.message
     is VerifyState.Failed -> state.message
     else -> null
 }
 
-/** Password visibility toggle used by every key field. */
 @Composable
 private fun RevealToggle(revealed: Boolean, onToggle: () -> Unit) {
     IconButton(onClick = onToggle) {
@@ -906,7 +870,6 @@ private fun RevealToggle(revealed: Boolean, onToggle: () -> Unit) {
     }
 }
 
-/** Elegant secondary action that opens the provider's key page. */
 @Composable
 private fun GetKeyButton(label: String, onClick: () -> Unit) {
     FilledTonalButton(
@@ -928,7 +891,6 @@ private fun GetKeyButton(label: String, onClick: () -> Unit) {
     }
 }
 
-/** Plain (non-masked) single-line setting field bound to [settingsKey]. */
 @Composable
 private fun PlainField(
     settingsViewModel: SettingsViewModel,

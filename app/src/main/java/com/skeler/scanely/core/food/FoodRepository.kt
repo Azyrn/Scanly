@@ -12,17 +12,14 @@ import javax.inject.Singleton
 
 private const val TAG = "FoodRepository"
 
-/**
- * Repository for food product lookups.
- */
 @Singleton
 class FoodRepository @Inject constructor() {
-    
-    private val json = Json { 
-        ignoreUnknownKeys = true 
+
+    private val json = Json {
+        ignoreUnknownKeys = true
         coerceInputValues = true
     }
-    
+
     private val okHttpClient = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(10, TimeUnit.SECONDS)
@@ -33,25 +30,19 @@ class FoodRepository @Inject constructor() {
             chain.proceed(request)
         }
         .build()
-    
+
     private val api: OpenFoodFactsApi = Retrofit.Builder()
         .baseUrl(OpenFoodFactsApi.BASE_URL)
         .client(okHttpClient)
         .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
         .build()
         .create(OpenFoodFactsApi::class.java)
-    
-    /**
-     * Lookup product by barcode.
-     * 
-     * @param barcode Product barcode (EAN-13, UPC-A, etc.)
-     * @return FoodProduct if found, null otherwise
-     */
+
     suspend fun lookupProduct(barcode: String): Result<FoodProduct?> {
         return try {
             Log.d(TAG, "Looking up product: $barcode")
             val response = api.getProduct(barcode)
-            
+
             if (response.status == 1 && response.product != null) {
                 val product = response.product.toDomain()
                 Log.d(TAG, "Found product: ${product?.name}")
@@ -65,11 +56,7 @@ class FoodRepository @Inject constructor() {
             Result.failure(e)
         }
     }
-    
-    /**
-     * Check if barcode is a potential product barcode.
-     * Product barcodes are typically 8-13 digits.
-     */
+
     fun isProductBarcode(barcode: String): Boolean {
         val digits = barcode.filter { it.isDigit() }
         return digits.length in 8..13 && digits == barcode

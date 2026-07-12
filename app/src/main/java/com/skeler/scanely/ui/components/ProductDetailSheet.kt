@@ -48,17 +48,6 @@ import com.skeler.scanely.ui.components.product.CosmeticsContentSection
 import com.skeler.scanely.ui.components.product.FoodContentSection
 import com.skeler.scanely.ui.components.product.MedicineContentSection
 
-/**
- * Polymorphic product detail sheet that renders different layouts
- * based on the product category (Food, Book, Medicine, etc.)
- * 
- * Content sections are extracted to ui/components/product/ for SRP compliance:
- * - FoodContentSection.kt
- * - BookContentSection.kt
- * - MedicineContentSection.kt
- * - CosmeticsContentSection.kt
- * - SharedComponents.kt
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProductDetailSheet(
@@ -166,7 +155,6 @@ private fun ProductContent(product: ProductInfo) {
     HorizontalDivider()
     Spacer(modifier = Modifier.height(16.dp))
     
-    // Delegate to category-specific extracted components
     when (product.category) {
         ProductCategory.FOOD, ProductCategory.PET_FOOD -> {
             product.foodData?.let { FoodContentSection(it) }

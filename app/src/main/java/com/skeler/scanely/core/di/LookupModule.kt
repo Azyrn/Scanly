@@ -22,9 +22,6 @@ import retrofit2.Retrofit
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 
-/**
- * Hilt module for product lookup engines and network dependencies.
- */
 @Module
 @InstallIn(SingletonComponent::class)
 object LookupModule {
@@ -60,7 +57,6 @@ object LookupModule {
             .create(OpenFoodFactsApi::class.java)
     }
     
-    // --- Engine Bindings (Multibinding for LookupOrchestrator) ---
     
     @Provides
     @IntoSet

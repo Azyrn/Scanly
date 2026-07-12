@@ -2,6 +2,7 @@ package com.skeler.scanely.core.ocr
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Color
 import android.graphics.pdf.PdfRenderer
 import android.net.Uri
 import android.os.ParcelFileDescriptor
@@ -14,31 +15,32 @@ import javax.inject.Singleton
 
 private const val TAG = "PdfRendererHelper"
 
-/**
- * Helper class for extracting Bitmap pages from PDF documents.
- *
- * Uses Android's native PdfRenderer for efficient PDF parsing.
- * Scales pages to 2x resolution for optimal ML Kit OCR accuracy.
- */
+// OCR reads each line at 48px height; ~3200px on the long side puts A4 body text
+// near that natively instead of blurry-upscaled (2x rendered 10pt text at ~20px).
+private const val TARGET_LONG_SIDE = 3200
+private const val MAX_SCALE = 6f
+
 @Singleton
 class PdfRendererHelper @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
 
-    /**
-     * Scale factor for PDF rendering.
-     * 2.0x provides optimal resolution for ML Kit text recognition.
-     * Higher values increase accuracy but use more memory.
-     */
-    private val scaleFactor = 2.0f
+    private fun scaleFor(pageWidth: Int, pageHeight: Int): Float =
+        (TARGET_LONG_SIDE.toFloat() / maxOf(pageWidth, pageHeight)).coerceAtMost(MAX_SCALE)
 
-    /**
-     * Render a specific page from a PDF to a Bitmap.
-     *
-     * @param pdfUri URI of the PDF document
-     * @param pageIndex 0-based page index
-     * @return Bitmap of the rendered page, or null if failed
-     */
+    private fun renderPage(page: PdfRenderer.Page): Bitmap {
+        val scale = scaleFor(page.width, page.height)
+        val bitmap = Bitmap.createBitmap(
+            (page.width * scale).toInt().coerceAtLeast(1),
+            (page.height * scale).toInt().coerceAtLeast(1),
+            Bitmap.Config.ARGB_8888
+        )
+        // PDFs may be transparent.
+        bitmap.eraseColor(Color.WHITE)
+        page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+        return bitmap
+    }
+
     suspend fun renderPage(pdfUri: Uri, pageIndex: Int = 0): Bitmap? = withContext(Dispatchers.Default) {
         var parcelFileDescriptor: ParcelFileDescriptor? = null
         var pdfRenderer: PdfRenderer? = null
@@ -55,31 +57,11 @@ class PdfRendererHelper @Inject constructor(
             }
 
             val page = pdfRenderer.openPage(pageIndex)
-
-            // Scale dimensions for higher resolution
-            val scaledWidth = (page.width * scaleFactor).toInt()
-            val scaledHeight = (page.height * scaleFactor).toInt()
-
-            val bitmap = Bitmap.createBitmap(
-                scaledWidth,
-                scaledHeight,
-                Bitmap.Config.ARGB_8888
-            )
-            
-            // Fill with white background (PDF pages may be transparent)
-            bitmap.eraseColor(android.graphics.Color.WHITE)
-
-            // Render page to bitmap
-            page.render(
-                bitmap,
-                null, // Use full page bounds
-                null, // No transform matrix (scaling handled by bitmap size)
-                PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY
-            )
-
-            page.close()
-            bitmap
-
+            try {
+                renderPage(page)
+            } finally {
+                page.close()
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to render PDF page", e)
             null
@@ -90,76 +72,47 @@ class PdfRendererHelper @Inject constructor(
     }
 
     /**
-     * Render all pages from a PDF to Bitmaps.
-     * 
-     * Note: PDF pages are rendered with white background for optimal ML Kit OCR.
-     *
-     * @param pdfUri URI of the PDF document
-     * @return List of Bitmaps for each page
+     * Streams pages one at a time so a single page bitmap is the memory ceiling —
+     * that bound is what allows the high-resolution render. [onPage] owns the
+     * bitmap. Returns false when the PDF itself couldn't be opened.
      */
-    suspend fun renderAllPages(pdfUri: Uri): List<Bitmap> = withContext(Dispatchers.Default) {
-        val bitmaps = mutableListOf<Bitmap>()
+    suspend fun forEachPage(
+        pdfUri: Uri,
+        onPage: suspend (index: Int, bitmap: Bitmap) -> Unit
+    ): Boolean = withContext(Dispatchers.Default) {
         var parcelFileDescriptor: ParcelFileDescriptor? = null
         var pdfRenderer: PdfRenderer? = null
 
         try {
             parcelFileDescriptor = context.contentResolver.openFileDescriptor(pdfUri, "r")
-            if (parcelFileDescriptor == null) {
-                Log.e(TAG, "Failed to open file descriptor for PDF: $pdfUri")
-                return@withContext emptyList()
-            }
+                ?: return@withContext false
 
             pdfRenderer = PdfRenderer(parcelFileDescriptor)
-            Log.d(TAG, "PDF opened: ${pdfRenderer.pageCount} pages")
 
             for (i in 0 until pdfRenderer.pageCount) {
-                try {
+                val bitmap = try {
                     val page = pdfRenderer.openPage(i)
-
-                    val scaledWidth = (page.width * scaleFactor).toInt()
-                    val scaledHeight = (page.height * scaleFactor).toInt()
-
-                    val bitmap = Bitmap.createBitmap(
-                        scaledWidth,
-                        scaledHeight,
-                        Bitmap.Config.ARGB_8888
-                    )
-                    
-                    // Fill with white background (PDF pages may be transparent)
-                    bitmap.eraseColor(android.graphics.Color.WHITE)
-
-                    page.render(
-                        bitmap,
-                        null,
-                        null,
-                        PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY
-                    )
-
-                    page.close()
-                    bitmaps.add(bitmap)
-                    Log.d(TAG, "Rendered page ${i + 1}/${pdfRenderer.pageCount}")
+                    try {
+                        renderPage(page)
+                    } finally {
+                        page.close()
+                    }
                 } catch (pageError: Exception) {
                     Log.e(TAG, "Failed to render page $i", pageError)
+                    continue
                 }
+                onPage(i, bitmap)
             }
-
-            Log.d(TAG, "Total bitmaps rendered: ${bitmaps.size}")
-            bitmaps
-
+            true
         } catch (e: Exception) {
             Log.e(TAG, "Failed to render PDF pages", e)
-            // Clean up any bitmaps already created
-            bitmaps.forEach { it.recycle() }
-            emptyList()
+            false
         } finally {
             pdfRenderer?.close()
             parcelFileDescriptor?.close()
         }
     }
 
-    /**
-     * Get the page count of a PDF document.
-     */
     suspend fun getPageCount(pdfUri: Uri): Int = withContext(Dispatchers.Default) {
         var parcelFileDescriptor: ParcelFileDescriptor? = null
         var pdfRenderer: PdfRenderer? = null
@@ -170,7 +123,6 @@ class PdfRendererHelper @Inject constructor(
 
             pdfRenderer = PdfRenderer(parcelFileDescriptor)
             pdfRenderer.pageCount
-
         } catch (e: Exception) {
             Log.e(TAG, "Failed to get PDF page count", e)
             0

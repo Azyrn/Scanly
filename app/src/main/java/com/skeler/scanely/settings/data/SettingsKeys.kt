@@ -3,33 +3,36 @@ package com.skeler.scanely.settings.data
 import androidx.appcompat.app.AppCompatDelegate
 import com.skeler.scanely.ui.theme.SeedPalettes
 
-
 enum class SettingsKeys(val default: Any?) {
     THEME_MODE(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM),
     IS_OLED_MODE_ENABLED(false),
     OCR_LANGUAGES(emptySet<String>()),
     USE_DYNAMIC_COLORS(true),
     SEED_COLOR_INDEX(SeedPalettes.DEFAULT_INDEX), // Index into SeedPalettes.ALL
-    LAST_AI_REQUEST_TIMESTAMP(0L), // Epoch millis for rate limiting
-    AI_REQUEST_COUNT(0), // Number of AI requests in current rate limit window
-    // Opt-in: on failure, try other configured providers. Off by default — the
-    // selected provider is used exactly, with no silent substitution.
+    LAST_AI_REQUEST_TIMESTAMP(0L), // epoch millis
+    AI_REQUEST_COUNT(0),
+    // Opt-in cross-provider fallback; default = selected only.
     AI_PROVIDER_FALLBACK(false),
-    SELECTED_AI_PROVIDER(""), // Last AiProvider chosen in the AI scan sheet (enum name)
-    OPENROUTER_API_KEY(""), // User-supplied OpenRouter key (empty = not configured)
-    GEMINI_API_KEY(""), // User-supplied Google AI (Gemini/Gemma) key; falls back to bundled key
-    OPENAI_API_KEY(""), // User-supplied OpenAI key
-    CLAUDE_API_KEY(""), // User-supplied Anthropic (Claude) key
-    MISTRAL_API_KEY(""), // User-supplied Mistral key; falls back to bundled key
-    HUGGINGFACE_API_KEY(""), // User-supplied Hugging Face token; falls back to bundled key
-    NVIDIA_API_KEY(""), // User-supplied NVIDIA NIM key (nvapi-…)
-    GROQ_API_KEY(""), // User-supplied Groq key (gsk_…)
-    CEREBRAS_API_KEY(""), // User-supplied Cerebras key (csk-…)
-    CLOUDFLARE_API_KEY(""), // User-supplied Cloudflare Workers AI token (cfut_…)
-    CLOUDFLARE_ACCOUNT_ID(""), // Cloudflare account id — folded into the run URL
-    // Which Hugging Face OCR model to use when no manual model override is set.
-    OCR_ENGINE("qwen"), // OcrEngine.id — "qwen"
-    // Per-provider model overrides; blank = use the built-in default model.
+    SELECTED_AI_PROVIDER(""), // AiProvider enum name
+    OPENROUTER_API_KEY(""),
+    GEMINI_API_KEY(""),
+    OPENAI_API_KEY(""),
+    CLAUDE_API_KEY(""),
+    MISTRAL_API_KEY(""),
+    HUGGINGFACE_API_KEY(""),
+    NVIDIA_API_KEY(""),
+    GROQ_API_KEY(""),
+    CEREBRAS_API_KEY(""),
+    CLOUDFLARE_API_KEY(""),
+    CLOUDFLARE_ACCOUNT_ID(""),
+    OCR_ENGINE("qwen"), // AI OcrEngine.id
+    BARCODE_ENGINE("mlkit"), // BarcodeEngine.id
+    TEXT_OCR_ENGINE("paddle"), // TextOcrEngine.id — offline text engine
+    PADDLE_SCRIPT("universal"), // ScriptPack.id
+    PADDLE_DOC_ORIENTATION(true),
+    PADDLE_DOC_UNWARP(false), // UVDoc; only helps curved/folded pages
+    PADDLE_LINE_ORIENTATION(true),
+    PADDLE_STRUCTURE(true), // PP-DocLayout: headings/tables in exported Markdown
     OPENROUTER_MODEL(""),
     GEMINI_MODEL(""),
     OPENAI_MODEL(""),
@@ -40,7 +43,7 @@ enum class SettingsKeys(val default: Any?) {
     GROQ_MODEL(""),
     CEREBRAS_MODEL(""),
     CLOUDFLARE_MODEL(""),
-    CUSTOM_API_KEY(""), // Custom OpenAI-compatible endpoint key
-    CUSTOM_BASE_URL(""), // Custom endpoint URL (full chat/completions URL)
-    CUSTOM_MODEL("") // Custom endpoint model id
+    CUSTOM_API_KEY(""),
+    CUSTOM_BASE_URL(""), // full chat/completions URL, not a base
+    CUSTOM_MODEL("")
 }

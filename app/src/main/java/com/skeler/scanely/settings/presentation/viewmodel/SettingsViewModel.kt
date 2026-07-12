@@ -15,15 +15,11 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/**
- * ViewModel for App Settings (Theme, Languages).
- */
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository
 ) : ViewModel() {
 
-    // Unified state flow to prevent partial/default rendering
     val settingsUiState: StateFlow<SettingsState?> = combine(
         settingsRepository.getInt(SettingsKeys.THEME_MODE),
         settingsRepository.getBoolean(SettingsKeys.IS_OLED_MODE_ENABLED),
@@ -41,7 +37,7 @@ class SettingsViewModel @Inject constructor(
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.Eagerly,
-        initialValue = null // Critical: Null indicates "loading from disk"
+        initialValue = null // null = still loading from disk
     )
 
     fun setBoolean(key: SettingsKeys, value: Boolean) {
@@ -93,7 +89,7 @@ class SettingsViewModel @Inject constructor(
             updated.add(langCode)
         }
 
-        // Safety: never allow empty set
+        // Never allow an empty language set.
         if (updated.isEmpty()) return
 
         viewModelScope.launch(Dispatchers.IO) {

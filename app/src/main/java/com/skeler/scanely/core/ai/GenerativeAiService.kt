@@ -11,8 +11,6 @@ import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
-// Sequences the AI pipeline collaborators (payload, resolver, executor) into
-// user-facing AiEvents. All work runs on Dispatchers.IO.
 @Singleton
 class GenerativeAiService @Inject internal constructor(
     private val payloadFactory: PayloadFactory,
@@ -20,7 +18,6 @@ class GenerativeAiService @Inject internal constructor(
     private val executor: ProviderExecutor,
     private val networkObserver: NetworkObserver
 ) {
-    // Emits stages, streamed deltas, terminal Finished. Cancelling the collector cancels the work.
     fun processImageEvents(uri: Uri, mode: AiMode, provider: AiProvider): Flow<AiEvent> =
         channelFlow {
             val totalStart = SystemClock.elapsedRealtime()
@@ -98,12 +95,10 @@ class GenerativeAiService @Inject internal constructor(
             send(AiEvent.Finished(AiResult.Error(exhaustedMessage(provider, exhausted, primaryUsesBundled))))
         }.flowOn(Dispatchers.IO)
 
-    // Providers on the bundled key; the shared free-tier rate limit applies to these only.
     fun bundledKeyProviders(): Flow<Set<AiProvider>> = resolver.bundledKeyProviders()
 
     val bundledCapableProviders: Set<AiProvider> get() = resolver.bundledCapableProviders
 
-    // One-shot variant of processImageEvents: only the terminal result.
     suspend fun processImage(uri: Uri, mode: AiMode, provider: AiProvider): AiResult {
         var final: AiResult = AiResult.Error("No response generated")
         processImageEvents(uri, mode, provider).collect { event ->
@@ -112,7 +107,6 @@ class GenerativeAiService @Inject internal constructor(
         return final
     }
 
-    // Non-streaming: translations are short and arrive quickly.
     suspend fun translateText(
         text: String,
         targetLanguage: String,
@@ -122,7 +116,7 @@ class GenerativeAiService @Inject internal constructor(
             return@withContext AiResult.Error(OFFLINE_MESSAGE)
         }
         val resolved = resolver.resolve(provider) ?: return@withContext missingConfigError(provider)
-        // OCR endpoint can't translate; use Mistral's chat API for that.
+        // OCR endpoint can't translate; use Mistral chat.
         val config = if (resolved.kind == ProviderKind.MISTRAL_OCR) {
             ProviderConfig.mistralChat(resolved.apiKey)
         } else resolved
@@ -153,9 +147,7 @@ class GenerativeAiService @Inject internal constructor(
             "Add your ${provider.displayName} details in Settings → AI Providers."
     )
 
-    // Always names the selected provider, never a silent fallback in the chain.
-    // [usesBundledKey] distinguishes the shared free-tier key hitting its limit
-    // from the user's own key hitting its limit, so the advice matches reality.
+    // Names selected provider only; [usesBundledKey] picks free-tier vs own-key advice.
     private fun exhaustedMessage(
         provider: AiProvider,
         exhausted: List<Pair<String, Boolean>>,
@@ -166,8 +158,7 @@ class GenerativeAiService @Inject internal constructor(
             exhausted.isNotEmpty() && exhausted.all { it.second } ->
                 "Couldn't reach $name — your connection looks unstable. " +
                     "Check it and try again."
-            // The user's own key is exhausted: never blame the shared tier or
-            // suggest adding a key they already added.
+            // Own key exhausted: don't blame shared tier or suggest re-adding a key.
             !usesBundledKey ->
                 "Your $name API key has hit its rate or usage limit. Check your " +
                     "plan or billing with $name, then try again. Your key is still " +

@@ -73,8 +73,6 @@ fun LookAndFeelScreen(
         else -> SeedPalettes.ALL.getOrElse(seedColorIndex) { SeedPalettes.DEFAULT }.name
     }
 
-    // Compact bar: the content fits on one screen, so a large/collapsing bar
-    // would only waste vertical space above the palette showcase.
     Scaffold(
         containerColor = Color.Transparent,
         topBar = {
@@ -98,7 +96,7 @@ fun LookAndFeelScreen(
                 .padding(innerPadding),
             contentPadding = PaddingValues(bottom = 48.dp)
         ) {
-            // Theme-reactive hero + palette name.
+
             item {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
@@ -142,7 +140,7 @@ fun LookAndFeelScreen(
                 }
             }
 
-            // Palette picker, grouped under its own accent heading.
+
             item {
                 SettingsSectionHeader(
                     text = "Color palette",
@@ -155,8 +153,7 @@ fun LookAndFeelScreen(
                     modifier = Modifier.fillMaxWidth(),
                     contentPadding = PaddingValues(horizontal = 24.dp, vertical = 4.dp)
                 ) {
-                    // Dynamic (wallpaper) colours share the selector: they are
-                    // mutually exclusive with picking a fixed palette.
+
                     item(key = "dynamic") {
                         PaletteChip(
                             label = "Dynamic",
@@ -185,7 +182,7 @@ fun LookAndFeelScreen(
 
             item { Spacer(modifier = Modifier.height(36.dp)) }
 
-            // Grouped appearance toggles on a single tonal-elevated surface.
+
             item {
                 SettingsSectionHeader(
                     text = "Personalize",

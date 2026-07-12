@@ -15,19 +15,13 @@ import javax.inject.Singleton
 
 private const val TAG = "OpenFoodFactsEngine"
 
-/**
- * Lookup engine for food products using Open Food Facts API.
- * 
- * Supports: EAN-8, EAN-13, UPC-A, UPC-E barcodes
- * Data: Nutrition info, Nutri-Score, NOVA group, ingredients, allergens
- */
 @Singleton
 class OpenFoodFactsEngine @Inject constructor(
     private val api: OpenFoodFactsApi
 ) : LookupEngine {
-    
+
     override val name = "Open Food Facts"
-    override val priority = 0  // Highest priority for food products
+    override val priority = 0
     override val category = ProductCategory.FOOD
     
     override fun supports(barcode: String): Boolean = isEanUpc(barcode)
@@ -69,15 +63,15 @@ class OpenFoodFactsEngine @Inject constructor(
                 nutriScore = food.nutriScore,
                 novaGroup = food.novaGroup,
                 ingredients = food.ingredients,
-                allergens = emptyList(), // Not in current FoodProduct model
+                allergens = emptyList(), // allergens/fiber/servingSize absent from FoodProduct
                 calories = food.calories,
                 fat = food.fat,
                 carbs = food.carbs,
                 protein = food.proteins,
                 salt = food.salt,
                 sugar = food.sugar,
-                fiber = null, // Not in current FoodProduct model
-                servingSize = null // Not in current FoodProduct model
+                fiber = null,
+                servingSize = null
             )
         )
     }

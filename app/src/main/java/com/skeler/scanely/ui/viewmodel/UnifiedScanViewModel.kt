@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.skeler.scanely.core.actions.ScanAction
 import com.skeler.scanely.core.ocr.OcrResult
+import com.skeler.scanely.core.ocr.OcrSource
+import com.skeler.scanely.core.ocr.TextBlockData
 import com.skeler.scanely.core.scan.UnifiedScanResult
 import com.skeler.scanely.core.scan.UnifiedScanService
 import com.skeler.scanely.history.data.HistoryManager
@@ -16,12 +18,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/**
- * ViewModel for unified gallery scanning.
- * Manages state for combined OCR + barcode detection results.
- * 
- * Handles job cancellation to prevent concurrent scans.
- */
 @HiltViewModel
 class UnifiedScanViewModel @Inject constructor(
     private val unifiedScanService: UnifiedScanService,
@@ -31,13 +27,8 @@ class UnifiedScanViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(UnifiedScanUiState())
     val uiState: StateFlow<UnifiedScanUiState> = _uiState.asStateFlow()
 
-    /** Current scan job - cancelled before starting new scan */
     private var currentScanJob: Job? = null
 
-    /**
-     * Process an image with unified scanning (OCR + barcode).
-     * Cancels any previous ongoing scan before starting.
-     */
     fun processImage(uri: Uri) {
         currentScanJob?.cancel()
         _uiState.value = UnifiedScanUiState(isLoading = true)
@@ -45,12 +36,9 @@ class UnifiedScanViewModel @Inject constructor(
         currentScanJob = viewModelScope.launch {
             val result = unifiedScanService.scanImage(uri)
             
-            val extractedText = when (val textResult = result.textResult) {
-                is OcrResult.Success -> textResult.text
-                else -> null
-            }
+            val success = result.textResult as? OcrResult.Success
+            val extractedText = success?.text
 
-            // Save to history if text was extracted
             if (extractedText != null) {
                 historyManager.saveItem(extractedText, uri.toString())
             }
@@ -58,6 +46,9 @@ class UnifiedScanViewModel @Inject constructor(
             _uiState.value = UnifiedScanUiState(
                 isLoading = false,
                 extractedText = extractedText,
+                textBlocks = success?.blocks.orEmpty(),
+                isOfflineOcr = success?.source == OcrSource.PADDLE,
+                markdown = success?.markdown,
                 barcodeActions = result.barcodeActions,
                 textActions = result.textActions,
                 hasText = result.hasText,
@@ -67,10 +58,6 @@ class UnifiedScanViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Process image for barcode-only detection.
-     * Cancels any previous ongoing scan before starting.
-     */
     fun processBarcodeOnly(uri: Uri) {
         currentScanJob?.cancel()
         _uiState.value = UnifiedScanUiState(isLoading = true)
@@ -88,7 +75,14 @@ class UnifiedScanViewModel @Inject constructor(
     }
 
     fun updateExtractedText(text: String) {
-        _uiState.value = _uiState.value.copy(extractedText = text)
+        // Boxes and structured Markdown describe the scan, not the edit — drop them,
+        // and stop offering the Paddle-only export formats they backed.
+        _uiState.value = _uiState.value.copy(
+            extractedText = text,
+            textBlocks = emptyList(),
+            markdown = null,
+            isOfflineOcr = false
+        )
     }
 
     fun clearResult() {
@@ -98,12 +92,12 @@ class UnifiedScanViewModel @Inject constructor(
     }
 }
 
-/**
- * UI state for unified scanning results.
- */
 data class UnifiedScanUiState(
     val isLoading: Boolean = false,
     val extractedText: String? = null,
+    val textBlocks: List<TextBlockData> = emptyList(),
+    val isOfflineOcr: Boolean = false,
+    val markdown: String? = null,
     val barcodeActions: List<ScanAction> = emptyList(),
     val textActions: List<ScanAction> = emptyList(),
     val hasText: Boolean = false,

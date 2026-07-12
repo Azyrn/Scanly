@@ -31,6 +31,7 @@ import androidx.compose.material.icons.rounded.Autorenew
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
@@ -48,14 +49,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.lifecycleScope
 import com.skeler.scanely.core.ai.AiResult
 import com.skeler.scanely.core.ocr.OcrResult
+import com.skeler.scanely.core.ocr.OcrSource
+import com.skeler.scanely.core.text.MarkdownParser
 import com.skeler.scanely.navigation.LocalNavController
 import com.skeler.scanely.navigation.Routes
 import com.skeler.scanely.ui.ScanViewModel
 import com.skeler.scanely.ui.components.CredentialBadge
+import com.skeler.scanely.ui.components.PADDLE_EXPORT_FORMATS
+import com.skeler.scanely.ui.components.TEXT_EXPORT_FORMATS
+import com.skeler.scanely.ui.components.TextExportFormat
 import com.skeler.scanely.ui.components.ExtractedTextActions
 import com.skeler.scanely.ui.components.rememberExtractedTextState
 import com.skeler.scanely.ui.components.EmptyResultContent
@@ -66,19 +72,13 @@ import com.skeler.scanely.ui.components.RateLimitSheet
 import com.skeler.scanely.ui.components.ScanResultSkeleton
 import com.skeler.scanely.ui.components.TranslatingContent
 import com.skeler.scanely.ui.components.TranslationLanguages
+import com.skeler.scanely.ui.components.rememberMarkdownPrinter
 import com.skeler.scanely.ui.components.rememberTextExporter
 import com.skeler.scanely.ui.viewmodel.AiScanViewModel
 import com.skeler.scanely.ui.viewmodel.OcrViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-/**
- * Wikipedia-style Results Screen - Orchestration Layer Only
- *
- * Components extracted to:
- * - LanguageChipRow.kt
- * - TextDisplayComponents.kt (ReadableTextContent, ProcessingContent, etc.)
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ResultsScreen() {
@@ -88,17 +88,14 @@ fun ResultsScreen() {
     val aiViewModel: AiScanViewModel = hiltViewModel(activity)
     val ocrViewModel: OcrViewModel = hiltViewModel(activity)
     val navController = LocalNavController.current
-    val exportText = rememberTextExporter()
 
     val scanState by scanViewModel.uiState.collectAsState()
     val aiState by aiViewModel.aiState.collectAsState()
     val ocrState by ocrViewModel.uiState.collectAsState()
 
-    // Processing state
     val isProcessing = aiState.isProcessing || ocrState.isProcessing
     val isTranslating = aiState.isTranslating
 
-    // Text priority: History > AI > OCR
     val historyText = scanState.historyText
     val aiResultText = when (val result = aiState.result) {
         is AiResult.Success -> result.text
@@ -112,31 +109,55 @@ fun ResultsScreen() {
     val primaryResultText = historyText ?: aiResultText ?: ocrResultText
     val isAiResult = aiResultText != null
 
-    // Translation state
     val cachedLanguages = aiState.translationCache.keys.toList()
     val currentLanguage = aiState.currentLanguage
     val displayText = currentLanguage?.let { aiState.translationCache[it] } ?: primaryResultText
 
-    // Rate Limit & Network State
+    // The AI answers in Markdown: "Original" reads it as plain text, "Markdown" renders it.
+    var markdownView by remember { mutableStateOf(false) }
+
+    // Markdown/JSON exports only describe data the offline engine still has (edits drop it).
+    val paddleResult = (ocrState.result as? OcrResult.Success)
+        ?.takeIf { it.source == OcrSource.PADDLE }
+        ?.takeIf { it.blocks.isNotEmpty() || it.markdown != null }
+        ?.takeIf { historyText == null && aiResultText == null && currentLanguage == null }
+    val structuredMarkdown = paddleResult?.markdown?.takeIf { it.isNotBlank() }
+    // Only provenance-known AI text is treated as Markdown; sniffing plain OCR text corrupts it.
+    val textIsMarkdown = remember(displayText, isAiResult) {
+        isAiResult && displayText?.let { MarkdownParser.looksLikeMarkdown(it) } == true
+    }
+    val markdownSource = structuredMarkdown ?: displayText?.takeIf { textIsMarkdown }
+    val hasMarkdown = markdownSource != null
+    val markdownMode = markdownView && hasMarkdown
+    val shownText = remember(displayText, textIsMarkdown) {
+        if (textIsMarkdown) displayText?.let(MarkdownParser::toPlainText) else displayText
+    }
+    val printText = rememberMarkdownPrinter()
+
+    val exportText = rememberTextExporter(
+        blocks = paddleResult?.blocks.orEmpty(),
+        markdown = markdownSource
+    )
+    val exportFormats = when {
+        paddleResult != null -> PADDLE_EXPORT_FORMATS
+        hasMarkdown -> TEXT_EXPORT_FORMATS + TextExportFormat.MARKDOWN
+        else -> TEXT_EXPORT_FORMATS
+    }
+
     val rateLimitState by scanViewModel.rateLimitState.collectAsState()
     val showRateLimitSheet by scanViewModel.showRateLimitSheet.collectAsState()
     val isRewardedAdAvailable by scanViewModel.isRewardedAdAvailable.collectAsState()
     val isOnline by scanViewModel.isOnline.collectAsState()
 
-    // Language menu state
     var showLanguageMenu by remember { mutableStateOf(false) }
     val languages = TranslationLanguages.ALL
 
     var navigatingUp by remember { mutableStateOf(false) }
 
-    // Hoisted so the copy/export/edit actions can live in the header while the
-    // body renders below; keyed on the shown text.
     val textState = rememberExtractedTextState(displayText.orEmpty())
     val onSaveExtracted: (String) -> Unit = { edited ->
         when {
-            // Editing a shown translation corrects that translation.
             currentLanguage != null -> aiViewModel.updateText(edited)
-            // Reopened-from-history text persists to its row.
             historyText != null -> scanViewModel.updateHistoryText(edited)
             isAiResult -> aiViewModel.updateText(edited)
             else -> ocrViewModel.updateText(edited)
@@ -147,8 +168,6 @@ fun ResultsScreen() {
         if (!navigatingUp) {
             navigatingUp = true
             navController.popBackStack()
-            // Activity scope: outlives this composable, so the cleanup still runs
-            // after the pop animation instead of dying with the composition.
             activity.lifecycleScope.launch {
                 delay(600)
                 scanViewModel.clearState()
@@ -158,7 +177,6 @@ fun ResultsScreen() {
         }
     }
 
-    // Surface one-shot messages (e.g. a translation failure) as a toast.
     LaunchedEffect(aiState.message) {
         aiState.message?.let {
             Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
@@ -197,8 +215,6 @@ fun ResultsScreen() {
                 .weight(1f)
                 .verticalScroll(rememberScrollState())
           ) {
-            // Title scrolls with content; the floating back button overlays it,
-            // matching the offline image screen.
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -212,9 +228,6 @@ fun ResultsScreen() {
                 )
             }
             when {
-                // AI pipeline keeps its staged/streaming progress UI; plain
-                // OCR/PDF extraction shows a result-shaped skeleton instead
-                // of a spinner.
                 aiState.isProcessing -> {
                     ProcessingContent(
                         currentFile = aiState.currentFileIndex,
@@ -238,8 +251,6 @@ fun ResultsScreen() {
                     TranslatingContent()
                 }
                 displayText != null -> {
-                    // Which credentials served this scan — only for a fresh AI
-                    // result (history reopens don't know what produced them).
                     val runInfo = aiState.runInfo
                     val credential: (@Composable () -> Unit)? =
                         if (isAiResult && historyText == null && runInfo != null &&
@@ -261,21 +272,49 @@ fun ResultsScreen() {
                             showLanguageMenu = showLanguageMenu,
                             onShowLanguageMenu = { showLanguageMenu = true },
                             onDismissLanguageMenu = { showLanguageMenu = false },
-                            onSelectOriginal = { aiViewModel.showOriginal() },
-                            onSelectCached = { aiViewModel.selectCachedLanguage(it) },
+                            onSelectOriginal = {
+                                markdownView = false
+                                aiViewModel.showOriginal()
+                            },
+                            onSelectCached = {
+                                markdownView = false
+                                aiViewModel.selectCachedLanguage(it)
+                            },
                             allLanguages = languages,
                             onNewLanguageSelected = { language ->
                                 showLanguageMenu = false
                                 scanViewModel.triggerAiWithRateLimit(aiState.provider) {
+                                    markdownView = false
                                     aiViewModel.translateResult(language)
                                 }
                             },
-                            onComposeText = { navController.navigate(Routes.TEXT_COMPOSE) }
+                            onComposeText = { navController.navigate(Routes.TEXT_COMPOSE) },
+                            showMarkdown = hasMarkdown,
+                            markdownSelected = markdownMode,
+                            onSelectMarkdown = { markdownView = true }
                         )
+                        Spacer(modifier = Modifier.height(10.dp))
+                    } else if (hasMarkdown) {
+                        // Offline scans have no language row; still offer the structured view.
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            FilterChip(
+                                selected = !markdownMode,
+                                onClick = { markdownView = false },
+                                label = { Text("Original") }
+                            )
+                            FilterChip(
+                                selected = markdownMode,
+                                onClick = { markdownView = true },
+                                label = { Text("Markdown") }
+                            )
+                        }
                         Spacer(modifier = Modifier.height(10.dp))
                     }
 
-                    // "Extracted Text" pinned left, edit / export / copy opposite.
+                    // Copy, export, print, edit and the body all follow the visible view.
+                    val visibleText = (if (markdownMode) markdownSource else shownText)
+                        ?: displayText
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
@@ -298,10 +337,13 @@ fun ResultsScreen() {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             ExtractedTextActions(
                                 state = textState,
-                                text = displayText,
-                                onCopy = { copyToClipboard(context, displayText) },
-                                onExport = { format -> exportText(displayText, format) },
-                                onSaveEdit = onSaveExtracted
+                                text = visibleText,
+                                onCopy = { copyToClipboard(context, visibleText) },
+                                onExport = { format -> exportText(visibleText, format) },
+                                exportFormats = exportFormats,
+                                onSaveEdit = onSaveExtracted,
+                                onPrint = { printText(visibleText, markdownMode) },
+                                compact = true
                             )
                         }
                     }
@@ -312,8 +354,9 @@ fun ResultsScreen() {
 
                     ExtractedTextSection(
                         state = textState,
-                        text = displayText,
-                        credential = credential
+                        text = visibleText,
+                        credential = credential,
+                        markdown = markdownMode
                     )
                 }
                 else -> {
@@ -325,7 +368,6 @@ fun ResultsScreen() {
           }
         }
 
-        // Rescan (rate-limited) floats bottom-end over the scrolling text.
         if (showRescan) {
             FilledTonalIconButton(
                 onClick = {
@@ -354,8 +396,6 @@ fun ResultsScreen() {
             }
         }
 
-        // Floating back hovers over the scrolling content, matching the offline
-        // image results screen.
         FilledTonalIconButton(
             onClick = onBack,
             shape = RoundedCornerShape(16.dp),
@@ -373,7 +413,6 @@ fun ResultsScreen() {
     }
 }
 
-/** Copy [text] to the clipboard and show a confirmation toast. */
 private fun copyToClipboard(context: Context, text: String) {
     val clipboard = context.getSystemService(ClipboardManager::class.java)
     clipboard.setPrimaryClip(ClipData.newPlainText("Extracted Text", text))

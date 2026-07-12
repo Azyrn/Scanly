@@ -25,11 +25,6 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
-/**
- * Skeleton placeholders shown while a scan result is being produced. Shaped
- * like the content that will replace them, so the screen doesn't jump-cut
- * from an empty spinner to a full layout.
- */
 @Composable
 private fun skeletonPulse(): Float {
     val transition = rememberInfiniteTransition(label = "SkeletonPulse")
@@ -58,7 +53,6 @@ private fun SkeletonBlock(
     )
 }
 
-/** Mimics the scan results layout: action chips, then a text card of lines. */
 @Composable
 fun ScanResultSkeleton(
     modifier: Modifier = Modifier,

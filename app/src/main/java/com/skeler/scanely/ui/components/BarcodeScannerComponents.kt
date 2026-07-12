@@ -54,9 +54,6 @@ import java.util.concurrent.Executors
 
 private const val TAG = "BarcodeScannerComponents"
 
-/**
- * Camera preview with barcode analysis.
- */
 @Composable
 fun BarcodeCameraPreview(
     barcodeAnalyzer: BarcodeAnalyzer,
@@ -83,8 +80,6 @@ fun BarcodeCameraPreview(
                 it.surfaceProvider = previewView.surfaceProvider
             }
 
-            // Target ~720p rather than the CameraX default (~640x480) so small/distant
-            // codes carry enough detail, while staying well under 2MP for low latency.
             val resolutionSelector = ResolutionSelector.Builder()
                 .setResolutionStrategy(
                     ResolutionStrategy(
@@ -109,8 +104,7 @@ fun BarcodeCameraPreview(
                     imageAnalysis
                 )
 
-                // Auto-zoom: apply ML Kit's zoom suggestions for small/distant codes,
-                // clamped to what the camera actually supports.
+                // Auto-zoom from ML Kit suggestions (small/distant codes).
                 barcodeAnalyzer.onZoomSuggested = { suggestedRatio ->
                     val maxZoom = camera.cameraInfo.zoomState.value?.maxZoomRatio ?: 1f
                     val target = suggestedRatio.coerceIn(1f, maxZoom)
@@ -129,9 +123,6 @@ fun BarcodeCameraPreview(
     )
 }
 
-/**
- * Scanning overlay with cutout and corner accents.
- */
 @Composable
 fun ScanningOverlay(modifier: Modifier = Modifier) {
     Canvas(modifier = modifier.fillMaxSize()) {
@@ -139,10 +130,8 @@ fun ScanningOverlay(modifier: Modifier = Modifier) {
         val left = (size.width - scanBoxSize) / 2
         val top = (size.height - scanBoxSize) / 2
 
-        // Semi-transparent overlay
         drawRect(color = Color.Black.copy(alpha = 0.5f), size = size)
 
-        // Clear center area (punch-out effect)
         drawRoundRect(
             color = Color.Transparent,
             topLeft = Offset(left, top),
@@ -151,7 +140,6 @@ fun ScanningOverlay(modifier: Modifier = Modifier) {
             blendMode = BlendMode.Clear
         )
 
-        // White border around scan area
         drawRoundRect(
             color = Color.White,
             topLeft = Offset(left, top),
@@ -160,29 +148,21 @@ fun ScanningOverlay(modifier: Modifier = Modifier) {
             style = Stroke(width = 3.dp.toPx())
         )
 
-        // Corner accents
         val cornerLength = 40.dp.toPx()
         val cornerStroke = 4.dp.toPx()
         val accentColor = Color(0xFF6750A4)
 
-        // Top-left
         drawLine(accentColor, Offset(left, top + 24.dp.toPx()), Offset(left, top + cornerLength), cornerStroke)
         drawLine(accentColor, Offset(left + 24.dp.toPx(), top), Offset(left + cornerLength, top), cornerStroke)
-        // Top-right
         drawLine(accentColor, Offset(left + scanBoxSize, top + 24.dp.toPx()), Offset(left + scanBoxSize, top + cornerLength), cornerStroke)
         drawLine(accentColor, Offset(left + scanBoxSize - 24.dp.toPx(), top), Offset(left + scanBoxSize - cornerLength, top), cornerStroke)
-        // Bottom-left
         drawLine(accentColor, Offset(left, top + scanBoxSize - 24.dp.toPx()), Offset(left, top + scanBoxSize - cornerLength), cornerStroke)
         drawLine(accentColor, Offset(left + 24.dp.toPx(), top + scanBoxSize), Offset(left + cornerLength, top + scanBoxSize), cornerStroke)
-        // Bottom-right
         drawLine(accentColor, Offset(left + scanBoxSize, top + scanBoxSize - 24.dp.toPx()), Offset(left + scanBoxSize, top + scanBoxSize - cornerLength), cornerStroke)
         drawLine(accentColor, Offset(left + scanBoxSize - 24.dp.toPx(), top + scanBoxSize), Offset(left + scanBoxSize - cornerLength, top + scanBoxSize), cornerStroke)
     }
 }
 
-/**
- * Bottom sheet content for barcode actions.
- */
 @Composable
 fun BarcodeActionsSheet(
     actions: List<ScanAction>,
@@ -253,9 +233,6 @@ fun BarcodeActionsSheet(
     }
 }
 
-/**
- * Text detail sheet for viewing and copying barcode content.
- */
 @Composable
 fun TextDetailSheet(
     text: String,

@@ -19,6 +19,7 @@ import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Key
+import androidx.compose.material.icons.rounded.Print
 import androidx.compose.material.icons.rounded.SaveAlt
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -39,12 +40,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
-/**
- * Hoisted edit state for the extracted-text view. Keyed on the source text so a
- * committed Save (which flows new text back in) resets the draft and exits edit
- * mode. Shared between [ExtractedTextActions] (buttons, placed in the top bar)
- * and [ExtractedTextSection] (the body) so the two stay in sync.
- */
 @Stable
 class ExtractedTextState internal constructor(initial: String) {
     var editing by mutableStateOf(false)
@@ -56,23 +51,18 @@ class ExtractedTextState internal constructor(initial: String) {
 fun rememberExtractedTextState(text: String): ExtractedTextState =
     remember(text) { ExtractedTextState(text) }
 
-/**
- * Action cluster (edit / export / copy, or cancel / save while editing) for the
- * extracted text. Declared as a [RowScope] extension so it drops straight into a
- * `TopAppBar`'s `actions` slot, reclaiming the empty header space on both result
- * screens. Only shows the edit affordance when [onSaveEdit] is provided.
- */
 @Composable
 fun RowScope.ExtractedTextActions(
     state: ExtractedTextState,
     text: String,
     onCopy: () -> Unit,
     onExport: ((TextExportFormat) -> Unit)? = null,
+    exportFormats: List<TextExportFormat> = TEXT_EXPORT_FORMATS,
     onSaveEdit: ((String) -> Unit)? = null,
+    onPrint: (() -> Unit)? = null,
     compact: Boolean = false,
     leading: (@Composable () -> Unit)? = null
 ) {
-    // Shrink the cluster when an extra (leading) button crowds the row.
     val btnModifier = if (compact) Modifier.size(34.dp) else Modifier
     val iconSize = if (compact) 18.dp else 20.dp
     val gap = if (compact) 6.dp else 8.dp
@@ -129,6 +119,20 @@ fun RowScope.ExtractedTextActions(
             }
             Spacer(modifier = Modifier.size(gap))
         }
+        if (onPrint != null) {
+            FilledTonalIconButton(
+                onClick = onPrint,
+                modifier = btnModifier,
+                shape = RoundedCornerShape(14.dp),
+                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                )
+            ) {
+                Icon(Icons.Rounded.Print, contentDescription = "Print", modifier = Modifier.size(iconSize))
+            }
+            Spacer(modifier = Modifier.size(gap))
+        }
         if (onExport != null) {
             Box {
                 var exportMenuOpen by remember { mutableStateOf(false) }
@@ -147,20 +151,15 @@ fun RowScope.ExtractedTextActions(
                     expanded = exportMenuOpen,
                     onDismissRequest = { exportMenuOpen = false }
                 ) {
-                    DropdownMenuItem(
-                        text = { Text("Save as PDF") },
-                        onClick = {
-                            exportMenuOpen = false
-                            onExport(TextExportFormat.PDF)
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Save as CSV") },
-                        onClick = {
-                            exportMenuOpen = false
-                            onExport(TextExportFormat.CSV)
-                        }
-                    )
+                    exportFormats.forEach { format ->
+                        DropdownMenuItem(
+                            text = { Text(format.label) },
+                            onClick = {
+                                exportMenuOpen = false
+                                onExport(format)
+                            }
+                        )
+                    }
                 }
             }
             Spacer(modifier = Modifier.size(gap))
@@ -179,18 +178,13 @@ fun RowScope.ExtractedTextActions(
     }
 }
 
-/**
- * Full-bleed presentation of a block of extracted text — no surrounding card,
- * so long passages read like an open document that fills the screen. Actions
- * (copy/export/edit) live in the screen's top bar via [ExtractedTextActions];
- * this renders just the body, credential caption and word/character footer.
- */
 @Composable
 fun ExtractedTextSection(
     state: ExtractedTextState,
     text: String,
     modifier: Modifier = Modifier,
-    credential: (@Composable () -> Unit)? = null
+    credential: (@Composable () -> Unit)? = null,
+    markdown: Boolean = false
 ) {
     val shown = if (state.editing) state.draft else text
     val counts = remember(shown) {
@@ -204,10 +198,11 @@ fun ExtractedTextSection(
             Spacer(modifier = Modifier.height(8.dp))
         }
 
-        if (state.editing) {
-            EditableReadableText(value = state.draft, onValueChange = { state.draft = it })
-        } else {
-            ReadableTextContent(text = text)
+        when {
+            state.editing ->
+                EditableReadableText(value = state.draft, onValueChange = { state.draft = it })
+            markdown -> MarkdownContent(text = text)
+            else -> ReadableTextContent(text = text)
         }
 
         Text(
@@ -219,12 +214,6 @@ fun ExtractedTextSection(
     }
 }
 
-/**
- * Compact one-line chip naming the credentials that produced the current
- * result: the user's own API key or the bundled built-in one, plus the
- * provider/model that actually served the request (after retries or fallback).
- * Sized to sit inline as a caption without stealing vertical space from the text.
- */
 @Composable
 fun CredentialBadge(
     providerName: String,

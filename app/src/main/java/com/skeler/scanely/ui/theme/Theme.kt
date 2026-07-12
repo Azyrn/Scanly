@@ -24,14 +24,6 @@ import androidx.core.view.WindowCompat
 import com.skeler.scanely.core.common.LocalDarkMode
 import com.skeler.scanely.core.common.LocalSettings
 
-/**
- * Root theme. Resolves a single [androidx.compose.material3.ColorScheme] through one
- * pipeline (dynamic wallpaper OR curated seed) → applies the OLED / pure-black
- * surface guard → crossfades it → hands it to Material 3 Expressive.
- *
- * Colour generation lives in [ColorSchemes], palette data in [ThemePalettes],
- * shapes in [ThemeShapes], typography in [Type], and the transition in [ThemeMotion].
- */
 @Composable
 fun ScanelyTheme(
     content: @Composable () -> Unit
@@ -59,9 +51,7 @@ fun ScanelyTheme(
     }
     val animatedColorScheme = colorScheme.animated()
 
-    // Transparent, contrast-free system bars keyed on brightness. Letting the
-    // (animated) Compose surface paint edge-to-edge behind the bars is what stops
-    // the OS-drawn status/nav strip from lagging a frame behind a theme switch.
+    // Transparent system bars so animated Compose surface paints edge-to-edge (no bar lag).
     val view = LocalView.current
     if (!view.isInEditMode) {
         val window = (view.context as Activity).window

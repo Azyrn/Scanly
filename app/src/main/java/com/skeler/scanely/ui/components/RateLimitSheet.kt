@@ -31,8 +31,6 @@ import androidx.compose.ui.unit.dp
 
 private const val RATE_LIMIT_SECONDS = 60
 
-// Explains the shared free-tier limit and the bring-your-own-key bypass.
-// The bar fills (not depletes) for a faster perceived wait.
 @Composable
 fun RateLimitSheet(
     remainingSeconds: Int,

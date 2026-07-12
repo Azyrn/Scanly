@@ -11,19 +11,6 @@ import javax.crypto.spec.GCMParameterSpec
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Encrypts the user's own API keys at rest with an AES-256-GCM key that's
- * generated inside — and never leaves — the device's hardware-backed
- * Keystore. This is a different concern from [Secrets]: that object hides
- * the *bundled* shared-tier keys inside the APK; this one protects keys the
- * user types in themselves, which [Secrets]'s XOR obfuscation can't touch
- * since they never pass through the build-time encoder. DataStore itself
- * stores plain text, so this is what keeps a personal key unreadable to
- * anything short of the app's own process: root file access, a backup
- * extraction, another app on a rooted device. Because the key is bound to
- * this device's Keystore, ciphertext restored onto a different device can't
- * be decrypted either — see [decrypt] returning null.
- */
 @Singleton
 class KeyCipher @Inject constructor() {
 
@@ -34,12 +21,11 @@ class KeyCipher @Inject constructor() {
             init(Cipher.ENCRYPT_MODE, secretKey())
         }
         val ciphertext = cipher.doFinal(plaintext.toByteArray(Charsets.UTF_8))
-        // The GCM IV isn't secret — it travels with the ciphertext it seals.
+        // GCM IV is public; prepended to ciphertext.
         val payload = cipher.iv + ciphertext
         return Base64.encodeToString(payload, Base64.NO_WRAP)
     }
 
-    /** Null on any failure — a corrupt blob or one sealed on another device is treated as absent. */
     fun decrypt(encoded: String): String? = try {
         val payload = Base64.decode(encoded, Base64.NO_WRAP)
         val iv = payload.copyOfRange(0, IV_SIZE_BYTES)

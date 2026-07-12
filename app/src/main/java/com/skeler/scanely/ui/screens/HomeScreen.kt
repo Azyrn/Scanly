@@ -1,13 +1,5 @@
 package com.skeler.scanely.ui.screens
 
-/**
- * Clean & Simple HomeScreen - Orchestration Layer Only
- * 
- * Components extracted to:
- * - MainActionButton.kt
- * - GamifiedAiFab.kt
- * - AiModeBottomSheet.kt
- */
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.ComponentActivity
@@ -48,7 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.skeler.scanely.R
 import com.skeler.scanely.core.ai.AiMode
 import com.skeler.scanely.core.ai.AiProvider
@@ -83,22 +75,18 @@ fun HomeScreen() {
     val navController = LocalNavController.current
     val scope = rememberCoroutineScope()
 
-    // UI State
     val snackbarHostState = remember { SnackbarHostState() }
     var showAiBottomSheet by remember { mutableStateOf(false) }
     val aiSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var pendingAiMode by remember { mutableStateOf<AiMode?>(null) }
     var pendingAiProvider by remember { mutableStateOf(AiProvider.DEFAULT) }
 
-    // Remembered AI provider (last chosen), seeds the sheet selection.
     val selectedAiProvider by aiViewModel.selectedProvider.collectAsState()
 
-    // Rate Limit state
     val showRateLimitSheet by scanViewModel.showRateLimitSheet.collectAsState()
     val rateLimitState by scanViewModel.rateLimitState.collectAsState()
     val isRewardedAdAvailable by scanViewModel.isRewardedAdAvailable.collectAsState()
 
-    // Camera permission launcher
     val cameraPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
         onResult = { isGranted ->
@@ -110,7 +98,6 @@ fun HomeScreen() {
         }
     )
 
-    // Pickers
     val aiMultiGalleryPicker = rememberMultiGalleryPicker(maxItems = MAX_AI_FILES) { uris ->
         if (uris.isNotEmpty() && pendingAiMode != null) {
             val mode = pendingAiMode!!
@@ -184,7 +171,6 @@ fun HomeScreen() {
         }
     }
 
-    // Actions
     fun onAiFabClick() {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) 
             == PackageManager.PERMISSION_GRANTED) {
@@ -205,7 +191,6 @@ fun HomeScreen() {
         }
     }
 
-    // UI
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
@@ -258,12 +243,13 @@ fun HomeScreen() {
             Spacer(modifier = Modifier.height(48.dp))
 
             val accents = rememberActionAccents()
+            val startDocumentScan = rememberDocumentScanStarter()
 
             MainActionButton(
                 iconRes = R.drawable.ic_action_aperture,
                 title = "Scan Document",
                 subtitle = "Auto-crop, enhance & export PDF",
-                onClick = { navController.navigate(Routes.DOCUMENT_SCANNER) },
+                onClick = startDocumentScan,
                 accentTint = accents.document
             )
             Spacer(modifier = Modifier.height(16.dp))
@@ -294,7 +280,6 @@ fun HomeScreen() {
                 accentTint = accents.qr
             )
 
-
             Spacer(modifier = Modifier.height(48.dp))
 
             HistoryPillButton(
@@ -304,7 +289,6 @@ fun HomeScreen() {
         }
     }
 
-    // Bottom Sheets
     if (showAiBottomSheet) {
         AiModeBottomSheet(
             sheetState = aiSheetState,
@@ -325,12 +309,6 @@ fun HomeScreen() {
     }
 }
 
-/**
- * Distinct, muted per-action accent tints so the four scan actions read as
- * instantly distinguishable without turning saturated or gradient-heavy.
- * Tones are pitched slightly deeper in light mode and lighter in dark mode
- * so each glyph stays legible on the surface container card in both themes.
- */
 private data class ActionAccents(
     val document: Color,
     val gallery: Color,

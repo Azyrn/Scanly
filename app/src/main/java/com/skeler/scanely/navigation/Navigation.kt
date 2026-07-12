@@ -17,8 +17,8 @@ import com.skeler.scanely.history.presentation.screen.HistoryScreen
 import com.skeler.scanely.settings.presentation.screen.AiProvidersScreen
 import com.skeler.scanely.settings.presentation.screen.LookAndFeelScreen
 import com.skeler.scanely.settings.presentation.screen.SettingsScreen
+import com.skeler.scanely.settings.presentation.screen.TextRecognitionScreen
 import com.skeler.scanely.ui.screens.DocumentCaptureScreen
-import com.skeler.scanely.ui.screens.DocumentScannerScreen
 import com.skeler.scanely.ui.screens.HomeScreen
 import com.skeler.scanely.ui.screens.ResultsScreen
 import com.skeler.scanely.ui.screens.BarcodeScannerScreen
@@ -29,7 +29,6 @@ import dagger.hilt.android.EntryPointAccessors
 
 object Routes {
     const val HOME = "home"
-    const val DOCUMENT_SCANNER = "document_scanner"
     const val DOCUMENT_CAPTURE = "document_capture"
     const val SCAN_REVIEW = "scan_review"
     const val TEXT_COMPOSE = "text_compose"
@@ -39,6 +38,7 @@ object Routes {
     const val SETTINGS = "settings"
     const val LOOK_AND_FEEL = "look_and_feel"
     const val AI_PROVIDERS = "ai_providers"
+    const val TEXT_RECOGNITION = "text_recognition"
     const val HISTORY = "history"
 }
 
@@ -59,8 +59,6 @@ fun ScanelyNavigation(
         NavHost(
             navController = navController,
             startDestination = Routes.HOME,
-            // Shared-axis X transitions: forward slides in from the right,
-            // back returns from the left, with a fade-through between screens.
             enterTransition = { gallerySlideEnter() },
             exitTransition = { gallerySlideExit() },
             popEnterTransition = { galleryPopEnter() },
@@ -82,12 +80,12 @@ fun ScanelyNavigation(
                 AiProvidersScreen()
             }
 
-            composable(Routes.HISTORY) {
-                HistoryScreen()
+            composable(Routes.TEXT_RECOGNITION) {
+                TextRecognitionScreen()
             }
 
-            composable(Routes.DOCUMENT_SCANNER) {
-                DocumentScannerScreen()
+            composable(Routes.HISTORY) {
+                HistoryScreen()
             }
 
             composable(Routes.DOCUMENT_CAPTURE) {
@@ -117,9 +115,6 @@ fun ScanelyNavigation(
     }
 }
 
-/**
- * Hilt entry point for accessing LookupOrchestrator in Composables.
- */
 @dagger.hilt.EntryPoint
 @dagger.hilt.InstallIn(dagger.hilt.components.SingletonComponent::class)
 interface LookupOrchestratorEntryPoint {

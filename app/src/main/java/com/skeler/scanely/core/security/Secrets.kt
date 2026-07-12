@@ -7,21 +7,14 @@ import android.util.Base64
 import com.skeler.scanely.BuildConfig
 import java.security.MessageDigest
 
-/**
- * Decodes the bundled free-tier provider keys that ship XOR+Base64 obfuscated in
- * [BuildConfig] (see the encoder in app/build.gradle.kts). Nothing here makes a
- * client-side key unrecoverable — a determined attacker with a rooted device and
- * a runtime hook can still read it. The goal is narrower: keep keys out of the
- * APK as plaintext strings/resources so they can't be lifted by simply unpacking
- * or running `strings`, and to void them for repackaged (re-signed) builds.
- */
+// Obfuscated free-tier keys in BuildConfig (not true secrecy). Voided if app is re-signed.
 object Secrets {
 
-    // Set once from App.onCreate; a repackaged/re-signed release fails this and gets no keys.
+    // Set in App.onCreate; re-signed releases fail the pin and get empty keys.
     @Volatile
     private var signatureOk = true
 
-    // Rebuilt from split arrays so no contiguous seed literal survives in the DEX.
+    // Split int array so no contiguous seed literal lands in the DEX.
     private val pepper: ByteArray by lazy {
         val a = intArrayOf(
             0x09, 0x39, 0x34, 0x36, 0x23, 0xC0, 0x4D, 0x18,
@@ -55,8 +48,7 @@ object Secrets {
         }
     }
 
-    // Debug builds are signed with the debug key, so the pin only applies to release.
-    // An empty expected value means the keystore wasn't readable at build time — pin off.
+    // Debug always passes; empty EXPECTED_SIGNATURE means pin was off at build time.
     private fun signatureValid(context: Context): Boolean {
         if (BuildConfig.DEBUG || BuildConfig.EXPECTED_SIGNATURE.isEmpty()) return true
         val actual = currentSignatureSha256(context) ?: return false
@@ -81,7 +73,7 @@ object Secrets {
     private fun sha256Hex(bytes: ByteArray): String =
         MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02X".format(it) }
 
-    // SHA-256(seed || counter) blocks concatenated; mirrors the build-time encoder.
+    // SHA-256(seed || counter) blocks — must match app/build.gradle.kts encoder.
     private fun keystream(seed: ByteArray, len: Int): ByteArray {
         val out = ByteArray(len)
         var pos = 0

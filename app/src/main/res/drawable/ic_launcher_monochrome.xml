@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Themed-icon layer (Android 13+). The system tints this, so it must be the bare
+  silhouette: the S only, no background and no scan sweep.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <group
+        android:pivotX="54"
+        android:pivotY="54"
+        android:rotation="-9"
+        android:scaleX="1.12"
+        android:scaleY="1.12">
+        <path
+            android:pathData="M71,40 C71,28 37,27 37,43 C37,57 71,53 71,67 C71,83 37,82 37,68"
+            android:strokeColor="#000000"
+            android:strokeWidth="10"
+            android:strokeLineCap="round" />
+    </group>
+</vector>

@@ -1,49 +1,52 @@
 [versions]
 agp = "9.2.1"
-kotlin = "2.3.20"
-coreKtx = "1.17.0"
-coreSplashscreen = "1.0.1"
+kotlin = "2.3.21"
+coreKtx = "1.19.0"
+coreSplashscreen = "1.2.0"
 junit = "4.13.2"
 junitVersion = "1.3.0"
 espressoCore = "3.7.0"
-lifecycleRuntimeKtx = "2.10.0"
-activityCompose = "1.12.2"
-composeBom = "2026.01.00"
+lifecycleRuntimeKtx = "2.11.0"
+activityCompose = "1.13.0"
+composeBom = "2026.06.01"
 # New dependencies
-cameraX = "1.5.2"
+cameraX = "1.6.1"
 coil = "2.7.0"
-navigationCompose = "2.9.6"
+navigationCompose = "2.9.8"
 accompanist = "0.37.3"
 # ML Kit
 mlkitBarcode = "17.3.0"
+zxingcpp = "3.1.0"
 mlkitTextRecognition = "16.0.1"
-mlkitDocumentScanner = "16.0.0-beta1"
-material3 = "1.5.0-alpha12"
-datastore = "1.2.0"
-hilt = "2.60"
-hiltExt = "1.3.0"
-ksp = "2.3.9"
-serialization = "1.10.0"
-work = "2.11.0"
-googleServices = "4.4.4"
-crashlytics = "3.0.6"
-firebaseBom = "34.8.0"
-material = "1.13.0"
-retrofit = "2.11.0"
-okhttp = "4.12.0"
+mlkitDocumentScanner = "16.0.0"
+onnxruntime = "1.27.0"
+material3 = "1.5.0-alpha23"
+datastore = "1.2.1"
+hilt = "2.60.1"
+hiltExt = "1.4.0"
+ksp = "2.3.10"
+serialization = "1.11.0"
+work = "2.11.2"
+googleServices = "4.5.0"
+crashlytics = "3.0.7"
+firebaseBom = "34.16.0"
+material = "1.14.0"
+retrofit = "3.0.0"
+okhttp = "5.4.0"
 retrofitKotlinxConverter = "1.0.0"
 # Baseline Profile
-benchmarkMacro = "1.5.0-alpha06"
+benchmarkMacro = "1.5.0-alpha07"
 uiautomator = "2.4.0"
 profileInstaller = "1.4.1"
-detekt = "1.23.7"
-playServicesAds = "24.4.0"
+detekt = "1.23.8"
+playServicesAds = "25.4.0"
 leakcanary = "2.14"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "coreSplashscreen" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
+json = { group = "org.json", name = "json", version = "20250517" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
@@ -72,8 +75,10 @@ accompanist-permissions = { group = "com.google.accompanist", name = "accompanis
 androidx-compose-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
 # ML Kit
 mlkit-barcode = { group = "com.google.mlkit", name = "barcode-scanning", version.ref = "mlkitBarcode" }
+zxing-cpp = { group = "io.github.zxing-cpp", name = "android", version.ref = "zxingcpp" }
 mlkit-text-recognition = { group = "com.google.mlkit", name = "text-recognition", version.ref = "mlkitTextRecognition" }
 mlkit-document-scanner = { group = "com.google.android.gms", name = "play-services-mlkit-document-scanner", version.ref = "mlkitDocumentScanner" }
+onnxruntime-android = { group = "com.microsoft.onnxruntime", name = "onnxruntime-android", version.ref = "onnxruntime" }
 # DataStore
 datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
@@ -114,4 +119,3 @@ baselineprofile = { id = "androidx.baselineprofile", version.ref = "benchmarkMac
 google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }
 firebase-crashlytics = { id = "com.google.firebase.crashlytics", version.ref = "crashlytics" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
-

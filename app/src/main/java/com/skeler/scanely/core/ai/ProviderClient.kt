@@ -20,17 +20,10 @@ import retrofit2.HttpException
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Transient provider-side failure (429 / 5xx / overload) worth retrying. */
 internal class TransientAiException(message: String) : Exception(message)
 
-/** Definitive provider error that retrying will not fix. */
 internal class FatalAiException(val result: AiResult.Error) : Exception(result.message)
 
-/**
- * Executes a single request against one resolved [ProviderConfig] and returns
- * the extracted text. Parsing errors surface as [TransientAiException] (retry)
- * or [FatalAiException] (give up); transport failures propagate as-is.
- */
 @Singleton
 internal class ProviderClient @Inject constructor(
     private val openAiApi: OpenAiCompatApi,
@@ -38,19 +31,11 @@ internal class ProviderClient @Inject constructor(
     private val geminiApi: GeminiApi,
     private val mistralApi: MistralApi
 ) {
-    /** Lenient decoder for SSE payload lines. */
     private val streamJson = Json { ignoreUnknownKeys = true }
 
-    /** True when this provider can be streamed via SSE. */
     fun supportsStreaming(config: ProviderConfig): Boolean =
         config.kind != ProviderKind.MISTRAL_OCR
 
-    /**
-     * Send one streaming request and return the full accumulated text,
-     * emitting throttled [AiEvent.Delta]s as tokens arrive. [streamedAnything]
-     * is flipped once the first token lands so callers can tell an empty
-     * (no-SSE) stream from a slow one.
-     */
     suspend fun stream(
         config: ProviderConfig,
         systemInstruction: String?,
@@ -104,11 +89,7 @@ internal class ProviderClient @Inject constructor(
             throw e
         } catch (e: Exception) {
             if (e is kotlinx.coroutines.CancellationException) throw e
-            // A stream that already produced text but then breaks (a trailing
-            // chunk that fails to decode, or a socket the provider closes
-            // abruptly after the last token — Cerebras does this) must not be
-            // retried from scratch: keep the text we streamed instead of
-            // discarding it and re-billing a full re-scan.
+            // Keep partial text after break (e.g. Cerebras closes post-token); don't re-bill.
             if (accumulated.isEmpty()) throw e
             aiDebug { "stream broke after ${accumulated.length} chars, keeping partial: ${e.message}" }
         }
@@ -124,24 +105,15 @@ internal class ProviderClient @Inject constructor(
         return result
     }
 
-    // Some reasoning models emit their chain-of-thought inline as <think>…</think>
-    // (Qwen, DeepSeek-R1, …). Disabling it at the API is provider-specific and
-    // rejected by non-reasoning models, so strip it from the output for every
-    // provider as a universal safety net; Groq additionally turns it off upstream.
     private fun stripReasoning(text: String): String =
         text.replace(THINK_BLOCK, "").trim()
 
-    // A malformed / schema-mismatched SSE chunk (e.g. a provider sending a string
-    // error `code` where an int is expected) would otherwise throw an unhandled
-    // SerializationException that escapes ProviderExecutor's retry/fallback. Treat
-    // it as transient so the next attempt / provider can take over.
     private inline fun <reified T> decodeChunk(payload: String): T = try {
         streamJson.decodeFromString<T>(payload)
     } catch (e: SerializationException) {
         throw TransientAiException("Malformed response chunk")
     }
 
-    /** Decode one SSE payload line into a text delta, or null if it carries none. */
     private fun parseStreamPiece(kind: ProviderKind, payload: String): String? = when (kind) {
         ProviderKind.OPENAI_COMPAT -> {
             val chunk = decodeChunk<ChatStreamChunk>(payload)
@@ -169,7 +141,6 @@ internal class ProviderClient @Inject constructor(
                 if (err.code == 429) throw TransientAiException(err.message ?: "rate limited")
                 throw FatalAiException(AiResult.Error(err.message ?: "Gemini error"))
             }
-            // Gemma "thinks" by default; keep only non-thought parts.
             chunk.candidates.firstOrNull()?.content?.parts
                 ?.filter { it.thought != true }
                 ?.mapNotNull { it.text }
@@ -179,11 +150,6 @@ internal class ProviderClient @Inject constructor(
         ProviderKind.MISTRAL_OCR -> null
     }
 
-    /**
-     * Read `data:` lines off an SSE body. Checks for cancellation between lines
-     * so a user cancel is honored at token granularity; a fully stalled
-     * connection is broken by the OkHttp read timeout.
-     */
     private suspend fun consumeSse(body: ResponseBody, onData: suspend (String) -> Unit) {
         body.use {
             val source = it.source()
@@ -198,7 +164,6 @@ internal class ProviderClient @Inject constructor(
         }
     }
 
-    /** Send one plain (non-streaming) request and return the response text. */
     suspend fun once(
         config: ProviderConfig,
         systemInstruction: String?,
@@ -250,12 +215,6 @@ internal class ProviderClient @Inject constructor(
         ProviderKind.MISTRAL_OCR -> mistralOcr(config, systemInstruction, prompt, images)
     }
 
-    /**
-     * Mistral OCR: one request per image, pages joined as markdown. Text-only
-     * prompts (txt files, translation) go to Mistral's chat API instead.
-     * If the app's *default* OCR model is rejected, retries once with the older
-     * model — a user-selected model is used exactly and never substituted.
-     */
     private suspend fun mistralOcr(
         config: ProviderConfig,
         systemInstruction: String?,
@@ -267,7 +226,6 @@ internal class ProviderClient @Inject constructor(
         }
 
         val auth = "Bearer ${config.apiKey}"
-        // Remembered across images so a rejected default model isn't re-tried per page.
         var model = config.model
         val results = images.map { base64 ->
             val document = MistralDocument(
@@ -277,8 +235,6 @@ internal class ProviderClient @Inject constructor(
             val response = try {
                 mistralApi.ocr(auth, MistralOcrRequest(model, document))
             } catch (e: HttpException) {
-                // Only the app default is eligible for the older-model retry; a
-                // user-chosen model is never silently swapped.
                 if (model == ProviderConfig.MISTRAL_OCR_DEFAULT &&
                     e.code() in 400..499 && e.code() != 429
                 ) {
@@ -296,14 +252,10 @@ internal class ProviderClient @Inject constructor(
     }
 
     companion object {
-        /** Older Mistral OCR model tried when the primary one errors. */
         private const val MISTRAL_OCR_FALLBACK_MODEL = "mistral-ocr-3"
 
-        /** Minimum interval between streamed [AiEvent.Delta] emissions. */
         private const val DELTA_THROTTLE_MS = 100L
 
-        /** Inline reasoning block emitted by some models; stripped from output.
-         * Also matches an unterminated block (response truncated mid-thought). */
         private val THINK_BLOCK = Regex("(?s)<think>.*?(?:</think>\\s*|$)")
     }
 }

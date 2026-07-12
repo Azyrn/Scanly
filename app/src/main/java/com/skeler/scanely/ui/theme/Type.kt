@@ -2,17 +2,13 @@ package com.skeler.scanely.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-// Using system default (Roboto on Android) for broad compatibility
-// Can be replaced with Inter or custom font if needed
 val ScanelyFontFamily = FontFamily.Default
 
 val Typography = Typography(
-    // Display styles - for hero text and large headings
     displayLarge = TextStyle(
         fontFamily = ScanelyFontFamily,
         fontWeight = FontWeight.Bold,
@@ -34,9 +30,6 @@ val Typography = Typography(
         lineHeight = 44.sp,
         letterSpacing = (-0.2).sp
     ),
-
-    // Headline styles - for section headers.
-    // Slight negative tracking tightens large text for a refined, premium look.
     headlineLarge = TextStyle(
         fontFamily = ScanelyFontFamily,
         fontWeight = FontWeight.Bold,
@@ -58,8 +51,6 @@ val Typography = Typography(
         lineHeight = 32.sp,
         letterSpacing = (-0.1).sp
     ),
-    
-    // Title styles - for card titles and prominent UI elements
     titleLarge = TextStyle(
         fontFamily = ScanelyFontFamily,
         fontWeight = FontWeight.SemiBold,
@@ -81,8 +72,6 @@ val Typography = Typography(
         lineHeight = 20.sp,
         letterSpacing = 0.1.sp
     ),
-    
-    // Body styles - for main content
     bodyLarge = TextStyle(
         fontFamily = ScanelyFontFamily,
         fontWeight = FontWeight.Normal,
@@ -104,8 +93,6 @@ val Typography = Typography(
         lineHeight = 16.sp,
         letterSpacing = 0.4.sp
     ),
-    
-    // Label styles - for buttons, chips, and small UI elements
     labelLarge = TextStyle(
         fontFamily = ScanelyFontFamily,
         fontWeight = FontWeight.Medium,

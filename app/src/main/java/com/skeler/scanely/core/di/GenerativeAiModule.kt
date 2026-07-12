@@ -17,16 +17,6 @@ import retrofit2.Retrofit
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 
-/**
- * Hilt module providing the chat/completions APIs used for AI text extraction
- * and translation across all providers.
- *
- * API keys, endpoints and models are supplied per request from user settings
- * (with a bundled default only for Gemini), so authentication is attached by
- * the service layer rather than an interceptor. The OkHttpClients are built
- * inline (not as separate @Provides) so they do not collide with the auth-less
- * OkHttpClient provided by [LookupModule].
- */
 @Module
 @InstallIn(SingletonComponent::class)
 object GenerativeAiModule {
@@ -38,8 +28,6 @@ object GenerativeAiModule {
         classDiscriminator = "type"
     }
 
-    /** Claude/Gemini must omit null fields (e.g. `system`, or an image part's
-     * missing `text`) rather than sending explicit nulls the APIs would reject. */
     private val claudeJson = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
@@ -64,8 +52,7 @@ object GenerativeAiModule {
     fun provideOpenAiCompatApi(): OpenAiCompatApi =
         Retrofit.Builder()
             .baseUrl(OpenAiCompatApi.BASE_URL)
-            // 90 s: a non-streaming (degraded) multi-image request waits for the whole
-            // body in one read; 60 s undercut the executor's 90–240 s attempt budget.
+            // 90s read: non-stream multi-image; 60s undercuts attempt budget.
             .client(defaultClient(90))
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()
@@ -91,7 +78,6 @@ object GenerativeAiModule {
             .build()
             .create(MistralApi::class.java)
 
-    /** Short-timeout, converter-less client for read-only key validation. */
     @Provides
     @Singleton
     fun provideKeyValidationApi(): KeyValidationApi =

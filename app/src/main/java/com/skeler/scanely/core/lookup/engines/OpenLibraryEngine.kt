@@ -24,14 +24,7 @@ import kotlinx.coroutines.withContext
 
 private const val TAG = "OpenLibraryEngine"
 
-/**
- * Fallback lookup engine for books using Open Library API.
- * 
- * Supports: ISBN-10, ISBN-13 barcodes
- * Data: Title, authors, publisher, cover
- * 
- * Used as fallback when Google Books doesn't have the book.
- */
+// ISBN fallback when Google Books misses (priority 2).
 @Singleton
 class OpenLibraryEngine @Inject constructor(
     private val okHttpClient: OkHttpClient
@@ -78,18 +71,13 @@ class OpenLibraryEngine @Inject constructor(
     
     private fun mapToProductInfo(barcode: String, bookJson: JsonObject): ProductInfo {
         val title = bookJson["title"]?.jsonPrimitive?.contentOrNull
-        
-        // Extract publishers as list of names
         val publishers = extractNames(bookJson["publishers"])
-        
-        // Extract authors as list of names
         val authors = extractNames(bookJson["authors"])
-        
         val coverUrl = bookJson["cover"]?.jsonObject?.get("medium")?.jsonPrimitive?.contentOrNull
         val publishDate = bookJson["publish_date"]?.jsonPrimitive?.contentOrNull
         val pageCount = bookJson["number_of_pages"]?.jsonPrimitive?.intOrNull
         val infoLink = bookJson["url"]?.jsonPrimitive?.contentOrNull
-        
+
         return ProductInfo(
             barcode = barcode,
             source = name,
@@ -114,9 +102,6 @@ class OpenLibraryEngine @Inject constructor(
         )
     }
     
-    /**
-     * Extract list of names from a JSON array of objects with "name" field.
-     */
     private fun extractNames(element: kotlinx.serialization.json.JsonElement?): List<String> {
         return try {
             when (element) {

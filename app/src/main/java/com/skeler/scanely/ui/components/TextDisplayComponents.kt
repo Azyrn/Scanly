@@ -40,18 +40,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.skeler.scanely.core.ai.AiStage
 
-/**
- * Document-style readable text tuned for long passages of extracted text.
- *
- * Readability rationale:
- * - 14sp reading size with a 20sp line height (~1.43x) keeps long passages
- *   compact enough to fit without heavy scrolling while staying legible.
- * - onSurface gives the strongest text-on-background contrast in the scheme.
- * - Paragraphs (split on blank lines) are spaced apart so the eye can track
- *   where one block ends and the next begins — real typographic hierarchy
- *   instead of an undifferentiated wall of text.
- * - RTL-aware via TextDirection.Content for mixed-language documents.
- */
 @Composable
 fun ReadableTextContent(
     text: String,
@@ -62,8 +50,6 @@ fun ReadableTextContent(
         backgroundColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
     )
 
-    // Split into paragraphs on blank lines; keep the whole text as one block
-    // when it has no clear paragraph breaks.
     val paragraphs = remember(text) {
         text.trim()
             .split(Regex("\\n\\s*\\n"))
@@ -99,12 +85,6 @@ fun ReadableTextContent(
     }
 }
 
-/**
- * Editable twin of [ReadableTextContent] for correcting imperfect OCR. Keeps the
- * exact reading typography (14sp / 20sp, onSurface) so switching into edit mode
- * doesn't reflow or restyle the text; only the caret and a subtle field
- * background appear. Edits are staged locally — the caller commits them on Save.
- */
 @Composable
 fun EditableReadableText(
     value: String,
@@ -133,13 +113,6 @@ fun EditableReadableText(
     )
 }
 
-/**
- * Processing indicator with stage progress, an optional live preview of the
- * text streaming in, a rate-limit/retry note, and a Cancel action.
- *
- * All stage parameters are optional so non-AI callers (plain OCR) can keep
- * using the simple spinner form.
- */
 @Composable
 fun ProcessingContent(
     currentFile: Int = 0,
@@ -203,8 +176,6 @@ fun ProcessingContent(
 
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            // Retry/fallback notes ("OpenRouter is busy — retrying in 3 s")
-            // replace the generic hint the moment there is something to say.
             text = stageMessage ?: "This may take a few moments",
             style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
@@ -216,8 +187,6 @@ fun ProcessingContent(
             modifier = Modifier.padding(horizontal = 24.dp)
         )
 
-        // Live tail of the streamed text, so long extractions show visible
-        // progress instead of an opaque spinner.
         if (!streamingText.isNullOrBlank()) {
             Spacer(modifier = Modifier.height(20.dp))
             Surface(
@@ -245,9 +214,6 @@ fun ProcessingContent(
     }
 }
 
-/**
- * Translating indicator.
- */
 @Composable
 fun TranslatingContent(modifier: Modifier = Modifier) {
     Column(
@@ -267,9 +233,6 @@ fun TranslatingContent(modifier: Modifier = Modifier) {
     }
 }
 
-/**
- * Empty state for no extracted text.
- */
 @Composable
 fun EmptyResultContent(modifier: Modifier = Modifier) {
     Column(

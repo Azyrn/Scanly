@@ -19,14 +19,7 @@ import kotlinx.coroutines.withContext
 
 private const val TAG = "GoogleBooksEngine"
 
-/**
- * Lookup engine for books using Google Books API.
- * 
- * Supports: ISBN-10, ISBN-13 barcodes
- * Data: Title, authors, publisher, description, cover, preview links
- * 
- * Note: Works without API key for limited quota (~1000 requests/day).
- */
+// No API key; limited free quota (~1000/day).
 @Singleton
 class GoogleBooksEngine @Inject constructor(
     private val okHttpClient: OkHttpClient
@@ -69,12 +62,11 @@ class GoogleBooksEngine @Inject constructor(
     }
     
     private fun mapToProductInfo(barcode: String, volume: VolumeInfo): ProductInfo {
-        // Find ISBNs
         val isbn10 = volume.industryIdentifiers
             ?.find { it.type == "ISBN_10" }?.identifier
         val isbn13 = volume.industryIdentifiers
             ?.find { it.type == "ISBN_13" }?.identifier
-        
+
         return ProductInfo(
             barcode = barcode,
             source = name,
@@ -99,8 +91,6 @@ class GoogleBooksEngine @Inject constructor(
         )
     }
 }
-
-// --- DTOs for Google Books API ---
 
 @Serializable
 data class GoogleBooksResponse(

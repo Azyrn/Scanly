@@ -12,15 +12,6 @@ import retrofit2.http.POST
 import retrofit2.http.Streaming
 import retrofit2.http.Url
 
-/**
- * OpenAI-compatible chat-completions API.
- *
- * Shared by every provider that speaks the OpenAI wire format (OpenRouter,
- * OpenAI, and user-defined custom endpoints); the full endpoint URL and bearer
- * token are passed per request, so one client serves all of them. Images are
- * sent as base64 data URLs in the multimodal `content` array, so the configured
- * model must be vision-capable.
- */
 interface OpenAiCompatApi {
 
     @POST
@@ -30,10 +21,6 @@ interface OpenAiCompatApi {
         @Body request: ChatRequest
     ): ChatResponse
 
-    /**
-     * Server-sent-events variant (request must set `stream = true`). The body
-     * is a stream of `data: {json}` lines terminated by `data: [DONE]`.
-     */
     @Streaming
     @POST
     suspend fun chatCompletionStream(
@@ -43,12 +30,9 @@ interface OpenAiCompatApi {
     ): ResponseBody
 
     companion object {
-        // Placeholder base; the real endpoint is supplied per request via @Url.
         const val BASE_URL = "https://openrouter.ai/"
     }
 }
-
-// --- Request models ---
 
 @Serializable
 data class ChatRequest(
@@ -57,7 +41,6 @@ data class ChatRequest(
     val temperature: Double = 0.1,
     val stream: Boolean = false,
     // Groq-only: "none" disables Qwen3 thinking so <think> blocks don't pollute
-    // the extracted text. Omitted (null) for every other provider/model.
     @SerialName("reasoning_effort") val reasoningEffort: String? = null
 )
 
@@ -67,12 +50,6 @@ data class ChatMessage(
     val content: List<ContentPart>
 )
 
-/**
- * A single piece of message content. Serialized with a `type` discriminator so
- * it matches the OpenAI/OpenRouter wire format:
- *   {"type":"text","text":"..."}
- *   {"type":"image_url","image_url":{"url":"data:image/jpeg;base64,..."}}
- */
 @Serializable
 sealed class ContentPart {
     @Serializable
@@ -89,8 +66,6 @@ sealed class ContentPart {
 @Serializable
 data class ImageUrl(val url: String)
 
-// --- Response models ---
-
 @Serializable
 data class ChatResponse(
     val choices: List<Choice> = emptyList(),
@@ -102,7 +77,6 @@ data class Choice(
     val message: ResponseMessage
 )
 
-/** Assistant replies return `content` as a plain string, not an array. */
 @Serializable
 data class ResponseMessage(
     val role: String? = null,
@@ -112,18 +86,12 @@ data class ResponseMessage(
 @Serializable
 data class ApiError(
     val message: String? = null,
-    // Some OpenAI-compatible providers send `code` as a string ("rate_limit_exceeded")
-    // rather than an int, so decode it loosely and normalize via [codeInt].
     val code: JsonElement? = null
 )
 
-/** Numeric error code when the provider sent one as a JSON number, else null. */
 val ApiError.codeInt: Int?
     get() = (code as? JsonPrimitive)?.intOrNull
 
-// --- Streaming response models ---
-
-/** One SSE chunk of a streamed chat completion. */
 @Serializable
 data class ChatStreamChunk(
     val choices: List<StreamChoice> = emptyList(),

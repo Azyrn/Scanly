@@ -2,4 +2,5 @@
 <paths>
     <cache-path name="generated_pdfs" path="generated_pdfs/" />
     <cache-path name="scans" path="scans/" />
+    <external-path name="scanly_downloads" path="Download/Scanly/" />
 </paths>

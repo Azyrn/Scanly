@@ -8,13 +8,6 @@ import retrofit2.http.Header
 import retrofit2.http.POST
 import retrofit2.http.Streaming
 
-/**
- * Anthropic (Claude) Messages API.
- *
- * Distinct wire format from OpenAI: auth is the `x-api-key` header, a version
- * header is required, and images are sent as base64 `source` blocks. The model
- * must be vision-capable. API docs: https://docs.anthropic.com/en/api/messages
- */
 interface ClaudeApi {
 
     @POST("v1/messages")
@@ -24,10 +17,6 @@ interface ClaudeApi {
         @Body request: ClaudeRequest
     ): ClaudeResponse
 
-    /**
-     * Server-sent-events variant (request must set `stream = true`). Text
-     * arrives as `content_block_delta` events carrying `text_delta` payloads.
-     */
     @Streaming
     @POST("v1/messages")
     suspend fun messagesStream(
@@ -41,8 +30,6 @@ interface ClaudeApi {
         const val ANTHROPIC_VERSION = "2023-06-01"
     }
 }
-
-// --- Request models ---
 
 @Serializable
 data class ClaudeRequest(
@@ -77,8 +64,6 @@ data class ClaudeImageSource(
     val data: String
 )
 
-// --- Response models ---
-
 @Serializable
 data class ClaudeResponse(
     val content: List<ClaudeResponseContent> = emptyList(),
@@ -97,9 +82,6 @@ data class ClaudeError(
     val message: String? = null
 )
 
-// --- Streaming response models ---
-
-/** One SSE event of a streamed Claude message. */
 @Serializable
 data class ClaudeStreamEvent(
     val type: String? = null,

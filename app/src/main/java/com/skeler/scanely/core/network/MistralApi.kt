@@ -5,10 +5,6 @@ import retrofit2.http.Body
 import retrofit2.http.Header
 import retrofit2.http.POST
 
-/**
- * Mistral OCR API. Purpose-built document OCR (not a chat model): one request
- * per image/document, response is per-page markdown.
- */
 interface MistralApi {
 
     @POST("v1/ocr")

@@ -2,7 +2,6 @@ package com.skeler.scanely.core.lookup
 
 import kotlinx.serialization.json.Json
 
-/** Shared JSON reader for all lookup engines. */
 val LookupJson: Json = Json {
     ignoreUnknownKeys = true
     coerceInputValues = true

@@ -35,27 +35,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.skeler.scanely.R
 
-/**
- * Rate limit state for gamified FAB.
- */
 data class RateLimitDisplayState(
     val remainingSeconds: Int = 0,
     val progress: Float = 0f,
     val justBecameReady: Boolean = false
 )
 
-/**
- * AI scan entry point styled as a labeled pill in the same family as the home
- * action cards: the same large squircle shape, flat tonal surface, and spring
- * press-scale, with the primary-container tone marking it as the accent action.
- *
- * While rate-limited it recedes to a muted surface and shows a small
- * determinate recharge ring with a countdown; haptic feedback fires when ready
- * again.
- *
- * @param rateLimitState Current rate limit display state
- * @param onClick Callback when tapped (only fires when not recharging)
- */
 @Composable
 fun GamifiedAiFab(
     rateLimitState: RateLimitDisplayState,
@@ -78,8 +63,6 @@ fun GamifiedAiFab(
         label = "Fab Press Scale"
     )
 
-    // Same flat surfaceContainer tone as the home action cards; nudges up one
-    // level while recharging to read as muted.
     val containerColor by animateColorAsState(
         targetValue = if (isRecharging) {
             MaterialTheme.colorScheme.surfaceContainerHigh
@@ -99,7 +82,6 @@ fun GamifiedAiFab(
         label = "Fab Content"
     )
 
-    // Haptic feedback when becoming ready
     LaunchedEffect(rateLimitState.justBecameReady) {
         if (rateLimitState.justBecameReady) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -110,8 +92,6 @@ fun GamifiedAiFab(
         }
     }
 
-    // Same flat surfaceContainer card as the four home actions; the accent-tinted
-    // spark glyph is what marks this as the AI action.
     Surface(
         onClick = { if (!isRecharging) onClick() },
         modifier = modifier.scale(pressScale),

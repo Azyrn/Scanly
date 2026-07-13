@@ -23,9 +23,14 @@ data class FoodProduct(
 
 @Serializable
 data class OpenFoodFactsResponse(
-    val status: Int,
-    val product: ProductDto?
-)
+    val status: String = "",
+    val product: ProductDto? = null
+) {
+    val isFound: Boolean get() = status == OFF_STATUS_SUCCESS && product != null
+}
+
+// API v3 reports outcome as a string; a missing product still returns HTTP 200.
+const val OFF_STATUS_SUCCESS = "success"
 
 @Serializable
 data class ProductDto(

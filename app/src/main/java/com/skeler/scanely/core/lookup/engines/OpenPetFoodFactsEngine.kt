@@ -1,6 +1,7 @@
 package com.skeler.scanely.core.lookup.engines
 
 import android.util.Log
+import com.skeler.scanely.core.food.OFF_STATUS_SUCCESS
 import com.skeler.scanely.core.lookup.FoodData
 import com.skeler.scanely.core.lookup.LookupEngine
 import com.skeler.scanely.core.lookup.LookupJson
@@ -34,7 +35,7 @@ class OpenPetFoodFactsEngine @Inject constructor(
 
     override suspend fun lookup(barcode: String): LookupResult = withContext(Dispatchers.IO) {
         try {
-            val url = "https://world.openpetfoodfacts.org/api/v2/product/$barcode.json?fields=$FIELDS"
+            val url = "https://world.openpetfoodfacts.org/api/v3/product/$barcode.json?fields=$FIELDS"
             Log.d(TAG, "Looking up: $barcode")
 
             val request = Request.Builder().url(url).build()
@@ -45,8 +46,10 @@ class OpenPetFoodFactsEngine @Inject constructor(
 
             val productResponse = LookupJson.decodeFromString<PetFoodProductResponse>(body)
 
-            if (productResponse.status == 1 && productResponse.product != null) {
-                val product = mapToProductInfo(barcode, productResponse.product)
+            val found = productResponse.product?.takeIf { productResponse.status == OFF_STATUS_SUCCESS }
+
+            if (found != null) {
+                val product = mapToProductInfo(barcode, found)
                 Log.d(TAG, "Found: ${product.name}")
                 LookupResult.Found(product, name)
             } else {
@@ -89,7 +92,7 @@ class OpenPetFoodFactsEngine @Inject constructor(
 
 @Serializable
 data class PetFoodProductResponse(
-    val status: Int = 0,
+    val status: String = "",
     val product: PetFoodProduct? = null
 )
 

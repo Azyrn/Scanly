@@ -25,7 +25,7 @@ class FoodRepository @Inject constructor() {
         .readTimeout(10, TimeUnit.SECONDS)
         .addInterceptor { chain ->
             val request = chain.request().newBuilder()
-                .header("User-Agent", "Scanly Android App - https://github.com/Azyrn/Scanly")
+                .header("User-Agent", OpenFoodFactsApi.USER_AGENT)
                 .build()
             chain.proceed(request)
         }
@@ -43,8 +43,8 @@ class FoodRepository @Inject constructor() {
             Log.d(TAG, "Looking up product: $barcode")
             val response = api.getProduct(barcode)
 
-            if (response.status == 1 && response.product != null) {
-                val product = response.product.toDomain()
+            if (response.isFound) {
+                val product = response.product?.toDomain()
                 Log.d(TAG, "Found product: ${product?.name}")
                 Result.success(product)
             } else {

@@ -109,7 +109,7 @@ class OpenLibraryEngine @Inject constructor(
                 }
                 else -> emptyList()
             }
-        } catch (e: Exception) {
+        } catch (_: IllegalArgumentException) {
             emptyList()
         }
     }

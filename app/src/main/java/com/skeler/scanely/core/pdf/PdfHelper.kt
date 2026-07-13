@@ -1,13 +1,16 @@
 package com.skeler.scanely.core.pdf
 
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.util.Log
 import android.widget.Toast
 
 object PdfHelper {
 
     private const val MIME_TYPE_PDF = "application/pdf"
+    private const val TAG = "PdfHelper"
 
     fun openPdfExternally(context: Context, uri: Uri): Boolean {
         return try {
@@ -22,7 +25,8 @@ object PdfHelper {
 
             context.startActivity(chooser)
             true
-        } catch (e: Exception) {
+        } catch (e: ActivityNotFoundException) {
+            Log.w(TAG, "No activity can view PDFs", e)
             Toast.makeText(
                 context,
                 "No PDF viewer found. Install a PDF reader app.",

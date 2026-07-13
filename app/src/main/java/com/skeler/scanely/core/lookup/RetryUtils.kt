@@ -15,15 +15,12 @@ suspend fun <T> withRetry(
     shouldRetry: (Exception) -> Boolean = { it.isRetryable() },
     block: suspend () -> T
 ): T {
-    var lastException: Exception? = null
     var currentDelay = config.initialDelayMs
 
     repeat(config.maxAttempts) { attempt ->
         try {
             return block()
         } catch (e: Exception) {
-            lastException = e
-
             if (!shouldRetry(e) || attempt == config.maxAttempts - 1) {
                 throw e
             }
@@ -36,7 +33,8 @@ suspend fun <T> withRetry(
         }
     }
 
-    throw lastException ?: IllegalStateException("Retry failed")
+    // Reachable only with maxAttempts <= 0; the last attempt always rethrows.
+    error("Retry failed")
 }
 
 fun Exception.isRetryable(): Boolean {

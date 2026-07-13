@@ -1,8 +1,11 @@
 package com.skeler.scanely.core.security
 
 import android.security.keystore.KeyGenParameterSpec
+import android.security.keystore.KeyPermanentlyInvalidatedException
 import android.security.keystore.KeyProperties
 import android.util.Base64
+import android.util.Log
+import java.security.GeneralSecurityException
 import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -10,6 +13,8 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 import javax.inject.Inject
 import javax.inject.Singleton
+
+private const val TAG = "KeyCipher"
 
 @Singleton
 class KeyCipher @Inject constructor() {
@@ -30,15 +35,25 @@ class KeyCipher @Inject constructor() {
         return Base64.encodeToString(payload, Base64.NO_WRAP)
     }
 
+    // Log only the exception class — never the payload or plaintext.
     fun decrypt(encoded: String): String? = try {
         val payload = Base64.decode(encoded, Base64.NO_WRAP)
+        require(payload.size > IV_SIZE_BYTES) { "payload too short" }
         val iv = payload.copyOfRange(0, IV_SIZE_BYTES)
         val ciphertext = payload.copyOfRange(IV_SIZE_BYTES, payload.size)
         val cipher = Cipher.getInstance(TRANSFORMATION).apply {
             init(Cipher.DECRYPT_MODE, secretKey(), GCMParameterSpec(TAG_LENGTH_BITS, iv))
         }
         String(cipher.doFinal(ciphertext), Charsets.UTF_8)
-    } catch (e: Exception) {
+    } catch (_: KeyPermanentlyInvalidatedException) {
+        // Lock-screen change etc. — ciphertext is undecryptable forever; user must re-enter keys.
+        Log.e(TAG, "Keystore key permanently invalidated, stored API keys are lost")
+        null
+    } catch (e: GeneralSecurityException) {
+        Log.w(TAG, "Decrypt failed: ${e.javaClass.simpleName}")
+        null
+    } catch (e: IllegalArgumentException) {
+        Log.w(TAG, "Decrypt failed on malformed payload: ${e.javaClass.simpleName}")
         null
     }
 

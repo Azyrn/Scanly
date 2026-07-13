@@ -1,12 +1,14 @@
 package com.skeler.scanely.ui.viewmodel
 
 import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.skeler.scanely.core.ocr.OcrResult
 import com.skeler.scanely.core.ocr.TextOcrService
 import com.skeler.scanely.history.data.HistoryManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -15,6 +17,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+private const val TAG = "OcrViewModel"
 
 data class OcrUiState(
     val isProcessing: Boolean = false,
@@ -50,7 +54,10 @@ class OcrViewModel @Inject constructor(
         savedHistoryId = viewModelScope.async(Dispatchers.IO) {
             try {
                 historyManager.saveItem(text, uri.toString()).id
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
+                Log.e(TAG, "History save failed", e)
                 null
             }
         }
@@ -68,7 +75,11 @@ class OcrViewModel @Inject constructor(
             try {
                 val id = pendingId.await() ?: return@launch
                 historyManager.updateItemText(id, newText)
-            } catch (_: Exception) {
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Keep in-memory correction if persist fails.
+                Log.w(TAG, "History text update failed", e)
             }
         }
     }

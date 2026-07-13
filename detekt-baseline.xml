@@ -55,11 +55,9 @@
     <ID>CyclomaticComplexMethod:ScanExporter.kt$ScanExporter$private fun exportToDownloads( context: Context, displayName: String, mimeType: String, write: (OutputStream) -&gt; Unit ): Uri</ID>
     <ID>CyclomaticComplexMethod:TableDecoder.kt$TableDecoder$fun decode( structure: FloatArray, boxes: FloatArray, steps: Int, classes: Int, vocab: List&lt;String&gt;, scale: Float ): TableStructure</ID>
     <ID>CyclomaticComplexMethod:UnifiedScanService.kt$UnifiedScanService$private fun mapBarcodeToActions(barcode: Barcode): List&lt;ScanAction&gt;</ID>
-    <ID>EmptyCatchBlock:HistoryManager.kt$HistoryManager${ }</ID>
     <ID>Filename:_DrawableVectors.kt$com.skeler.scanely.core.presentation.components.svg._DrawableVectors.kt</ID>
     <ID>FunctionOnlyReturningConstant:ScanExporter.kt$ScanExporter$private fun packageRelationships(): String</ID>
     <ID>FunctionOnlyReturningConstant:ScanExporter.kt$ScanExporter$private fun wordContentTypes(): String</ID>
-    <ID>InstanceOfCheckForException:ProviderClient.kt$ProviderClient$e is kotlinx.coroutines.CancellationException</ID>
     <ID>LargeClass:MarkdownParser.kt$MarkdownParser</ID>
     <ID>LargeClass:ScanExporter.kt$ScanExporter</ID>
     <ID>LongMethod:BarcodeAnalyzer.kt$BarcodeAnalyzer$private fun mapBarcodeToActions(barcode: Barcode): List&lt;ScanAction&gt;</ID>
@@ -160,7 +158,6 @@
     <ID>MaxLineLength:ScanExporter.kt$ScanExporter$properties = "&lt;w:pBdr&gt;&lt;w:left w:val=\"single\" w:sz=\"12\" w:space=\"6\" w:color=\"888888\"/&gt;&lt;/w:pBdr&gt;"</ID>
     <ID>MaximumLineLength:NoSearchResult.kt$ </ID>
     <ID>MaximumLineLength:ScanExporter.kt$ScanExporter$ </ID>
-    <ID>NestedBlockDepth:ActionExecutor.kt$ActionExecutor$private fun connectWifi(context: Context, ssid: String, password: String?, type: WifiType)</ID>
     <ID>NestedBlockDepth:DbPostProcessor.kt$DbPostProcessor$fun extract(prob: FloatArray, w: Int, h: Int, scaleX: Float, scaleY: Float): List&lt;Quad&gt;</ID>
     <ID>NestedBlockDepth:MarkdownParser.kt$MarkdownParser$fun parse(source: String): List&lt;MdBlock&gt;</ID>
     <ID>NestedBlockDepth:PaddleModelStore.kt$PaddleModelStore$private fun downloadVerified(repo: String, dest: File, onProgress: (Float) -&gt; Unit)</ID>
@@ -169,21 +166,9 @@
     <ID>NoSemicolons:PaddleOcrEngine.kt$CtcDecoder$;</ID>
     <ID>NoSemicolons:RtlText.kt$RtlText$;</ID>
     <ID>NoSemicolons:ScanReviewScreen.kt$;</ID>
-    <ID>PrintStackTrace:HistoryManager.kt$HistoryManager$e</ID>
     <ID>ReturnCount:ImageOps.kt$ImageOps$private fun axisAlignedCrop(src: Bitmap, q: Quad, w: Int, h: Int): Bitmap?</ID>
     <ID>ReturnCount:KeyVerifier.kt$KeyVerifier$suspend fun verify( provider: AiProvider, key: String, customUrl: String? = null ): VerificationResult</ID>
     <ID>ReturnCount:ProviderExecutor.kt$ProviderExecutor$suspend fun run( name: String, config: ProviderConfig, systemInstruction: String?, prompt: String, images: List&lt;String&gt;, allowStreaming: Boolean, emit: suspend (AiEvent) -&gt; Unit ): ProviderOutcome</ID>
-    <ID>SwallowedException:ActionExecutor.kt$ActionExecutor$e: Exception</ID>
-    <ID>SwallowedException:AiScanViewModel.kt$AiScanViewModel$e: Exception</ID>
-    <ID>SwallowedException:HistoryManager.kt$HistoryManager$e: Exception</ID>
-    <ID>SwallowedException:KeyCipher.kt$KeyCipher$e: Exception</ID>
-    <ID>SwallowedException:KeyVerifier.kt$KeyVerifier$e: IOException</ID>
-    <ID>SwallowedException:OcrViewModel.kt$OcrViewModel$e: Exception</ID>
-    <ID>SwallowedException:OpenLibraryEngine.kt$OpenLibraryEngine$e: Exception</ID>
-    <ID>SwallowedException:PdfHelper.kt$PdfHelper$e: Exception</ID>
-    <ID>SwallowedException:ProviderClient.kt$ProviderClient$e: SerializationException</ID>
-    <ID>SwallowedException:ProviderExecutor.kt$ProviderExecutor$e: TimeoutCancellationException</ID>
-    <ID>SwallowedException:ScanExporter.kt$ScanExporter$e: Exception</ID>
     <ID>ThrowsCount:PayloadFactory.kt$PayloadFactory$fun create(uri: Uri, mode: AiMode): Payload</ID>
     <ID>ThrowsCount:ProviderClient.kt$ProviderClient$suspend fun stream( config: ProviderConfig, systemInstruction: String?, prompt: String, images: List&lt;String&gt;, streamedAnything: BooleanArray, emit: suspend (AiEvent) -&gt; Unit ): String</ID>
     <ID>ThrowsCount:ScanExporter.kt$ScanExporter$private fun exportToDownloads( context: Context, displayName: String, mimeType: String, write: (OutputStream) -&gt; Unit ): Uri</ID>
@@ -203,7 +188,6 @@
     <ID>TooManyFunctions:SettingsRepository.kt$SettingsRepository</ID>
     <ID>TopLevelPropertyNaming:ColorSchemes.kt$private const val HarmonizeFraction = 0.1f</ID>
     <ID>TopLevelPropertyNaming:ThemeMotion.kt$const val ThemeSwitchDurationMillis = 220</ID>
-    <ID>UseCheckOrError:RetryUtils.kt$throw lastException ?: IllegalStateException("Retry failed")</ID>
     <ID>Wrapping:ProviderConfig.kt$ProviderConfigResolver$ProviderConfig( ProviderKind.OPENAI_COMPAT, model, it, CEREBRAS_URL, usesBundledKey = userKey == null )</ID>
     <ID>Wrapping:ProviderConfig.kt$ProviderConfigResolver$ProviderConfig( ProviderKind.OPENAI_COMPAT, model, it, GROQ_URL, usesBundledKey = userKey == null )</ID>
     <ID>Wrapping:ProviderConfig.kt$ProviderConfigResolver$ProviderConfig( ProviderKind.OPENAI_COMPAT, model, it, HUGGINGFACE_URL, usesBundledKey = userKey == null )</ID>

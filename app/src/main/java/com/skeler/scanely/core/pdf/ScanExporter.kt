@@ -360,6 +360,7 @@ object ScanExporter {
             }
             true
         } catch (e: Exception) {
+            Log.e(TAG, "Gallery save failed for $displayName, rolling back MediaStore row", e)
             resolver.delete(uri, null, null)
             false
         }

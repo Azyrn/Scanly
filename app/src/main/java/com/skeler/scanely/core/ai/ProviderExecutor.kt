@@ -77,7 +77,7 @@ internal class ProviderExecutor @Inject constructor(
                 } else {
                     return ProviderOutcome.Fatal(AiResult.Error("No response generated"))
                 }
-            } catch (e: TimeoutCancellationException) {
+            } catch (_: TimeoutCancellationException) {
                 aiDebug { "$name attempt ${attempt + 1} timed out after $timeoutMs ms" }
                 lastFailureWasNetwork = false
                 if (streamedAnything[0]) return ProviderOutcome.Exhausted()

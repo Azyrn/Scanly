@@ -1,5 +1,6 @@
 package com.skeler.scanely.core.actions
 
+import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -10,11 +11,15 @@ import android.os.Build
 import android.provider.CalendarContract
 import android.provider.ContactsContract
 import android.provider.Settings
+import android.util.Log
 import android.widget.Toast
 import androidx.core.net.toUri
+import java.text.ParseException
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
+
+private const val TAG = "ActionExecutor"
 
 object ActionExecutor {
 
@@ -33,8 +38,26 @@ object ActionExecutor {
         }
     }
 
+    /** Runs an action, toasting [errorToast] on the failures launching intents can produce. */
+    private inline fun tryAction(context: Context, errorToast: String, block: () -> Unit) {
+        val failure = try {
+            block()
+            null
+        } catch (e: ActivityNotFoundException) {
+            e
+        } catch (e: SecurityException) {
+            e
+        } catch (e: IllegalArgumentException) {
+            e
+        }
+        if (failure != null) {
+            Log.w(TAG, errorToast, failure)
+            Toast.makeText(context, errorToast, Toast.LENGTH_SHORT).show()
+        }
+    }
+
     private fun openUrl(context: Context, url: String) {
-        try {
+        tryAction(context, "Cannot open URL") {
             var finalUrl = url
             if (!url.startsWith("http://") && !url.startsWith("https://")) {
                 finalUrl = "https://$url"
@@ -42,34 +65,28 @@ object ActionExecutor {
             val intent = Intent(Intent.ACTION_VIEW, finalUrl.toUri())
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(intent)
-        } catch (e: Exception) {
-            Toast.makeText(context, "Cannot open URL", Toast.LENGTH_SHORT).show()
         }
     }
 
     private fun copyText(context: Context, text: String) {
-        try {
+        tryAction(context, "Failed to copy") {
             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
             val clip = ClipData.newPlainText("Scanned Text", text)
             clipboard.setPrimaryClip(clip)
             Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
-        } catch (e: Exception) {
-            Toast.makeText(context, "Failed to copy", Toast.LENGTH_SHORT).show()
         }
     }
 
     private fun callPhone(context: Context, number: String) {
-        try {
+        tryAction(context, "Cannot open dialer") {
             val intent = Intent(Intent.ACTION_DIAL, "tel:$number".toUri())
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(intent)
-        } catch (e: Exception) {
-            Toast.makeText(context, "Cannot open dialer", Toast.LENGTH_SHORT).show()
         }
     }
 
     private fun sendEmail(context: Context, email: String, subject: String?, body: String?) {
-        try {
+        tryAction(context, "Cannot open email app") {
             val intent = Intent(Intent.ACTION_SENDTO).apply {
                 data = "mailto:".toUri()
                 putExtra(Intent.EXTRA_EMAIL, arrayOf(email))
@@ -78,24 +95,20 @@ object ActionExecutor {
             }
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(intent)
-        } catch (e: Exception) {
-            Toast.makeText(context, "Cannot open email app", Toast.LENGTH_SHORT).show()
         }
     }
 
     private fun sendSms(context: Context, number: String, message: String?) {
-        try {
+        tryAction(context, "Cannot open SMS app") {
             val intent = Intent(Intent.ACTION_SENDTO, "smsto:$number".toUri())
             message?.let { intent.putExtra("sms_body", it) }
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(intent)
-        } catch (e: Exception) {
-            Toast.makeText(context, "Cannot open SMS app", Toast.LENGTH_SHORT).show()
         }
     }
 
     private fun connectWifi(context: Context, ssid: String, password: String?, type: WifiType) {
-        try {
+        tryAction(context, "Cannot connect to WiFi") {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 val suggestion = WifiNetworkSuggestion.Builder()
                     .setSsid(ssid)
@@ -119,13 +132,11 @@ object ActionExecutor {
                 context.startActivity(intent)
                 Toast.makeText(context, "Open WiFi settings to connect to: $ssid", Toast.LENGTH_SHORT).show()
             }
-        } catch (e: Exception) {
-            Toast.makeText(context, "Cannot connect to WiFi", Toast.LENGTH_SHORT).show()
         }
     }
 
     private fun addContact(context: Context, action: ScanAction.AddContact) {
-        try {
+        tryAction(context, "Cannot open contacts") {
             val intent = Intent(Intent.ACTION_INSERT).apply {
                 type = ContactsContract.Contacts.CONTENT_TYPE
                 action.name?.let { putExtra(ContactsContract.Intents.Insert.NAME, it) }
@@ -135,13 +146,11 @@ object ActionExecutor {
             }
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(intent)
-        } catch (e: Exception) {
-            Toast.makeText(context, "Cannot open contacts", Toast.LENGTH_SHORT).show()
         }
     }
 
     private fun addEvent(context: Context, action: ScanAction.AddEvent) {
-        try {
+        tryAction(context, "Cannot open calendar") {
             val intent = Intent(Intent.ACTION_INSERT).apply {
                 data = CalendarContract.Events.CONTENT_URI
                 action.title?.let { putExtra(CalendarContract.Events.TITLE, it) }
@@ -156,8 +165,6 @@ object ActionExecutor {
             }
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(intent)
-        } catch (e: Exception) {
-            Toast.makeText(context, "Cannot open calendar", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -176,7 +183,7 @@ object ActionExecutor {
                 if (utc) timeZone = TimeZone.getTimeZone("UTC")
             }
             format.parse(value)?.time
-        } catch (e: Exception) {
+        } catch (e: ParseException) {
             null
         }
     }

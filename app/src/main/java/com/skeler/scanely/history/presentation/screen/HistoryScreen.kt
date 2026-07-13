@@ -4,9 +4,9 @@ package com.skeler.scanely.history.presentation.screen
 
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -23,24 +23,24 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.DeleteOutline
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
-import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -54,6 +54,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -71,7 +72,6 @@ import com.skeler.scanely.navigation.Routes
 import com.skeler.scanely.ui.ScanViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -81,9 +81,9 @@ fun HistoryScreen() {
     val scanViewModel: ScanViewModel = hiltViewModel(activity)
     val historyViewModel: HistoryViewModel = hiltViewModel()
     val navController = LocalNavController.current
-    
+
     val historyItems by historyViewModel.historyItems.collectAsState()
-    
+
     val topBarScrollBehavior =
         TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
     val listState = rememberLazyListState()
@@ -95,7 +95,7 @@ fun HistoryScreen() {
             }
         }
     }
-    
+
     var showClearConfirmDialog by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -191,7 +191,7 @@ fun HistoryScreen() {
                         },
                         positionalThreshold = { totalDistance -> totalDistance * 0.5f }
                     )
-                    
+
                     SwipeToDismissBox(
                         state = dismissState,
                         backgroundContent = {
@@ -229,7 +229,7 @@ fun HistoryScreen() {
             }
         }
     }
-    
+
     if (showClearConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showClearConfirmDialog = false },
@@ -261,6 +261,10 @@ private fun HistoryItemCard(
     item: HistoryItem,
     onClick: () -> Unit
 ) {
+    val locale = LocalLocale.current.platformLocale
+    val formatter = remember(locale) { SimpleDateFormat("MMM dd, yyyy • HH:mm", locale) }
+    val timestamp = remember(formatter, item.timestamp) { formatter.format(Date(item.timestamp)) }
+
     Card(
         onClick = onClick,
         modifier = modifier,
@@ -283,11 +287,7 @@ private fun HistoryItemCard(
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = SimpleDateFormat("MMM dd, yyyy • HH:mm", Locale.getDefault()).format(
-                    Date(
-                        item.timestamp
-                    )
-                ),
+                text = timestamp,
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

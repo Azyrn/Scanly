@@ -74,7 +74,7 @@ fun TextRecognitionScreen(
         .collectAsState(initial = false)
     val uvdoc by viewModel.uvdocState.collectAsState()
     val structure by viewModel.toggle(SettingsKeys.PADDLE_STRUCTURE)
-        .collectAsState(initial = false)
+        .collectAsState(initial = true)
     val tableModel by viewModel.tableState.collectAsState()
 
     Scaffold(
@@ -178,6 +178,7 @@ fun TextRecognitionScreen(
                                     else -> "UVDoc dewarping — slower, for books and folds"
                                 },
                                 icon = Icons.Rounded.Crop,
+                                enabled = uvdoc !is PackState.Downloading,
                                 checked = dewarp,
                                 onCheckedChange = { viewModel.setDewarp(it) }
                             )
@@ -192,7 +193,7 @@ fun TextRecognitionScreen(
                         SettingsGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
                             SettingSwitchTile(
                                 title = "Detect layout",
-                                subtitle = "Headings, paragraphs and reading order in Markdown export",
+                                subtitle = "Headings, paragraphs and reading order in the Markdown view",
                                 icon = Icons.Rounded.Article,
                                 checked = structure,
                                 onCheckedChange = {
@@ -207,10 +208,10 @@ fun TextRecognitionScreen(
                                         "Downloading ${(state.progress * 100).toInt()}%"
                                     is PackState.Failed -> state.message
                                     is PackState.Missing -> "SLANet tables · 8 MB download"
-                                    else -> "Rebuilds tables as Markdown grids"
+                                    else -> "Rebuilds tables as grids you can export to CSV"
                                 },
                                 icon = Icons.Rounded.TableChart,
-                                enabled = structure,
+                                enabled = structure && tableModel !is PackState.Downloading,
                                 checked = tableModel is PackState.Installed,
                                 onCheckedChange = { viewModel.setTables(it) }
                             )

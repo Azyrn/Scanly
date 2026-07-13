@@ -39,17 +39,22 @@ class TextRecognitionViewModel @Inject constructor(
 
     fun setToggle(key: SettingsKeys, value: Boolean) = write { settings.setBoolean(key, value) }
 
-    fun download(pack: ScriptPack) = write { store.download(pack) }
+    fun download(pack: ScriptPack) = store.downloadAsync(pack)
 
     val uvdocState: StateFlow<PackState> = store.uvdocState
 
-    /** The dewarper isn't bundled, so enabling it pulls the model first. */
-    fun setDewarp(enabled: Boolean) = write {
+    /**
+     * The dewarper isn't bundled, so enabling it pulls the model first. Both the download and
+     * the flag it sets live on the store's scope: closing this screen mid-download would
+     * otherwise cancel the write and leave the model installed with the setting still off.
+     */
+    fun setDewarp(enabled: Boolean) {
+        if (uvdocState.value is PackState.Downloading) return
         if (!enabled) {
-            settings.setBoolean(SettingsKeys.PADDLE_DOC_UNWARP, false)
-            return@write
+            write { settings.setBoolean(SettingsKeys.PADDLE_DOC_UNWARP, false) }
+            return
         }
-        if (store.hasUvdoc() || store.downloadUvdoc().isSuccess) {
+        store.downloadUvdocAsync {
             settings.setBoolean(SettingsKeys.PADDLE_DOC_UNWARP, true)
         }
     }
@@ -60,8 +65,10 @@ class TextRecognitionViewModel @Inject constructor(
      * Layout detection is bundled, but the table model isn't — tables are on exactly when
      * SLANet is installed, so the switch is the download.
      */
-    fun setTables(enabled: Boolean) = write {
-        if (enabled) store.downloadTable() else store.deleteTable()
+    fun setTables(enabled: Boolean) {
+        // Deleting the file a download is still writing would leave it installed anyway.
+        if (tableState.value is PackState.Downloading) return
+        if (enabled) store.downloadTableAsync() else write { store.deleteTable() }
     }
 
     /** Deleting the selected pack would leave no model, so fall back to the bundled one. */

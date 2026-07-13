@@ -84,9 +84,30 @@ class PaddleModelStore @Inject constructor(
 
     fun uvdocModel(): ByteArray = uvdocFile.readBytes()
 
+    /**
+     * Runs on the store's own scope, so leaving the settings screen doesn't cancel a download
+     * half-way. [onInstalled] runs only once the model is verified and on disk.
+     */
+    fun downloadUvdocAsync(onInstalled: suspend () -> Unit = {}) {
+        scope.launch { if (downloadUvdoc().isSuccess) onInstalled() }
+    }
+
+    fun downloadTableAsync() {
+        scope.launch { downloadTable() }
+    }
+
+    fun downloadAsync(pack: ScriptPack) {
+        scope.launch { download(pack) }
+    }
+
     /** 30 MB dewarper, opt-in — downloaded rather than bundled. */
     suspend fun downloadUvdoc(): Result<Unit> = withContext(Dispatchers.IO) {
         if (hasUvdoc()) return@withContext Result.success(Unit)
+        // A second tap must not start a second writer on the same file, nor report success
+        // for a download it didn't make.
+        if (_uvdocState.value is PackState.Downloading) {
+            return@withContext Result.failure(IllegalStateException("Already downloading"))
+        }
         _uvdocState.value = PackState.Downloading(0f)
         runCatching {
             downloadVerified("UVDoc_onnx", uvdocFile) {
@@ -112,6 +133,9 @@ class PaddleModelStore @Inject constructor(
     /** 8 MB SLANet_plus table structure model, opt-in — downloaded rather than bundled. */
     suspend fun downloadTable(): Result<Unit> = withContext(Dispatchers.IO) {
         if (hasTable()) return@withContext Result.success(Unit)
+        if (_tableState.value is PackState.Downloading) {
+            return@withContext Result.failure(IllegalStateException("Already downloading"))
+        }
         _tableState.value = PackState.Downloading(0f)
         runCatching {
             downloadVerified("SLANet_plus_onnx", tableFile) {

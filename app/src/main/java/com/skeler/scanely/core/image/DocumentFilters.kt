@@ -85,9 +85,11 @@ object DocumentFilters {
             val pixelRow = y * width
             for (x in 0 until width) {
                 val p = pixels[pixelRow + x]
-                val luminance = ((p shr 16 and 0xFF) * 30 +
-                    (p shr 8 and 0xFF) * 59 +
-                    (p and 0xFF) * 11) / 100
+                val luminance = (
+                    (p shr 16 and 0xFF) * 30 +
+                        (p shr 8 and 0xFF) * 59 +
+                        (p and 0xFF) * 11
+                    ) / 100
                 rowSum += luminance
                 integral[integralRow + x + 1] = integral[previousRow + x + 1] + rowSum
             }
@@ -108,9 +110,11 @@ object DocumentFilters {
                         integral[top * stride + left]
                     ) / area
                 val p = pixels[y * width + x]
-                val luminance = ((p shr 16 and 0xFF) * 30 +
-                    (p shr 8 and 0xFF) * 59 +
-                    (p and 0xFF) * 11) / 100
+                val luminance = (
+                    (p shr 16 and 0xFF) * 30 +
+                        (p shr 8 and 0xFF) * 59 +
+                        (p and 0xFF) * 11
+                    ) / 100
                 val value = if (luminance >= localMean - BLACK_WHITE_BIAS) 0xFF else 0x00
                 pixels[y * width + x] = (0xFF shl 24) or (value shl 16) or (value shl 8) or value
             }

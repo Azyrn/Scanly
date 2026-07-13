@@ -119,7 +119,9 @@ class GenerativeAiService @Inject internal constructor(
         // OCR endpoint can't translate; use Mistral chat.
         val config = if (resolved.kind == ProviderKind.MISTRAL_OCR) {
             ProviderConfig.mistralChat(resolved.apiKey)
-        } else resolved
+        } else {
+            resolved
+        }
         val outcome = executor.run(
             name = provider.displayName,
             config = config,

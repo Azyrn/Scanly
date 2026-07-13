@@ -5,10 +5,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 
 /** Max images/files accepted per AI scan (matches the per-file 20 MB cap in PayloadFactory). */
@@ -24,7 +21,7 @@ fun rememberGalleryPicker(
     ) { uri ->
         onImageSelected(uri)
     }
-    
+
     return {
         launcher.launch(
             PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
@@ -43,7 +40,7 @@ fun rememberMultiGalleryPicker(
     ) { uris ->
         onImagesSelected(uris)
     }
-    
+
     return {
         launcher.launch(
             PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
@@ -62,7 +59,6 @@ fun rememberMultiDocumentPicker(
     ) { uris ->
         onDocumentsSelected(uris)
     }
-    
+
     return { launcher.launch(mimeTypes) }
 }
-

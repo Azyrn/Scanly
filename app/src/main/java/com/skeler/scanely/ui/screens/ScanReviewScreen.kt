@@ -203,9 +203,18 @@ fun ScanReviewScreen() {
     if (showExportSheet) {
         ExportSheet(
             pageCount = pages.size,
-            onPdf = { showExportSheet = false; vm.exportPdf() },
-            onWord = { showExportSheet = false; vm.exportWord() },
-            onImages = { showExportSheet = false; vm.saveImages() },
+            onPdf = {
+                showExportSheet = false;
+                vm.exportPdf()
+            },
+            onWord = {
+                showExportSheet = false;
+                vm.exportWord()
+            },
+            onImages = {
+                showExportSheet = false;
+                vm.saveImages()
+            },
             onDismiss = { showExportSheet = false }
         )
     }

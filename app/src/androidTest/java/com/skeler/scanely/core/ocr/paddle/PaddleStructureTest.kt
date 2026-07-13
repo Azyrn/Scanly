@@ -62,7 +62,9 @@ class PaddleStructureTest {
         repeat(8) { i ->
             canvas.drawText(
                 "Revenue grew steadily across all regions during the quarter, with strong",
-                80f, 220f + i * 30f, text
+                80f,
+                220f + i * 30f,
+                text
             )
         }
 
@@ -87,7 +89,9 @@ class PaddleStructureTest {
         repeat(6) { i ->
             canvas.drawText(
                 "Costs remained flat while margins improved year over year.",
-                80f, 900f + i * 30f, text
+                80f,
+                900f + i * 30f,
+                text
             )
         }
         return bitmap
@@ -137,7 +141,11 @@ class PaddleStructureTest {
 
         val page = document()
         val crop = Bitmap.createBitmap(
-            page, tableLeft, tableTop, columns * columnWidth, rows * rowHeight
+            page,
+            tableLeft,
+            tableTop,
+            columns * columnWidth,
+            rows * rowHeight
         )
         val structure = engine.recognizeTable(crop)
 

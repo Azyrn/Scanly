@@ -21,8 +21,8 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -59,22 +59,22 @@ import com.skeler.scanely.navigation.LocalNavController
 import com.skeler.scanely.navigation.Routes
 import com.skeler.scanely.ui.ScanViewModel
 import com.skeler.scanely.ui.components.CredentialBadge
-import com.skeler.scanely.ui.components.ExportContent
-import com.skeler.scanely.ui.components.PADDLE_EXPORT_FORMATS
-import com.skeler.scanely.ui.components.TEXT_EXPORT_FORMATS
-import com.skeler.scanely.ui.components.unavailableFormats
-import com.skeler.scanely.ui.components.ExtractedTextActions
-import com.skeler.scanely.ui.components.rememberExtractedTextState
 import com.skeler.scanely.ui.components.EmptyResultContent
+import com.skeler.scanely.ui.components.ExportContent
+import com.skeler.scanely.ui.components.ExtractedTextActions
 import com.skeler.scanely.ui.components.ExtractedTextSection
 import com.skeler.scanely.ui.components.LanguageChipRow
+import com.skeler.scanely.ui.components.PADDLE_EXPORT_FORMATS
 import com.skeler.scanely.ui.components.ProcessingContent
 import com.skeler.scanely.ui.components.RateLimitSheet
 import com.skeler.scanely.ui.components.ScanResultSkeleton
+import com.skeler.scanely.ui.components.TEXT_EXPORT_FORMATS
 import com.skeler.scanely.ui.components.TranslatingContent
 import com.skeler.scanely.ui.components.TranslationLanguages
+import com.skeler.scanely.ui.components.rememberExtractedTextState
 import com.skeler.scanely.ui.components.rememberMarkdownPrinter
 import com.skeler.scanely.ui.components.rememberTextExporter
+import com.skeler.scanely.ui.components.unavailableFormats
 import com.skeler.scanely.ui.viewmodel.AiScanViewModel
 import com.skeler.scanely.ui.viewmodel.OcrViewModel
 import kotlinx.coroutines.delay
@@ -203,172 +203,174 @@ fun ResultsScreen() {
                 .statusBarsPadding()
                 .padding(horizontal = 20.dp)
         ) {
-          Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-                .verticalScroll(rememberScrollState())
-          ) {
-            Box(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 14.dp),
-                contentAlignment = Alignment.Center
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
             ) {
-                Text(
-                    text = "Results",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-            when {
-                aiState.isProcessing -> {
-                    ProcessingContent(
-                        currentFile = aiState.currentFileIndex,
-                        totalFiles = aiState.totalFiles,
-                        stage = aiState.stage,
-                        stageMessage = aiState.stageMessage,
-                        streamingText = aiState.streamingText,
-                        onCancel = {
-                            aiViewModel.cancelProcessing()
-                            onBack()
-                        }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 14.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Results",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Medium
                     )
                 }
-                isProcessing -> {
-                    ScanResultSkeleton(
-                        modifier = Modifier.padding(top = 8.dp),
-                        showChips = false
-                    )
-                }
-                isTranslating -> {
-                    TranslatingContent()
-                }
-                displayText != null -> {
-                    val runInfo = aiState.runInfo
-                    val credential: (@Composable () -> Unit)? =
-                        if (isAiResult && historyText == null && runInfo != null &&
-                            aiState.result is AiResult.Success
-                        ) {
-                            {
-                                CredentialBadge(
-                                    providerName = runInfo.provider.displayName,
-                                    model = runInfo.model,
-                                    usesBundledKey = runInfo.usesBundledKey
+                when {
+                    aiState.isProcessing -> {
+                        ProcessingContent(
+                            currentFile = aiState.currentFileIndex,
+                            totalFiles = aiState.totalFiles,
+                            stage = aiState.stage,
+                            stageMessage = aiState.stageMessage,
+                            streamingText = aiState.streamingText,
+                            onCancel = {
+                                aiViewModel.cancelProcessing()
+                                onBack()
+                            }
+                        )
+                    }
+                    isProcessing -> {
+                        ScanResultSkeleton(
+                            modifier = Modifier.padding(top = 8.dp),
+                            showChips = false
+                        )
+                    }
+                    isTranslating -> {
+                        TranslatingContent()
+                    }
+                    displayText != null -> {
+                        val runInfo = aiState.runInfo
+                        val credential: (@Composable () -> Unit)? =
+                            if (isAiResult && historyText == null && runInfo != null &&
+                                aiState.result is AiResult.Success
+                            ) {
+                                {
+                                    CredentialBadge(
+                                        providerName = runInfo.provider.displayName,
+                                        model = runInfo.model,
+                                        usesBundledKey = runInfo.usesBundledKey
+                                    )
+                                }
+                            } else {
+                                null
+                            }
+
+                        if (isAiResult && isOnline) {
+                            LanguageChipRow(
+                                cachedLanguages = cachedLanguages,
+                                currentLanguage = currentLanguage,
+                                showLanguageMenu = showLanguageMenu,
+                                onShowLanguageMenu = { showLanguageMenu = true },
+                                onDismissLanguageMenu = { showLanguageMenu = false },
+                                onSelectOriginal = {
+                                    markdownView = false
+                                    aiViewModel.showOriginal()
+                                },
+                                onSelectCached = {
+                                    markdownView = false
+                                    aiViewModel.selectCachedLanguage(it)
+                                },
+                                allLanguages = languages,
+                                onNewLanguageSelected = { language ->
+                                    showLanguageMenu = false
+                                    scanViewModel.triggerAiWithRateLimit(aiState.provider) {
+                                        markdownView = false
+                                        aiViewModel.translateResult(language)
+                                    }
+                                },
+                                onComposeText = { navController.navigate(Routes.TEXT_COMPOSE) },
+                                showMarkdown = hasMarkdown,
+                                markdownSelected = markdownMode,
+                                onSelectMarkdown = { markdownView = true }
+                            )
+                            Spacer(modifier = Modifier.height(10.dp))
+                        } else if (hasMarkdown) {
+                            // Offline scans have no language row; still offer the structured view.
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                FilterChip(
+                                    selected = !markdownMode,
+                                    onClick = { markdownView = false },
+                                    label = { Text("Original") }
+                                )
+                                FilterChip(
+                                    selected = markdownMode,
+                                    onClick = { markdownView = true },
+                                    label = { Text("Markdown") }
                                 )
                             }
-                        } else null
-
-                    if (isAiResult && isOnline) {
-                        LanguageChipRow(
-                            cachedLanguages = cachedLanguages,
-                            currentLanguage = currentLanguage,
-                            showLanguageMenu = showLanguageMenu,
-                            onShowLanguageMenu = { showLanguageMenu = true },
-                            onDismissLanguageMenu = { showLanguageMenu = false },
-                            onSelectOriginal = {
-                                markdownView = false
-                                aiViewModel.showOriginal()
-                            },
-                            onSelectCached = {
-                                markdownView = false
-                                aiViewModel.selectCachedLanguage(it)
-                            },
-                            allLanguages = languages,
-                            onNewLanguageSelected = { language ->
-                                showLanguageMenu = false
-                                scanViewModel.triggerAiWithRateLimit(aiState.provider) {
-                                    markdownView = false
-                                    aiViewModel.translateResult(language)
-                                }
-                            },
-                            onComposeText = { navController.navigate(Routes.TEXT_COMPOSE) },
-                            showMarkdown = hasMarkdown,
-                            markdownSelected = markdownMode,
-                            onSelectMarkdown = { markdownView = true }
-                        )
-                        Spacer(modifier = Modifier.height(10.dp))
-                    } else if (hasMarkdown) {
-                        // Offline scans have no language row; still offer the structured view.
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            FilterChip(
-                                selected = !markdownMode,
-                                onClick = { markdownView = false },
-                                label = { Text("Original") }
-                            )
-                            FilterChip(
-                                selected = markdownMode,
-                                onClick = { markdownView = true },
-                                label = { Text("Markdown") }
-                            )
+                            Spacer(modifier = Modifier.height(10.dp))
                         }
-                        Spacer(modifier = Modifier.height(10.dp))
-                    }
 
-                    // Copy, export, print, edit and the body all follow the visible view.
-                    val visibleText = (if (markdownMode) markdownSource else shownText)
-                        ?: displayText
-                    val preview = remember(visibleText, markdownMode, paddleResult) {
-                        ExportContent(
-                            text = visibleText,
-                            isMarkdown = markdownMode,
-                            blocks = paddleResult?.blocks.orEmpty()
-                        )
-                    }
-                    val disabledFormats = remember(preview) { unavailableFormats(preview) }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Rounded.Notes,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(22.dp)
-                            )
-                            Spacer(modifier = Modifier.size(10.dp))
-                            Text(
-                                text = "Extracted Text",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            ExtractedTextActions(
-                                state = textState,
+                        // Copy, export, print, edit and the body all follow the visible view.
+                        val visibleText = (if (markdownMode) markdownSource else shownText)
+                            ?: displayText
+                        val preview = remember(visibleText, markdownMode, paddleResult) {
+                            ExportContent(
                                 text = visibleText,
-                                onCopy = { copyToClipboard(context, visibleText) },
-                                onExport = { format -> exportText(preview, format) },
-                                exportFormats = exportFormats,
-                                disabledFormats = disabledFormats,
-                                onSaveEdit = onSaveExtracted,
-                                onPrint = { printText(visibleText, markdownMode) },
-                                compact = true
+                                isMarkdown = markdownMode,
+                                blocks = paddleResult?.blocks.orEmpty()
                             )
                         }
+                        val disabledFormats = remember(preview) { unavailableFormats(preview) }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Rounded.Notes,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                                Spacer(modifier = Modifier.size(10.dp))
+                                Text(
+                                    text = "Extracted Text",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                ExtractedTextActions(
+                                    state = textState,
+                                    text = visibleText,
+                                    onCopy = { copyToClipboard(context, visibleText) },
+                                    onExport = { format -> exportText(preview, format) },
+                                    exportFormats = exportFormats,
+                                    disabledFormats = disabledFormats,
+                                    onSaveEdit = onSaveExtracted,
+                                    onPrint = { printText(visibleText, markdownMode) },
+                                    compact = true
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        ExtractedTextSection(
+                            state = textState,
+                            text = visibleText,
+                            credential = credential,
+                            markdown = markdownMode
+                        )
                     }
-
-                    Spacer(modifier = Modifier.height(10.dp))
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    ExtractedTextSection(
-                        state = textState,
-                        text = visibleText,
-                        credential = credential,
-                        markdown = markdownMode
-                    )
+                    else -> {
+                        EmptyResultContent()
+                    }
                 }
-                else -> {
-                    EmptyResultContent()
-                }
+
+                Spacer(modifier = Modifier.height(100.dp))
             }
-
-            Spacer(modifier = Modifier.height(100.dp))
-          }
         }
 
         if (showRescan) {

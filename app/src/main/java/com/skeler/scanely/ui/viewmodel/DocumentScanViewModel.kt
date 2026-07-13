@@ -274,9 +274,11 @@ class DocumentScanViewModel @Inject constructor(
     private fun applyExifRotation(uri: Uri, bitmap: Bitmap): Bitmap {
         val degrees = runCatching {
             appContext.contentResolver.openInputStream(uri)?.use { stream ->
-                when (ExifInterface(stream).getAttributeInt(
-                    ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL
-                )) {
+                when (
+                    ExifInterface(stream).getAttributeInt(
+                        ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL
+                    )
+                ) {
                     ExifInterface.ORIENTATION_ROTATE_90 -> 90f
                     ExifInterface.ORIENTATION_ROTATE_180 -> 180f
                     ExifInterface.ORIENTATION_ROTATE_270 -> 270f

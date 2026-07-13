@@ -245,7 +245,7 @@ internal object MarkdownPdf {
             var end = line
             while (end < content.lineCount &&
                 content.getLineBottom(end) - top <= pager.remaining
-            ) end++
+                ) end++
             // An oversized line still has to go somewhere.
             if (end == line) end = line + 1
 

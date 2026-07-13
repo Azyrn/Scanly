@@ -13,20 +13,20 @@ data class ProductInfo(
     val barcode: String,
     val source: String,
     val category: ProductCategory,
-    
+
     val name: String?,
     val brand: String?,
     val description: String?,
     val imageUrl: String?,
-    
+
     val foodData: FoodData? = null,
-    
+
     val bookData: BookData? = null,
-    
+
     val medicineData: MedicineData? = null,
-    
+
     val cosmeticsData: CosmeticsData? = null,
-    
+
     val rawMetadata: Map<String, String> = emptyMap()
 )
 

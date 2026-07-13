@@ -7,7 +7,6 @@ import com.skeler.scanely.core.actions.ScanAction
 import com.skeler.scanely.core.ocr.OcrResult
 import com.skeler.scanely.core.ocr.OcrSource
 import com.skeler.scanely.core.ocr.TextBlockData
-import com.skeler.scanely.core.scan.UnifiedScanResult
 import com.skeler.scanely.core.scan.UnifiedScanService
 import com.skeler.scanely.history.data.HistoryManager
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -35,7 +34,7 @@ class UnifiedScanViewModel @Inject constructor(
 
         currentScanJob = viewModelScope.launch {
             val result = unifiedScanService.scanImage(uri)
-            
+
             val success = result.textResult as? OcrResult.Success
             val extractedText = success?.text
 
@@ -64,7 +63,7 @@ class UnifiedScanViewModel @Inject constructor(
 
         currentScanJob = viewModelScope.launch {
             val barcodeActions = unifiedScanService.scanBarcodeOnly(uri)
-            
+
             _uiState.value = UnifiedScanUiState(
                 isLoading = false,
                 barcodeActions = barcodeActions,

@@ -8,19 +8,18 @@ import com.skeler.scanely.core.lookup.LookupResult
 import com.skeler.scanely.core.lookup.ProductCategory
 import com.skeler.scanely.core.lookup.ProductInfo
 import com.skeler.scanely.core.lookup.isIsbn
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
-import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 private const val TAG = "OpenLibraryEngine"
 
@@ -29,7 +28,7 @@ private const val TAG = "OpenLibraryEngine"
 class OpenLibraryEngine @Inject constructor(
     private val okHttpClient: OkHttpClient
 ) : LookupEngine {
-    
+
     override val name = "Open Library"
     override val priority = 2
     override val category = ProductCategory.BOOK
@@ -51,7 +50,7 @@ class OpenLibraryEngine @Inject constructor(
 
             val jsonObject = LookupJson.parseToJsonElement(body).jsonObject
             val key = "ISBN:$cleaned"
-            
+
             if (jsonObject.containsKey(key)) {
                 val bookJson = jsonObject[key]?.jsonObject
                 if (bookJson != null) {
@@ -60,7 +59,7 @@ class OpenLibraryEngine @Inject constructor(
                     return@withContext LookupResult.Found(product, name)
                 }
             }
-            
+
             Log.d(TAG, "Not found: $barcode")
             LookupResult.NotFound(name)
         } catch (e: Exception) {
@@ -68,7 +67,7 @@ class OpenLibraryEngine @Inject constructor(
             LookupResult.Error(name, e)
         }
     }
-    
+
     private fun mapToProductInfo(barcode: String, bookJson: JsonObject): ProductInfo {
         val title = bookJson["title"]?.jsonPrimitive?.contentOrNull
         val publishers = extractNames(bookJson["publishers"])
@@ -101,7 +100,7 @@ class OpenLibraryEngine @Inject constructor(
             )
         )
     }
-    
+
     private fun extractNames(element: kotlinx.serialization.json.JsonElement?): List<String> {
         return try {
             when (element) {

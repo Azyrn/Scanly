@@ -30,7 +30,10 @@ fun rememberMarkdownPrinter(): (text: String, asMarkdown: Boolean) -> Unit {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     return remember(context, scope) {
-        { text, asMarkdown -> scope.launch { print(context, text, asMarkdown) } }
+        {
+                text, asMarkdown ->
+            scope.launch { print(context, text, asMarkdown) }
+        }
     }
 }
 

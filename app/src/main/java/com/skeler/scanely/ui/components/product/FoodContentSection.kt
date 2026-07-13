@@ -43,8 +43,13 @@ fun FoodContentSection(data: FoodData) {
     }
 
     val hasNutrition = listOfNotNull(
-        data.calories, data.fat, data.carbs,
-        data.protein, data.sugar, data.salt, data.fiber
+        data.calories,
+        data.fat,
+        data.carbs,
+        data.protein,
+        data.sugar,
+        data.salt,
+        data.fiber
     ).isNotEmpty()
 
     if (hasNutrition) {

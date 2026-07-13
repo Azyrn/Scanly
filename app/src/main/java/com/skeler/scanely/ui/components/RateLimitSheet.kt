@@ -46,11 +46,11 @@ fun RateLimitSheet(
         animationSpec = tween(durationMillis = 1000),
         label = "progress"
     )
-    
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        modifier = modifier.semantics { 
+        modifier = modifier.semantics {
             contentDescription = "Rate limit explanation. $remainingSeconds seconds remaining."
         }
     ) {
@@ -103,7 +103,7 @@ fun RateLimitSheet(
                 trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                 color = MaterialTheme.colorScheme.primary
             )
-            
+
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
@@ -112,7 +112,7 @@ fun RateLimitSheet(
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.primary
             )
-            
+
             Spacer(modifier = Modifier.height(24.dp))
 
             if (onWatchAd != null) {

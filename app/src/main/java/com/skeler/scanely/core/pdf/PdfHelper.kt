@@ -4,7 +4,6 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
-import androidx.core.content.FileProvider
 
 object PdfHelper {
 
@@ -36,6 +35,6 @@ object PdfHelper {
     fun isPdfUri(context: Context, uri: Uri): Boolean {
         val mimeType = context.contentResolver.getType(uri)
         return mimeType == MIME_TYPE_PDF ||
-               uri.toString().lowercase().endsWith(".pdf")
+            uri.toString().lowercase().endsWith(".pdf")
     }
 }

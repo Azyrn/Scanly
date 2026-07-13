@@ -2,7 +2,6 @@ package com.skeler.scanely.core.lookup
 
 import kotlinx.coroutines.delay
 import kotlin.math.min
-import kotlin.math.pow
 
 data class RetryConfig(
     val maxAttempts: Int = 3,
@@ -18,17 +17,17 @@ suspend fun <T> withRetry(
 ): T {
     var lastException: Exception? = null
     var currentDelay = config.initialDelayMs
-    
+
     repeat(config.maxAttempts) { attempt ->
         try {
             return block()
         } catch (e: Exception) {
             lastException = e
-            
+
             if (!shouldRetry(e) || attempt == config.maxAttempts - 1) {
                 throw e
             }
-            
+
             delay(currentDelay)
             currentDelay = min(
                 (currentDelay * config.backoffMultiplier).toLong(),
@@ -36,7 +35,7 @@ suspend fun <T> withRetry(
             )
         }
     }
-    
+
     throw lastException ?: IllegalStateException("Retry failed")
 }
 

@@ -149,7 +149,8 @@ class PdfOcrResolutionTest {
         val doc = PdfDocument()
         val page = doc.startPage(PdfDocument.PageInfo.Builder(595, 842, 1).create())
         page.canvas.drawBitmap(
-            photo, null,
+            photo,
+            null,
             android.graphics.Rect(0, 0, 595, 842),
             Paint(Paint.FILTER_BITMAP_FLAG)
         )

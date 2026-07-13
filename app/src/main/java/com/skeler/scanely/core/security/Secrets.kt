@@ -83,8 +83,10 @@ object Secrets {
             md.update(seed)
             md.update(
                 byteArrayOf(
-                    (counter ushr 24).toByte(), (counter ushr 16).toByte(),
-                    (counter ushr 8).toByte(), counter.toByte()
+                    (counter ushr 24).toByte(),
+                    (counter ushr 16).toByte(),
+                    (counter ushr 8).toByte(),
+                    counter.toByte()
                 )
             )
             val block = md.digest()

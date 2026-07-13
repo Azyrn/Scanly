@@ -49,7 +49,9 @@ class BarcodeAnalyzer(
                 )
                 .build()
         )
-    } else null
+    } else {
+        null
+    }
 
     private val zxingDecoder by lazy { ZxingBarcodeDecoder() }
 
@@ -162,11 +164,13 @@ class BarcodeAnalyzer(
                         Barcode.WiFi.TYPE_WEP -> WifiType.WEP
                         else -> WifiType.OPEN
                     }
-                    actions.add(ScanAction.ConnectWifi(
-                        ssid = wifi.ssid ?: "",
-                        password = wifi.password,
-                        type = wifiType
-                    ))
+                    actions.add(
+                        ScanAction.ConnectWifi(
+                            ssid = wifi.ssid ?: "",
+                            password = wifi.password,
+                            type = wifiType
+                        )
+                    )
                     wifi.ssid?.let { ssid ->
                         actions.add(ScanAction.CopyText(ssid, "Copy SSID"))
                     }
@@ -175,11 +179,13 @@ class BarcodeAnalyzer(
 
             Barcode.TYPE_EMAIL -> {
                 barcode.email?.let { email ->
-                    actions.add(ScanAction.SendEmail(
-                        email = email.address ?: rawValue,
-                        subject = email.subject,
-                        body = email.body
-                    ))
+                    actions.add(
+                        ScanAction.SendEmail(
+                            email = email.address ?: rawValue,
+                            subject = email.subject,
+                            body = email.body
+                        )
+                    )
                 }
             }
 
@@ -191,10 +197,12 @@ class BarcodeAnalyzer(
 
             Barcode.TYPE_SMS -> {
                 barcode.sms?.let { sms ->
-                    actions.add(ScanAction.SendSms(
-                        number = sms.phoneNumber ?: "",
-                        message = sms.message
-                    ))
+                    actions.add(
+                        ScanAction.SendSms(
+                            number = sms.phoneNumber ?: "",
+                            message = sms.message
+                        )
+                    )
                 }
             }
 
@@ -205,12 +213,14 @@ class BarcodeAnalyzer(
                     val email = contact.emails.firstOrNull()?.address
                     val org = contact.organization
 
-                    actions.add(ScanAction.AddContact(
-                        name = name,
-                        phone = phone,
-                        email = email,
-                        organization = org
-                    ))
+                    actions.add(
+                        ScanAction.AddContact(
+                            name = name,
+                            phone = phone,
+                            email = email,
+                            organization = org
+                        )
+                    )
                 }
             }
 
@@ -220,13 +230,15 @@ class BarcodeAnalyzer(
 
             Barcode.TYPE_CALENDAR_EVENT -> {
                 barcode.calendarEvent?.let { event ->
-                    actions.add(ScanAction.AddEvent(
-                        title = event.summary,
-                        location = event.location,
-                        description = event.description,
-                        startRaw = event.start?.rawValue,
-                        endRaw = event.end?.rawValue
-                    ))
+                    actions.add(
+                        ScanAction.AddEvent(
+                            title = event.summary,
+                            location = event.location,
+                            description = event.description,
+                            startRaw = event.start?.rawValue,
+                            endRaw = event.end?.rawValue
+                        )
+                    )
                 }
             }
 

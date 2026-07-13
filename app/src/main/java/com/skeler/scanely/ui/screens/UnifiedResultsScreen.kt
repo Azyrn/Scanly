@@ -56,8 +56,8 @@ import com.skeler.scanely.navigation.LocalNavController
 import com.skeler.scanely.ui.components.ExportContent
 import com.skeler.scanely.ui.components.ExtractedTextActions
 import com.skeler.scanely.ui.components.ExtractedTextSection
-import com.skeler.scanely.ui.components.ScanResultSkeleton
 import com.skeler.scanely.ui.components.PADDLE_EXPORT_FORMATS
+import com.skeler.scanely.ui.components.ScanResultSkeleton
 import com.skeler.scanely.ui.components.TEXT_EXPORT_FORMATS
 import com.skeler.scanely.ui.components.rememberExtractedTextState
 import com.skeler.scanely.ui.components.rememberTextExporter
@@ -225,7 +225,9 @@ fun UnifiedResultsScreen() {
                                                 compact = true
                                             )
                                         }
-                                    } else null
+                                    } else {
+                                        null
+                                    }
                                 )
                             } else if (hasActions) {
                                 ActionsButton(

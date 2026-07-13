@@ -44,7 +44,14 @@ class TableDecoderTest {
     fun `a column span shifts the following cell`() {
         val table = decode(
             listOf(
-                "<tr>", "<td", " colspan=\"2\"", ">", "</td>", "<td></td>", "</tr>", "eos"
+                "<tr>",
+                "<td",
+                " colspan=\"2\"",
+                ">",
+                "</td>",
+                "<td></td>",
+                "</tr>",
+                "eos"
             )
         )
 

@@ -37,7 +37,11 @@ internal object AiRequestFactory {
         val reasoningEffort = if (
             config.url?.contains("api.groq.com") == true &&
             config.model.contains("qwen", ignoreCase = true)
-        ) "none" else null
+        ) {
+            "none"
+        } else {
+            null
+        }
         return ChatRequest(
             model = config.model,
             messages = messages,

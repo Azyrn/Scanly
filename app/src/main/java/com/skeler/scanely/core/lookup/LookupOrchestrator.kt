@@ -20,7 +20,7 @@ class LookupOrchestrator @Inject constructor(
         initialDelayMs = 500,
         maxDelayMs = 2000
     )
-    
+
     suspend fun lookup(barcode: String): LookupResult = coroutineScope {
         val supportingEngines = engines
             .filter { it.supports(barcode) }
@@ -31,8 +31,11 @@ class LookupOrchestrator @Inject constructor(
             return@coroutineScope LookupResult.NotFound("No compatible engines")
         }
 
-        Log.d(TAG, "Looking up $barcode with ${supportingEngines.size} engines: " +
-                supportingEngines.joinToString { it.name })
+        Log.d(
+            TAG,
+            "Looking up $barcode with ${supportingEngines.size} engines: " +
+                supportingEngines.joinToString { it.name }
+        )
 
         val jobs = supportingEngines.map { engine ->
             async { lookupWithRetry(engine, barcode) }
@@ -59,7 +62,7 @@ class LookupOrchestrator @Inject constructor(
             LookupResult.NotFound("Searched ${supportingEngines.size} sources")
         }
     }
-    
+
     private suspend fun lookupWithRetry(engine: LookupEngine, barcode: String): LookupResult {
         return try {
             withRetry(retryConfig) {

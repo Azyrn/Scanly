@@ -41,9 +41,9 @@ class UnifiedScanService @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val textOcrService: TextOcrService
 ) {
-    private val textRecognizer: TextRecognizer = 
+    private val textRecognizer: TextRecognizer =
         TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
-    
+
     private val barcodeScanner: BarcodeScanner = BarcodeScanning.getClient(
         BarcodeScannerOptions.Builder()
             .setBarcodeFormats(
@@ -77,7 +77,7 @@ class UnifiedScanService @Inject constructor(
 
         try {
             val result = scanBitmap(bitmap)
-            
+
             if (result.isEmpty) {
                 Log.d(TAG, "Initial scan empty, retrying with preprocessing")
                 val preprocessed = com.skeler.scanely.core.image.ImagePreprocessor.preprocessForOcr(bitmap)
@@ -91,13 +91,13 @@ class UnifiedScanService @Inject constructor(
                     if (preprocessed != bitmap) preprocessed.recycle()
                 }
             }
-            
+
             result
         } finally {
             bitmap.recycle()
         }
     }
-    
+
     private suspend fun scanBitmap(bitmap: Bitmap): UnifiedScanResult {
         val barcodes = detectBarcodes(bitmap)
 
@@ -138,7 +138,7 @@ class UnifiedScanService @Inject constructor(
         }
     }
 
-    private suspend fun recognizeText(inputImage: InputImage): OcrResult = 
+    private suspend fun recognizeText(inputImage: InputImage): OcrResult =
         suspendCancellableCoroutine { continuation ->
             textRecognizer.process(inputImage)
                 .addOnSuccessListener { visionText ->
@@ -202,11 +202,11 @@ class UnifiedScanService @Inject constructor(
                     val uniqueBarcodes = barcodes
                         .distinctBy { it.rawValue ?: "" }
                         .filter { it.rawValue?.isNotBlank() == true }
-                    
+
                     val actions = uniqueBarcodes.flatMap { barcode ->
                         mapBarcodeToActions(barcode)
                     }
-                    
+
                     continuation.resume(actions)
                 }
                 .addOnFailureListener { e ->
@@ -303,14 +303,14 @@ class UnifiedScanService @Inject constructor(
                     inJustDecodeBounds = true
                 }
                 BitmapFactory.decodeStream(inputStream, null, options)
-                
+
                 options.inSampleSize = calculateInSampleSize(
-                    options.outWidth, 
-                    options.outHeight, 
+                    options.outWidth,
+                    options.outHeight,
                     MAX_BITMAP_DIMENSION
                 )
                 options.inJustDecodeBounds = false
-                
+
                 // Re-open stream (first pass consumed it).
                 context.contentResolver.openInputStream(uri)?.use { newStream ->
                     BitmapFactory.decodeStream(newStream, null, options)
@@ -323,22 +323,23 @@ class UnifiedScanService @Inject constructor(
     }
 
     private fun calculateInSampleSize(
-        width: Int, 
-        height: Int, 
+        width: Int,
+        height: Int,
         maxDimension: Int
     ): Int {
         var inSampleSize = 1
-        
+
         if (width > maxDimension || height > maxDimension) {
             val halfWidth = width / 2
             val halfHeight = height / 2
-            
-            while ((halfWidth / inSampleSize) >= maxDimension || 
-                   (halfHeight / inSampleSize) >= maxDimension) {
+
+            while ((halfWidth / inSampleSize) >= maxDimension ||
+                (halfHeight / inSampleSize) >= maxDimension
+            ) {
                 inSampleSize *= 2
             }
         }
-        
+
         return inSampleSize
     }
 

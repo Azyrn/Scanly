@@ -8,14 +8,13 @@ import com.skeler.scanely.core.lookup.LookupResult
 import com.skeler.scanely.core.lookup.ProductCategory
 import com.skeler.scanely.core.lookup.ProductInfo
 import com.skeler.scanely.core.lookup.isIsbn
-import kotlinx.serialization.SerialName
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 private const val TAG = "GoogleBooksEngine"
 
@@ -24,7 +23,7 @@ private const val TAG = "GoogleBooksEngine"
 class GoogleBooksEngine @Inject constructor(
     private val okHttpClient: OkHttpClient
 ) : LookupEngine {
-    
+
     override val name = "Google Books"
     override val priority = 1
     override val category = ProductCategory.BOOK
@@ -45,7 +44,7 @@ class GoogleBooksEngine @Inject constructor(
             } ?: return@withContext LookupResult.NotFound(name)
 
             val booksResponse = LookupJson.decodeFromString<GoogleBooksResponse>(body)
-            
+
             if (booksResponse.totalItems > 0 && booksResponse.items?.isNotEmpty() == true) {
                 val volume = booksResponse.items.first().volumeInfo
                 val product = mapToProductInfo(barcode, volume)
@@ -60,7 +59,7 @@ class GoogleBooksEngine @Inject constructor(
             LookupResult.Error(name, e)
         }
     }
-    
+
     private fun mapToProductInfo(barcode: String, volume: VolumeInfo): ProductInfo {
         val isbn10 = volume.industryIdentifiers
             ?.find { it.type == "ISBN_10" }?.identifier

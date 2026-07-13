@@ -5,8 +5,8 @@ import com.skeler.scanely.core.common.resolvedDarkTheme
 import com.skeler.scanely.settings.data.SettingsKeys
 import com.skeler.scanely.settings.domain.model.SettingsState
 import com.skeler.scanely.ui.theme.SeedPalettes
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 

@@ -38,7 +38,7 @@ data class AiScanState(
     val runInfo: AiRunInfo? = null,
     val originalText: String? = null,
     val translationCache: Map<String, String> = emptyMap(),
-        val currentLanguage: String? = null,
+    val currentLanguage: String? = null,
     val isTranslating: Boolean = false,
     val lastImageUri: Uri? = null,
     val totalFiles: Int = 0,
@@ -236,7 +236,9 @@ class AiScanViewModel @Inject constructor(
             _aiState.value = _aiState.value.copy(isTranslating = true)
 
             val translationResult = aiService.translateText(
-                currentText, targetLanguage, _aiState.value.provider
+                currentText,
+                targetLanguage,
+                _aiState.value.provider
             )
 
             when (translationResult) {

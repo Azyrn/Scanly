@@ -29,7 +29,6 @@ object SettingsModule {
     fun provideSettingsRepository(dataStore: SettingsDataStore): SettingsRepository =
         SettingsRepositoryImpl(dataStore)
 
-
     @Provides
     @Singleton
     fun provideJson(): Json = Json {

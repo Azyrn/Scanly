@@ -15,6 +15,7 @@ import kotlin.math.abs
 import kotlin.math.exp
 
 private const val REC_HEIGHT = 48
+
 // Wide enough that a dense full-width line at height 48 keeps its aspect ratio;
 // clamping below that squashes long lines and misreads them.
 private const val REC_MAX_WIDTH = 3200
@@ -180,7 +181,8 @@ class PaddleOcrEngine @Inject constructor(
             scaled.forEachIndexed { i, s -> if (s !== chunk[i]) s.recycle() }
 
             val probs = run(
-                textLineCls, tensor,
+                textLineCls,
+                tensor,
                 longArrayOf(chunk.size.toLong(), 3, ORI_HEIGHT.toLong(), ORI_WIDTH.toLong())
             ) { buf, _ -> FloatArray(chunk.size * 2).also { buf.get(it) } }
 
@@ -229,8 +231,10 @@ class PaddleOcrEngine @Inject constructor(
         }
 
         val out = run(
-            unwarper, FloatBuffer.wrap(data),
-            longArrayOf(1, 3, h.toLong(), w.toLong()), "image"
+            unwarper,
+            FloatBuffer.wrap(data),
+            longArrayOf(1, 3, h.toLong(), w.toLong()),
+            "image"
         ) { buf, shape ->
             val oh = shape[2].toInt()
             val ow = shape[3].toInt()
@@ -261,7 +265,9 @@ class PaddleOcrEngine @Inject constructor(
         )
 
         OnnxTensor.createTensor(
-            env, image, longArrayOf(1, 3, LAYOUT_SIDE.toLong(), LAYOUT_SIDE.toLong())
+            env,
+            image,
+            longArrayOf(1, 3, LAYOUT_SIDE.toLong(), LAYOUT_SIDE.toLong())
         ).use { imageTensor ->
             OnnxTensor.createTensor(env, scaleFactor, longArrayOf(1, 2)).use { scaleTensor ->
                 parseLayout(imageTensor, scaleTensor)
@@ -303,7 +309,9 @@ class PaddleOcrEngine @Inject constructor(
         if (resized !== crop) resized.recycle()
 
         OnnxTensor.createTensor(
-            env, tensor, longArrayOf(1, 3, TABLE_SIDE.toLong(), TABLE_SIDE.toLong())
+            env,
+            tensor,
+            longArrayOf(1, 3, TABLE_SIDE.toLong(), TABLE_SIDE.toLong())
         ).use { input ->
             tableRec.run(mapOf(tableRec.inputNames.first() to input)).use { result ->
                 val boxOut = result[0] as OnnxTensor
@@ -402,7 +410,10 @@ object CtcDecoder {
                 var bestScore = logits[base]
                 for (c in 1 until classes) {
                     val v = logits[base + c]
-                    if (v > bestScore) { bestScore = v; best = c }
+                    if (v > bestScore) {
+                        bestScore = v;
+                        best = c
+                    }
                 }
                 if (best != 0 && best != prev) {
                     sb.append(charset.getOrElse(best) { "" })

@@ -23,9 +23,9 @@ import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
@@ -56,7 +56,7 @@ fun ProductDetailSheet(
     onDismiss: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState
@@ -154,7 +154,7 @@ private fun ProductContent(product: ProductInfo) {
     Spacer(modifier = Modifier.height(16.dp))
     HorizontalDivider()
     Spacer(modifier = Modifier.height(16.dp))
-    
+
     when (product.category) {
         ProductCategory.FOOD, ProductCategory.PET_FOOD -> {
             product.foodData?.let { FoodContentSection(it) }
@@ -169,7 +169,7 @@ private fun ProductContent(product: ProductInfo) {
             product.cosmeticsData?.let { CosmeticsContentSection(it) }
         }
         ProductCategory.GENERIC -> {
-            product.description?.let { 
+            product.description?.let {
                 Text(it, style = MaterialTheme.typography.bodyMedium)
             }
         }
@@ -193,7 +193,7 @@ private fun ProductHeader(product: ProductInfo) {
             )
             Spacer(modifier = Modifier.width(16.dp))
         }
-        
+
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = product.name ?: "Unknown Product",
@@ -202,7 +202,7 @@ private fun ProductHeader(product: ProductInfo) {
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
-            
+
             product.brand?.let { brand ->
                 Text(
                     text = brand,
@@ -210,9 +210,9 @@ private fun ProductHeader(product: ProductInfo) {
                     color = MaterialTheme.colorScheme.primary
                 )
             }
-            
+
             Spacer(modifier = Modifier.height(4.dp))
-            
+
             Text(
                 text = product.barcode,
                 style = MaterialTheme.typography.bodySmall,
@@ -232,7 +232,7 @@ private fun SourceBadge(source: String, category: ProductCategory) {
         ProductCategory.PET_FOOD -> Icons.Rounded.Pets
         ProductCategory.GENERIC -> Icons.Rounded.Restaurant
     }
-    
+
     AssistChip(
         onClick = { },
         label = { Text("via $source") },

@@ -43,32 +43,62 @@ internal class ProviderConfigResolver @Inject constructor(
             val userKey = settingValue(SettingsKeys.OPENROUTER_API_KEY)
             val key = userKey ?: Secrets.openRouter.trim().ifBlank { null }
             val model = settingValue(SettingsKeys.OPENROUTER_MODEL) ?: OPENROUTER_MODEL
-            key?.let { ProviderConfig(ProviderKind.OPENAI_COMPAT, model, it, OPENROUTER_URL, usesBundledKey = userKey == null) }
+            key?.let { ProviderConfig(
+                ProviderKind.OPENAI_COMPAT,
+                model,
+                it,
+                OPENROUTER_URL,
+                usesBundledKey = userKey == null
+            ) }
         }
         AiProvider.HUGGINGFACE -> {
             val userKey = settingValue(SettingsKeys.HUGGINGFACE_API_KEY)
             val key = userKey ?: Secrets.huggingFace.trim().ifBlank { null }
             val engineModel = OcrEngine.fromId(settingValue(SettingsKeys.OCR_ENGINE)).model
             val model = settingValue(SettingsKeys.HUGGINGFACE_MODEL) ?: engineModel
-            key?.let { ProviderConfig(ProviderKind.OPENAI_COMPAT, model, it, HUGGINGFACE_URL, usesBundledKey = userKey == null) }
+            key?.let { ProviderConfig(
+                ProviderKind.OPENAI_COMPAT,
+                model,
+                it,
+                HUGGINGFACE_URL,
+                usesBundledKey = userKey == null
+            ) }
         }
         AiProvider.NVIDIA -> {
             val userKey = settingValue(SettingsKeys.NVIDIA_API_KEY)
             val key = userKey ?: Secrets.nvidia.trim().ifBlank { null }
             val model = settingValue(SettingsKeys.NVIDIA_MODEL) ?: NVIDIA_MODEL
-            key?.let { ProviderConfig(ProviderKind.OPENAI_COMPAT, model, it, NVIDIA_URL, usesBundledKey = userKey == null) }
+            key?.let { ProviderConfig(
+                ProviderKind.OPENAI_COMPAT,
+                model,
+                it,
+                NVIDIA_URL,
+                usesBundledKey = userKey == null
+            ) }
         }
         AiProvider.GROQ -> {
             val userKey = settingValue(SettingsKeys.GROQ_API_KEY)
             val key = userKey ?: Secrets.groq.trim().ifBlank { null }
             val model = settingValue(SettingsKeys.GROQ_MODEL) ?: GROQ_MODEL
-            key?.let { ProviderConfig(ProviderKind.OPENAI_COMPAT, model, it, GROQ_URL, usesBundledKey = userKey == null) }
+            key?.let { ProviderConfig(
+                ProviderKind.OPENAI_COMPAT,
+                model,
+                it,
+                GROQ_URL,
+                usesBundledKey = userKey == null
+            ) }
         }
         AiProvider.CEREBRAS -> {
             val userKey = settingValue(SettingsKeys.CEREBRAS_API_KEY)
             val key = userKey ?: Secrets.cerebras.trim().ifBlank { null }
             val model = settingValue(SettingsKeys.CEREBRAS_MODEL) ?: CEREBRAS_MODEL
-            key?.let { ProviderConfig(ProviderKind.OPENAI_COMPAT, model, it, CEREBRAS_URL, usesBundledKey = userKey == null) }
+            key?.let { ProviderConfig(
+                ProviderKind.OPENAI_COMPAT,
+                model,
+                it,
+                CEREBRAS_URL,
+                usesBundledKey = userKey == null
+            ) }
         }
         AiProvider.CLOUDFLARE -> {
             val userKey = settingValue(SettingsKeys.CLOUDFLARE_API_KEY)
@@ -82,7 +112,13 @@ internal class ProviderConfigResolver @Inject constructor(
             }
             pair?.let { (key, accountId, bundled) ->
                 val model = settingValue(SettingsKeys.CLOUDFLARE_MODEL) ?: CLOUDFLARE_MODEL
-                ProviderConfig(ProviderKind.OPENAI_COMPAT, model, key, cloudflareUrl(accountId), usesBundledKey = bundled)
+                ProviderConfig(
+                    ProviderKind.OPENAI_COMPAT,
+                    model,
+                    key,
+                    cloudflareUrl(accountId),
+                    usesBundledKey = bundled
+                )
             }
         }
         AiProvider.OPENAI -> settingValue(SettingsKeys.OPENAI_API_KEY)?.let {
@@ -105,7 +141,9 @@ internal class ProviderConfigResolver @Inject constructor(
             val model = settingValue(SettingsKeys.CUSTOM_MODEL)
             if (key != null && url != null && model != null) {
                 ProviderConfig(ProviderKind.OPENAI_COMPAT, model, key, url)
-            } else null
+            } else {
+                null
+            }
         }
     }
 
@@ -172,6 +210,7 @@ internal class ProviderConfigResolver @Inject constructor(
         private const val CEREBRAS_URL = "https://api.cerebras.ai/v1/chat/completions"
         private const val CEREBRAS_MODEL = "gemma-4-31b"
         private const val CLOUDFLARE_MODEL = "@cf/mistralai/mistral-small-3.1-24b-instruct"
+
         // Account id is part of the Workers AI path.
         fun cloudflareUrl(accountId: String) =
             "https://api.cloudflare.com/client/v4/accounts/$accountId/ai/v1/chat/completions"

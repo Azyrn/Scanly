@@ -1,7 +1,6 @@
 package com.skeler.scanely.history.data
 
 import android.content.Context
-import android.net.Uri
 import android.util.Log
 import androidx.core.net.toUri
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -57,13 +56,13 @@ class HistoryManager @Inject constructor(
             val uri = sourceUri.toUri()
             val fileName = "${UUID.randomUUID()}.jpg"
             val destFile = File(imagesDir, fileName)
-            
+
             context.contentResolver.openInputStream(uri)?.use { input ->
                 destFile.outputStream().use { output ->
                     input.copyTo(output)
                 }
             }
-            
+
             destFile.toUri().toString()
         } catch (e: Exception) {
             Log.w(TAG, "Image copy failed, using original URI", e)
@@ -89,7 +88,7 @@ class HistoryManager @Inject constructor(
             val jsonString = historyFile.readText()
             val jsonArray = JSONArray(jsonString)
             val items = mutableListOf<HistoryItem>()
-            
+
             for (i in 0 until jsonArray.length()) {
                 val obj = jsonArray.getJSONObject(i)
                 items.add(
@@ -107,15 +106,15 @@ class HistoryManager @Inject constructor(
             emptyList()
         }
     }
-    
+
     fun clearHistory() {
         imagesDir.listFiles()?.forEach { it.delete() }
-        
+
         if (historyFile.exists()) {
             historyFile.delete()
         }
     }
-    
+
     fun deleteItem(id: String) {
         val currentList = getHistory().toMutableList()
         val item = currentList.find { it.id == id }
@@ -125,7 +124,7 @@ class HistoryManager @Inject constructor(
             saveHistory(currentList)
         }
     }
-    
+
     private fun saveHistory(items: List<HistoryItem>) {
         val jsonArray = JSONArray()
         items.forEach { item ->

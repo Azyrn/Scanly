@@ -49,7 +49,12 @@ object SeedPalettes {
     )
 
     val ALL: List<SeedColor> = listOf(
-        RoseBlush, CeruleanWave, LavenderVolt, AmethystHaze, EmeraldGrove, SunsetCoral
+        RoseBlush,
+        CeruleanWave,
+        LavenderVolt,
+        AmethystHaze,
+        EmeraldGrove,
+        SunsetCoral
     )
 
     val DEFAULT: SeedColor = LavenderVolt

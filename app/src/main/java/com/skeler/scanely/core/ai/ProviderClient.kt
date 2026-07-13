@@ -133,7 +133,9 @@ internal class ProviderClient @Inject constructor(
             }
             if (event.type == "content_block_delta" && event.delta?.type == "text_delta") {
                 event.delta.text
-            } else null
+            } else {
+                null
+            }
         }
         ProviderKind.GEMINI -> {
             val chunk = decodeChunk<GeminiResponse>(payload)
@@ -173,7 +175,8 @@ internal class ProviderClient @Inject constructor(
         ProviderKind.OPENAI_COMPAT -> {
             val url = config.url ?: throw FatalAiException(AiResult.Error("Missing endpoint URL"))
             val response = openAiApi.chatCompletion(
-                url, "Bearer ${config.apiKey}",
+                url,
+                "Bearer ${config.apiKey}",
                 AiRequestFactory.openAi(config, systemInstruction, prompt, images, stream = false)
             )
             response.error?.let { err ->
@@ -198,7 +201,8 @@ internal class ProviderClient @Inject constructor(
         }
         ProviderKind.GEMINI -> {
             val response = geminiApi.generateContent(
-                config.model, config.apiKey,
+                config.model,
+                config.apiKey,
                 AiRequestFactory.gemini(systemInstruction, prompt, images)
             )
             response.error?.let { err ->
@@ -241,7 +245,9 @@ internal class ProviderClient @Inject constructor(
                     aiDebug { "Mistral $model rejected (HTTP ${e.code()}), trying $MISTRAL_OCR_FALLBACK_MODEL" }
                     model = MISTRAL_OCR_FALLBACK_MODEL
                     mistralApi.ocr(auth, MistralOcrRequest(model, document))
-                } else throw e
+                } else {
+                    throw e
+                }
             }
             response.pages
                 .sortedBy { it.index }

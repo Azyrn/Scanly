@@ -59,10 +59,10 @@ import com.skeler.scanely.core.actions.ScanAction
 import com.skeler.scanely.core.barcode.BarcodeAnalyzer
 import com.skeler.scanely.core.barcode.BarcodeEngine
 import com.skeler.scanely.core.lookup.LookupOrchestrator
-import com.skeler.scanely.settings.data.SettingsKeys
-import com.skeler.scanely.settings.presentation.viewmodel.SettingsViewModel
 import com.skeler.scanely.core.lookup.LookupResult
 import com.skeler.scanely.navigation.LocalNavController
+import com.skeler.scanely.settings.data.SettingsKeys
+import com.skeler.scanely.settings.presentation.viewmodel.SettingsViewModel
 import com.skeler.scanely.ui.components.BarcodeActionsSheet
 import com.skeler.scanely.ui.components.BarcodeCameraPreview
 import com.skeler.scanely.ui.components.ProductDetailSheet
@@ -118,7 +118,7 @@ fun BarcodeScannerScreen(
         showProductSheet = true
         isLookupLoading = true
         lookupResult = null
-        
+
         scope.launch {
             lookupResult = lookupOrchestrator.lookup(barcode)
             isLookupLoading = false
@@ -182,7 +182,7 @@ fun BarcodeScannerScreen(
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                         )
                     }
-                    
+
                     Card(
                         onClick = { galleryPicker() },
                         colors = CardDefaults.cardColors(containerColor = Color.Transparent),

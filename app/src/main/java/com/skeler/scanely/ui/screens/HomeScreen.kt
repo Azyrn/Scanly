@@ -1,7 +1,5 @@
 package com.skeler.scanely.ui.screens
 
-import android.Manifest
-import android.content.pm.PackageManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -39,7 +37,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.skeler.scanely.R
 import com.skeler.scanely.core.ai.AiMode
@@ -86,17 +83,6 @@ fun HomeScreen() {
     val showRateLimitSheet by scanViewModel.showRateLimitSheet.collectAsState()
     val rateLimitState by scanViewModel.rateLimitState.collectAsState()
     val isRewardedAdAvailable by scanViewModel.isRewardedAdAvailable.collectAsState()
-
-    val cameraPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission(),
-        onResult = { isGranted ->
-            if (isGranted) {
-                showAiBottomSheet = true
-            } else {
-                scope.launch { snackbarHostState.showSnackbar("Camera permission denied") }
-            }
-        }
-    )
 
     val aiMultiGalleryPicker = rememberMultiGalleryPicker(maxItems = MAX_AI_FILES) { uris ->
         if (uris.isNotEmpty() && pendingAiMode != null) {
@@ -171,15 +157,6 @@ fun HomeScreen() {
         }
     }
 
-    fun onAiFabClick() {
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) 
-            == PackageManager.PERMISSION_GRANTED) {
-            showAiBottomSheet = true
-        } else {
-            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
-        }
-    }
-
     fun onAiModeSelected(mode: AiMode, provider: AiProvider) {
         pendingAiMode = mode
         pendingAiProvider = provider
@@ -219,7 +196,7 @@ fun HomeScreen() {
                     progress = rateLimitState.progress,
                     justBecameReady = rateLimitState.justBecameReady
                 ),
-                onClick = { onAiFabClick() },
+                onClick = { showAiBottomSheet = true },
                 modifier = Modifier.padding(bottom = 24.dp)
             )
         },

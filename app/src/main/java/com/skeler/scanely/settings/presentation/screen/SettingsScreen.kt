@@ -164,7 +164,7 @@ fun SettingsScreen(
                         subtitle = "Report bugs or request features",
                         iconPainter = painterResource(id = R.drawable.ic_telegram),
                         trailingIcon = Icons.AutoMirrored.Rounded.OpenInNew,
-                        onClick = { uriHandler.openUri("https://t.me/necotinx") }
+                        onClick = { uriHandler.openUri("https://t.me/ScanlyOCR") }
                     )
                 }
             }

@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.core.net.toUri
 import dagger.hilt.android.qualifiers.ApplicationContext
 import org.json.JSONArray
+import org.json.JSONException
 import org.json.JSONObject
 import java.io.File
 import java.util.UUID
@@ -19,6 +20,42 @@ data class HistoryItem(
     val imageUri: String,
     val timestamp: Long = System.currentTimeMillis()
 )
+
+/** Null on malformed JSON — distinct from an empty-but-valid `[]`. */
+internal fun parseHistoryJson(json: String): List<HistoryItem>? {
+    return try {
+        val jsonArray = JSONArray(json)
+        val items = mutableListOf<HistoryItem>()
+        for (i in 0 until jsonArray.length()) {
+            val obj = jsonArray.getJSONObject(i)
+            items.add(
+                HistoryItem(
+                    id = obj.optString("id", UUID.randomUUID().toString()),
+                    text = obj.optString("text"),
+                    imageUri = obj.optString("imageUri"),
+                    timestamp = obj.optLong("timestamp", System.currentTimeMillis())
+                )
+            )
+        }
+        items
+    } catch (_: JSONException) {
+        null
+    }
+}
+
+internal fun historyToJson(items: List<HistoryItem>): String {
+    val jsonArray = JSONArray()
+    items.forEach { item ->
+        val obj = JSONObject().apply {
+            put("id", item.id)
+            put("text", item.text)
+            put("imageUri", item.imageUri)
+            put("timestamp", item.timestamp)
+        }
+        jsonArray.put(obj)
+    }
+    return jsonArray.toString()
+}
 
 @Singleton
 class HistoryManager @Inject constructor(
@@ -79,32 +116,27 @@ class HistoryManager @Inject constructor(
                 }
             }
         } catch (e: Exception) {
+            Log.w(TAG, "Best-effort image cleanup failed for $imageUri", e)
         }
     }
 
     fun getHistory(): List<HistoryItem> {
         if (!historyFile.exists()) return emptyList()
-        return try {
-            val jsonString = historyFile.readText()
-            val jsonArray = JSONArray(jsonString)
-            val items = mutableListOf<HistoryItem>()
-
-            for (i in 0 until jsonArray.length()) {
-                val obj = jsonArray.getJSONObject(i)
-                items.add(
-                    HistoryItem(
-                        id = obj.optString("id", UUID.randomUUID().toString()),
-                        text = obj.optString("text"),
-                        imageUri = obj.optString("imageUri"),
-                        timestamp = obj.optLong("timestamp", System.currentTimeMillis())
-                    )
-                )
-            }
-            items
+        val jsonString = try {
+            historyFile.readText()
         } catch (e: Exception) {
-            e.printStackTrace()
-            emptyList()
+            Log.e(TAG, "Could not read history file", e)
+            return emptyList()
         }
+        val items = parseHistoryJson(jsonString)
+        if (items == null) {
+            // Corrupt (e.g. process killed mid-write). Preserve the bytes so the
+            // next saveItem() doesn't overwrite them with an empty list.
+            Log.e(TAG, "History unreadable, preserving as scan_history.corrupt.json")
+            historyFile.renameTo(File(context.filesDir, "scan_history.corrupt.json"))
+            return emptyList()
+        }
+        return items
     }
 
     fun clearHistory() {
@@ -126,16 +158,12 @@ class HistoryManager @Inject constructor(
     }
 
     private fun saveHistory(items: List<HistoryItem>) {
-        val jsonArray = JSONArray()
-        items.forEach { item ->
-            val obj = JSONObject().apply {
-                put("id", item.id)
-                put("text", item.text)
-                put("imageUri", item.imageUri)
-                put("timestamp", item.timestamp)
-            }
-            jsonArray.put(obj)
+        // Write-then-rename keeps the old file intact if we're killed mid-write.
+        val tmpFile = File(context.filesDir, "scan_history.json.tmp")
+        tmpFile.writeText(historyToJson(items))
+        if (!tmpFile.renameTo(historyFile)) {
+            Log.e(TAG, "Could not move new history into place")
+            tmpFile.delete()
         }
-        historyFile.writeText(jsonArray.toString())
     }
 }

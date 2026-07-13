@@ -1,8 +1,10 @@
 package com.skeler.scanely.core.pdf
 
 import com.skeler.scanely.core.ocr.TextBlockData
+import com.skeler.scanely.core.text.MarkdownParser
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -12,26 +14,19 @@ class ScanExporterTest {
         "Invoice 2024-01-08\nTotal: 42\n\n--- Page 2 ---\n\n- item one\nThank you"
 
     @Test
-    fun `markdown keeps single page text as line-broken paragraphs`() {
-        val markdown = ScanExporter.buildMarkdown("First line\nSecond line")
+    fun `word keeps the markdown preview's headings, emphasis and table grid`() {
+        val document = ScanExporter.wordMarkdownDocument(
+            MarkdownParser.parse("# Invoice\n\nDue **now**\n\n| Item | Cost |\n| --- | --- |\n| Pen | 2 |")
+        )
 
-        assertEquals("First line  \nSecond line\n", markdown)
-    }
-
-    @Test
-    fun `markdown turns page markers into headings`() {
-        val markdown = ScanExporter.buildMarkdown(multiPageText)
-
-        assertTrue(markdown.startsWith("## Page 1\n\n"))
-        assertTrue(markdown.contains("## Page 2\n\n"))
-        assertTrue(markdown.contains("Invoice 2024-01-08  \n"))
-    }
-
-    @Test
-    fun `markdown escapes characters that would render as formatting`() {
-        val markdown = ScanExporter.buildMarkdown("- item *not emphasis* [x]")
-
-        assertEquals("\\- item \\*not emphasis\\* \\[x\\]\n", markdown)
+        assertTrue(document.contains("<w:sz w:val=\"36\"/>"))
+        assertTrue(document.contains("<w:b/></w:rPr><w:t xml:space=\"preserve\">now</w:t>"))
+        assertTrue(document.contains("<w:tbl>"))
+        assertTrue(document.contains(">Cost</w:t>"))
+        assertTrue(document.contains(">Pen</w:t>"))
+        // The markers themselves never reach the document.
+        assertFalse(document.contains("**"))
+        assertFalse(document.contains("| Item"))
     }
 
     @Test

@@ -17,7 +17,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.SaveAlt
 import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
@@ -40,8 +39,11 @@ import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.skeler.scanely.navigation.LocalNavController
-import com.skeler.scanely.ui.components.TextExportFormat
+import com.skeler.scanely.ui.components.ExportContent
+import com.skeler.scanely.ui.components.ExportMenuItem
+import com.skeler.scanely.ui.components.TEXT_EXPORT_FORMATS
 import com.skeler.scanely.ui.components.rememberTextExporter
+import com.skeler.scanely.ui.components.unavailableFormats
 
 @Composable
 fun TextComposeScreen() {
@@ -50,6 +52,10 @@ fun TextComposeScreen() {
 
     var text by remember { mutableStateOf("") }
     var exportMenuOpen by remember { mutableStateOf(false) }
+
+    // What you typed is what you get: this screen has no Markdown view.
+    val preview = remember(text) { ExportContent(text) }
+    val disabledFormats = remember(preview) { unavailableFormats(preview) }
 
     val counts = remember(text) {
         val words = text.trim().split(Regex("\\s+")).count { it.isNotBlank() }
@@ -93,27 +99,16 @@ fun TextComposeScreen() {
                             expanded = exportMenuOpen,
                             onDismissRequest = { exportMenuOpen = false }
                         ) {
-                            DropdownMenuItem(
-                                text = { Text("Save as PDF") },
-                                onClick = {
-                                    exportMenuOpen = false
-                                    exportText(text, TextExportFormat.PDF)
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Save as Word (.docx)") },
-                                onClick = {
-                                    exportMenuOpen = false
-                                    exportText(text, TextExportFormat.WORD)
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Save as CSV") },
-                                onClick = {
-                                    exportMenuOpen = false
-                                    exportText(text, TextExportFormat.CSV)
-                                }
-                            )
+                            TEXT_EXPORT_FORMATS.forEach { format ->
+                                ExportMenuItem(
+                                    format = format,
+                                    enabled = format !in disabledFormats,
+                                    onClick = {
+                                        exportMenuOpen = false
+                                        exportText(preview, format)
+                                    }
+                                )
+                            }
                         }
                     }
                     Spacer(Modifier.size(8.dp))

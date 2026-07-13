@@ -305,7 +305,8 @@ object MarkdownParser {
         } + "\n"
     }
 
-    private fun plain(text: String): String = parseInline(text).joinToString("") { it.text }
+    /** The text of a line with its inline Markdown markers taken out. */
+    fun plain(text: String): String = parseInline(text).joinToString("") { it.text }
 
     private fun isTableStart(lines: List<String>, index: Int): Boolean {
         if (!lines[index].trim().startsWith("|")) return false

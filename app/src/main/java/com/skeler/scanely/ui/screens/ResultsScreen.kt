@@ -59,9 +59,10 @@ import com.skeler.scanely.navigation.LocalNavController
 import com.skeler.scanely.navigation.Routes
 import com.skeler.scanely.ui.ScanViewModel
 import com.skeler.scanely.ui.components.CredentialBadge
+import com.skeler.scanely.ui.components.ExportContent
 import com.skeler.scanely.ui.components.PADDLE_EXPORT_FORMATS
 import com.skeler.scanely.ui.components.TEXT_EXPORT_FORMATS
-import com.skeler.scanely.ui.components.TextExportFormat
+import com.skeler.scanely.ui.components.unavailableFormats
 import com.skeler.scanely.ui.components.ExtractedTextActions
 import com.skeler.scanely.ui.components.rememberExtractedTextState
 import com.skeler.scanely.ui.components.EmptyResultContent
@@ -134,15 +135,8 @@ fun ResultsScreen() {
     }
     val printText = rememberMarkdownPrinter()
 
-    val exportText = rememberTextExporter(
-        blocks = paddleResult?.blocks.orEmpty(),
-        markdown = markdownSource
-    )
-    val exportFormats = when {
-        paddleResult != null -> PADDLE_EXPORT_FORMATS
-        hasMarkdown -> TEXT_EXPORT_FORMATS + TextExportFormat.MARKDOWN
-        else -> TEXT_EXPORT_FORMATS
-    }
+    val exportText = rememberTextExporter()
+    val exportFormats = if (paddleResult != null) PADDLE_EXPORT_FORMATS else TEXT_EXPORT_FORMATS
 
     val rateLimitState by scanViewModel.rateLimitState.collectAsState()
     val showRateLimitSheet by scanViewModel.showRateLimitSheet.collectAsState()
@@ -314,6 +308,14 @@ fun ResultsScreen() {
                     // Copy, export, print, edit and the body all follow the visible view.
                     val visibleText = (if (markdownMode) markdownSource else shownText)
                         ?: displayText
+                    val preview = remember(visibleText, markdownMode, paddleResult) {
+                        ExportContent(
+                            text = visibleText,
+                            isMarkdown = markdownMode,
+                            blocks = paddleResult?.blocks.orEmpty()
+                        )
+                    }
+                    val disabledFormats = remember(preview) { unavailableFormats(preview) }
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -339,8 +341,9 @@ fun ResultsScreen() {
                                 state = textState,
                                 text = visibleText,
                                 onCopy = { copyToClipboard(context, visibleText) },
-                                onExport = { format -> exportText(visibleText, format) },
+                                onExport = { format -> exportText(preview, format) },
                                 exportFormats = exportFormats,
+                                disabledFormats = disabledFormats,
                                 onSaveEdit = onSaveExtracted,
                                 onPrint = { printText(visibleText, markdownMode) },
                                 compact = true

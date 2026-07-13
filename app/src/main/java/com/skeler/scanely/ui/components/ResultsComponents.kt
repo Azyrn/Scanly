@@ -58,6 +58,7 @@ fun RowScope.ExtractedTextActions(
     onCopy: () -> Unit,
     onExport: ((TextExportFormat) -> Unit)? = null,
     exportFormats: List<TextExportFormat> = TEXT_EXPORT_FORMATS,
+    disabledFormats: Set<TextExportFormat> = emptySet(),
     onSaveEdit: ((String) -> Unit)? = null,
     onPrint: (() -> Unit)? = null,
     compact: Boolean = false,
@@ -152,8 +153,9 @@ fun RowScope.ExtractedTextActions(
                     onDismissRequest = { exportMenuOpen = false }
                 ) {
                     exportFormats.forEach { format ->
-                        DropdownMenuItem(
-                            text = { Text(format.label) },
+                        ExportMenuItem(
+                            format = format,
+                            enabled = format !in disabledFormats,
                             onClick = {
                                 exportMenuOpen = false
                                 onExport(format)
@@ -176,6 +178,29 @@ fun RowScope.ExtractedTextActions(
             Icon(Icons.Rounded.ContentCopy, contentDescription = "Copy text", modifier = Modifier.size(iconSize))
         }
     }
+}
+
+/** A format the preview can't produce stays visible, but says why it is off. */
+@Composable
+fun ExportMenuItem(
+    format: TextExportFormat,
+    enabled: Boolean,
+    onClick: () -> Unit
+) {
+    DropdownMenuItem(
+        text = { Text(format.label) },
+        enabled = enabled,
+        trailingIcon = if (enabled) null else {
+            {
+                Text(
+                    text = "No table",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
+        onClick = onClick
+    )
 }
 
 @Composable

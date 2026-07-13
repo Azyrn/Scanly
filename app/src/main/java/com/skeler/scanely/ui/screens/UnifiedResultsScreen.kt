@@ -31,6 +31,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
@@ -52,6 +53,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.skeler.scanely.core.actions.ActionExecutor
 import com.skeler.scanely.core.actions.ScanAction
 import com.skeler.scanely.navigation.LocalNavController
+import com.skeler.scanely.ui.components.ExportContent
 import com.skeler.scanely.ui.components.ExtractedTextActions
 import com.skeler.scanely.ui.components.ExtractedTextSection
 import com.skeler.scanely.ui.components.ScanResultSkeleton
@@ -59,6 +61,7 @@ import com.skeler.scanely.ui.components.PADDLE_EXPORT_FORMATS
 import com.skeler.scanely.ui.components.TEXT_EXPORT_FORMATS
 import com.skeler.scanely.ui.components.rememberExtractedTextState
 import com.skeler.scanely.ui.components.rememberTextExporter
+import com.skeler.scanely.ui.components.unavailableFormats
 import com.skeler.scanely.ui.viewmodel.UnifiedScanViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -70,17 +73,29 @@ fun UnifiedResultsScreen() {
     val navController = LocalNavController.current
 
     val uiState by unifiedViewModel.uiState.collectAsState()
-    val exportText = rememberTextExporter(
-        blocks = uiState.textBlocks,
-        markdown = uiState.markdown
-    )
+    val exportText = rememberTextExporter()
     val exportFormats = if (uiState.isOfflineOcr) PADDLE_EXPORT_FORMATS else TEXT_EXPORT_FORMATS
 
+    // The offline engine's structured Markdown is a second view of the same scan.
+    val markdownSource = uiState.markdown?.takeIf { it.isNotBlank() }
+    var markdownView by remember { mutableStateOf(false) }
+    val markdownMode = markdownView && markdownSource != null
+
     val extracted = uiState.extractedText.orEmpty()
-    val textState = rememberExtractedTextState(extracted)
+    val visibleText = if (markdownMode) markdownSource.orEmpty() else extracted
+    val preview = remember(visibleText, markdownMode, uiState.textBlocks) {
+        ExportContent(
+            text = visibleText,
+            isMarkdown = markdownMode,
+            blocks = uiState.textBlocks
+        )
+    }
+    val disabledFormats = remember(preview) { unavailableFormats(preview) }
+
+    val textState = rememberExtractedTextState(visibleText)
     val onCopyExtracted = {
         val clipboard = context.getSystemService(ClipboardManager::class.java)
-        clipboard.setPrimaryClip(ClipData.newPlainText("Extracted Text", extracted))
+        clipboard.setPrimaryClip(ClipData.newPlainText("Extracted Text", visibleText))
         Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
     }
 
@@ -155,6 +170,22 @@ fun UnifiedResultsScreen() {
                 else -> {
                     Spacer(modifier = Modifier.height(4.dp))
 
+                    if (markdownSource != null && uiState.hasText) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            FilterChip(
+                                selected = !markdownMode,
+                                onClick = { markdownView = false },
+                                label = { Text("Original") }
+                            )
+                            FilterChip(
+                                selected = markdownMode,
+                                onClick = { markdownView = true },
+                                label = { Text("Markdown") }
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(10.dp))
+                    }
+
                     val hasActions = quickActions.isNotEmpty()
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -179,10 +210,11 @@ fun UnifiedResultsScreen() {
                             if (uiState.hasText) {
                                 ExtractedTextActions(
                                     state = textState,
-                                    text = extracted,
+                                    text = visibleText,
                                     onCopy = onCopyExtracted,
-                                    onExport = { exportText(extracted, it) },
+                                    onExport = { exportText(preview, it) },
                                     exportFormats = exportFormats,
+                                    disabledFormats = disabledFormats,
                                     onSaveEdit = { unifiedViewModel.updateExtractedText(it) },
                                     compact = hasActions,
                                     leading = if (hasActions) {
@@ -208,7 +240,11 @@ fun UnifiedResultsScreen() {
                         Spacer(modifier = Modifier.height(10.dp))
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                         Spacer(modifier = Modifier.height(16.dp))
-                        ExtractedTextSection(state = textState, text = extracted)
+                        ExtractedTextSection(
+                            state = textState,
+                            text = visibleText,
+                            markdown = markdownMode
+                        )
                     }
                 }
             }

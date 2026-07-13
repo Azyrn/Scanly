@@ -22,7 +22,10 @@ import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import com.skeler.scanely.core.ocr.TextBlockData
-import com.skeler.scanely.core.text.Markdown
+import com.skeler.scanely.core.text.MarkdownParser
+import com.skeler.scanely.core.text.MdBlock
+import com.skeler.scanely.core.text.MdSpan
+import com.skeler.scanely.core.text.TextTables
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -102,13 +105,18 @@ object ScanExporter {
         }
     }
 
+    /**
+     * [asMarkdown] mirrors the Markdown preview — headings, emphasis, lists and table grids
+     * laid out; otherwise the text is drawn exactly as the plain view shows it.
+     */
     suspend fun exportTextPdf(
         context: Context,
         text: String,
+        asMarkdown: Boolean,
         baseName: String
     ): Uri = withContext(Dispatchers.IO) {
         exportToDownloads(context, "$baseName.pdf", PDF_MIME_TYPE) { out ->
-            val document = buildTextPdfDocument(text)
+            val document = if (asMarkdown) MarkdownPdf.render(text) else buildTextPdfDocument(text)
             try {
                 document.writeTo(out)
             } finally {
@@ -117,49 +125,47 @@ object ScanExporter {
         }
     }
 
+    /** [rows] are the table rows read out of the preview; a blank row separates two tables. */
     suspend fun exportTextCsv(
         context: Context,
-        text: String,
+        rows: List<List<String>>,
         baseName: String
     ): Uri = withContext(Dispatchers.IO) {
         exportToDownloads(context, "$baseName.csv", CSV_MIME_TYPE) { out ->
-            out.bufferedWriter().use { writer ->
-                text.lineSequence().forEach { line ->
-                    writer.append(csvField(line)).append("\r\n")
-                }
-            }
+            out.bufferedWriter().use { it.write(TextTables.toCsv(rows)) }
         }
     }
 
-    /** Exports OCR or AI output as editable text in a standard Word .docx document. */
+    /** Word keeps the preview's formatting when it is Markdown, and its lines when it is not. */
     suspend fun exportTextWord(
         context: Context,
         text: String,
+        asMarkdown: Boolean,
         baseName: String
     ): Uri = withContext(Dispatchers.IO) {
+        val document = if (asMarkdown) {
+            wordMarkdownDocument(MarkdownParser.parse(text))
+        } else {
+            wordTextDocument(text)
+        }
         exportToDownloads(context, "$baseName.docx", WORD_MIME_TYPE) { out ->
             ZipOutputStream(out.buffered()).use { zip ->
                 zip.writeText("[Content_Types].xml", wordContentTypes())
                 zip.writeText("_rels/.rels", packageRelationships())
-                zip.writeText("word/document.xml", wordTextDocument(text))
+                zip.writeText("word/document.xml", document)
                 zip.writeText("word/_rels/document.xml.rels", wordRelationships(0))
             }
         }
     }
 
-    /**
-     * [structured] is the layout-aware Markdown from the offline structure pipeline; without
-     * it we can only mirror the OCR's own lines.
-     */
+    /** The preview's own text: its Markdown source, or its plain text left as plain text. */
     suspend fun exportTextMarkdown(
         context: Context,
         text: String,
-        structured: String?,
         baseName: String
     ): Uri = withContext(Dispatchers.IO) {
-        val markdown = structured?.takeIf { it.isNotBlank() } ?: buildMarkdown(text)
         exportToDownloads(context, "$baseName.md", MARKDOWN_MIME_TYPE) { out ->
-            out.bufferedWriter().use { it.write(markdown) }
+            out.bufferedWriter().use { it.write(text) }
         }
     }
 
@@ -176,24 +182,6 @@ object ScanExporter {
         exportToDownloads(context, "$baseName.json", JSON_MIME_TYPE) { out ->
             out.bufferedWriter().use { it.write(buildJson(text, blocks)) }
         }
-    }
-
-    internal fun buildMarkdown(text: String): String {
-        val pages = splitPages(text)
-        val multiPage = pages.size > 1
-        return buildString {
-            pages.forEach { (number, lines) ->
-                if (multiPage) {
-                    if (isNotEmpty()) append("\n")
-                    append("## Page ").append(number).append("\n\n")
-                }
-                lines.forEach { line ->
-                    if (line.isBlank()) append("\n")
-                    // Trailing spaces keep OCR line breaks intact once rendered.
-                    else append(Markdown.escape(line)).append("  \n")
-                }
-            }
-        }.trimEnd() + "\n"
     }
 
     internal fun buildJson(text: String, blocks: List<TextBlockData>): String {
@@ -261,13 +249,6 @@ object ScanExporter {
             .map { (number, lines) -> number to lines.dropWhile(String::isBlank).dropLastWhile(String::isBlank) }
     }
 
-
-    private fun csvField(value: String): String =
-        if (value.any { it == ',' || it == '"' }) {
-            "\"" + value.replace("\"", "\"\"") + "\""
-        } else {
-            value
-        }
 
     /** Caller owns and must close the returned document. */
     private fun buildTextPdfDocument(text: String): PdfDocument {
@@ -564,15 +545,171 @@ object ScanExporter {
     }
 
     private fun wordTextDocument(text: String): String = buildString {
-        append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
-        append("<w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:body>")
+        append(WORD_TEXT_HEADER)
         text.lineSequence().forEach { line ->
             append("<w:p><w:r><w:t xml:space=\"preserve\">")
             append(escapeXml(line))
             append("</w:t></w:r></w:p>")
         }
-        append("<w:sectPr><w:pgSz w:w=\"11906\" w:h=\"16838\"/><w:pgMar w:top=\"720\" w:right=\"720\" w:bottom=\"720\" w:left=\"720\"/></w:sectPr></w:body></w:document>")
+        append(WORD_TEXT_FOOTER)
     }
+
+    internal fun wordMarkdownDocument(blocks: List<MdBlock>): String = buildString {
+        append(WORD_TEXT_HEADER)
+        blocks.forEach { block ->
+            when (block) {
+                is MdBlock.Heading -> {
+                    val size = when (block.level) {
+                        1 -> 36
+                        2 -> 30
+                        3 -> 26
+                        else -> 24
+                    }
+                    append(wordParagraph(wordRuns(block.text, bold = true, size = size)))
+                }
+
+                is MdBlock.Paragraph ->
+                    append(wordParagraph(wordLines(block.lines)))
+
+                is MdBlock.Bullet -> {
+                    val marker = when (block.checked) {
+                        true -> "☑ "
+                        false -> "☐ "
+                        null -> "• "
+                    }
+                    append(
+                        wordParagraph(
+                            wordRun(marker) + wordRuns(block.text),
+                            indent = wordIndent(block.indent)
+                        )
+                    )
+                }
+
+                is MdBlock.Numbered -> append(
+                    wordParagraph(
+                        wordRun(block.marker + " ", bold = true) + wordRuns(block.text),
+                        indent = wordIndent(block.indent)
+                    )
+                )
+
+                is MdBlock.Quote -> append(
+                    wordParagraph(
+                        wordLines(block.lines, italic = true),
+                        indent = wordIndent(1),
+                        properties = "<w:pBdr><w:left w:val=\"single\" w:sz=\"12\" w:space=\"6\" w:color=\"888888\"/></w:pBdr>"
+                    )
+                )
+
+                is MdBlock.Code -> append(
+                    wordParagraph(
+                        block.text.lines().joinToString("<w:br/>") { wordRun(it, mono = true) },
+                        properties = "<w:shd w:val=\"clear\" w:fill=\"F2F2F2\"/>"
+                    )
+                )
+
+                is MdBlock.Table -> append(wordTable(block))
+
+                MdBlock.Divider -> append(
+                    wordParagraph(
+                        "",
+                        properties = "<w:pBdr><w:bottom w:val=\"single\" w:sz=\"6\" w:space=\"1\" w:color=\"999999\"/></w:pBdr>"
+                    )
+                )
+            }
+        }
+        append(WORD_TEXT_FOOTER)
+    }
+
+    private fun wordTable(table: MdBlock.Table): String = buildString {
+        append("<w:tbl><w:tblPr><w:tblW w:w=\"5000\" w:type=\"pct\"/><w:tblBorders>")
+        listOf("top", "left", "bottom", "right", "insideH", "insideV").forEach { edge ->
+            append("<w:$edge w:val=\"single\" w:sz=\"6\" w:color=\"555555\"/>")
+        }
+        append("</w:tblBorders></w:tblPr>")
+
+        append("<w:tr>")
+        table.header.forEach { cell ->
+            append("<w:tc><w:tcPr><w:shd w:val=\"clear\" w:fill=\"EEEEEE\"/></w:tcPr>")
+            append(wordParagraph(wordRuns(cell, bold = true)))
+            append("</w:tc>")
+        }
+        append("</w:tr>")
+
+        table.rows.forEach { row ->
+            append("<w:tr>")
+            table.header.indices.forEach { column ->
+                append("<w:tc>")
+                append(wordParagraph(wordRuns(row.getOrElse(column) { "" })))
+                append("</w:tc>")
+            }
+            append("</w:tr>")
+        }
+        // Word treats two adjacent tables as one without a paragraph between them.
+        append("</w:tbl><w:p/>")
+    }
+
+    private fun wordParagraph(
+        runs: String,
+        indent: String = "",
+        properties: String = ""
+    ): String {
+        val paragraphProperties = indent + properties
+        val prefix = if (paragraphProperties.isEmpty()) "" else "<w:pPr>$paragraphProperties</w:pPr>"
+        return "<w:p>$prefix$runs</w:p>"
+    }
+
+    private fun wordIndent(level: Int): String =
+        if (level <= 0) "" else "<w:ind w:left=\"${level * 360}\"/>"
+
+    private fun wordLines(lines: List<String>, italic: Boolean = false): String =
+        lines.joinToString("<w:br/>") { wordRuns(it, italic = italic) }
+
+    /** The line's inline emphasis, carried over as Word run properties. */
+    private fun wordRuns(
+        text: String,
+        bold: Boolean = false,
+        italic: Boolean = false,
+        size: Int = 0
+    ): String = MarkdownParser.parseInline(text).joinToString("") { span: MdSpan ->
+        wordRun(
+            text = span.text,
+            bold = bold || span.bold,
+            italic = italic || span.italic,
+            strike = span.strike,
+            underline = span.underline || span.link != null,
+            mono = span.code,
+            size = size
+        )
+    }
+
+    private fun wordRun(
+        text: String,
+        bold: Boolean = false,
+        italic: Boolean = false,
+        strike: Boolean = false,
+        underline: Boolean = false,
+        mono: Boolean = false,
+        size: Int = 0
+    ): String = buildString {
+        append("<w:r><w:rPr>")
+        if (bold) append("<w:b/>")
+        if (italic) append("<w:i/>")
+        if (strike) append("<w:strike/>")
+        if (underline) append("<w:u w:val=\"single\"/>")
+        if (mono) append("<w:rFonts w:ascii=\"Consolas\" w:hAnsi=\"Consolas\"/>")
+        if (size > 0) append("<w:sz w:val=\"$size\"/><w:szCs w:val=\"$size\"/>")
+        append("</w:rPr><w:t xml:space=\"preserve\">")
+        append(escapeXml(text))
+        append("</w:t></w:r>")
+    }
+
+    private const val WORD_TEXT_HEADER =
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" +
+            "<w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:body>"
+
+    private const val WORD_TEXT_FOOTER =
+        "<w:sectPr><w:pgSz w:w=\"11906\" w:h=\"16838\"/>" +
+            "<w:pgMar w:top=\"720\" w:right=\"720\" w:bottom=\"720\" w:left=\"720\"/></w:sectPr></w:body></w:document>"
 
     private fun escapeXml(value: String): String = buildString(value.length) {
         value.forEach { character ->

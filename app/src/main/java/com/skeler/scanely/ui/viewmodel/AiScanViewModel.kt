@@ -1,6 +1,7 @@
 package com.skeler.scanely.ui.viewmodel
 
 import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.skeler.scanely.core.ai.AiEvent
@@ -14,6 +15,7 @@ import com.skeler.scanely.history.data.HistoryManager
 import com.skeler.scanely.settings.data.SettingsKeys
 import com.skeler.scanely.settings.domain.repository.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -26,6 +28,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+private const val TAG = "AiScanViewModel"
 
 data class AiScanState(
     val isProcessing: Boolean = false,
@@ -187,7 +191,10 @@ class AiScanViewModel @Inject constructor(
         savedHistoryId = viewModelScope.async(Dispatchers.IO) {
             try {
                 historyManager.saveItem(text, uri.toString()).id
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
+                Log.e(TAG, "History save failed", e)
                 null
             }
         }
@@ -212,8 +219,11 @@ class AiScanViewModel @Inject constructor(
             try {
                 val id = pendingId.await() ?: return@launch
                 historyManager.updateItemText(id, newText)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 // Keep in-memory correction if persist fails.
+                Log.w(TAG, "History text update failed", e)
             }
         }
     }

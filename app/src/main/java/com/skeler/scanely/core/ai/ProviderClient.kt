@@ -20,7 +20,7 @@ import retrofit2.HttpException
 import javax.inject.Inject
 import javax.inject.Singleton
 
-internal class TransientAiException(message: String) : Exception(message)
+internal class TransientAiException(message: String, cause: Throwable? = null) : Exception(message, cause)
 
 internal class FatalAiException(val result: AiResult.Error) : Exception(result.message)
 
@@ -87,8 +87,9 @@ internal class ProviderClient @Inject constructor(
             }
         } catch (e: FatalAiException) {
             throw e
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
-            if (e is kotlinx.coroutines.CancellationException) throw e
             // Keep partial text after break (e.g. Cerebras closes post-token); don't re-bill.
             if (accumulated.isEmpty()) throw e
             aiDebug { "stream broke after ${accumulated.length} chars, keeping partial: ${e.message}" }
@@ -111,7 +112,7 @@ internal class ProviderClient @Inject constructor(
     private inline fun <reified T> decodeChunk(payload: String): T = try {
         streamJson.decodeFromString<T>(payload)
     } catch (e: SerializationException) {
-        throw TransientAiException("Malformed response chunk")
+        throw TransientAiException("Malformed response chunk", e)
     }
 
     private fun parseStreamPiece(kind: ProviderKind, payload: String): String? = when (kind) {

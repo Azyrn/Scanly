@@ -102,7 +102,7 @@ class KeyVerifier @Inject constructor(
             classify(provider, code)
         } catch (e: CancellationException) {
             throw e
-        } catch (e: IOException) {
+        } catch (_: IOException) {
             if (!networkObserver.isCurrentlyOnline()) {
                 VerificationResult.Failed("You're offline")
             } else {

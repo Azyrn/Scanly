@@ -14,7 +14,8 @@ import javax.inject.Inject
 @HiltAndroidApp
 class App : Application(), ImageLoaderFactory {
 
-    @Inject lateinit var paddleOcrEngine: PaddleOcrEngine
+    // Lazy so Application.onCreate doesn't build the OCR graph; only onTrimMemory needs it.
+    @Inject lateinit var paddleOcrEngine: dagger.Lazy<PaddleOcrEngine>
 
     override fun onCreate() {
         super.onCreate()
@@ -25,7 +26,7 @@ class App : Application(), ImageLoaderFactory {
     /** OCR sessions hold ~30 MB of native memory; drop them when the system asks. */
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
-        if (level >= TRIM_MEMORY_BACKGROUND) paddleOcrEngine.close()
+        if (level >= TRIM_MEMORY_BACKGROUND) paddleOcrEngine.get().close()
     }
 
     override fun newImageLoader(): ImageLoader {

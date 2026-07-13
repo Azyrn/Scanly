@@ -14,7 +14,11 @@ import javax.inject.Singleton
 @Singleton
 class KeyCipher @Inject constructor() {
 
-    private val keyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
+    // Lazy: KeyCipher is constructed on the splash-gated settings path, but the
+    // Keystore is only needed once an encrypted API key is actually read or written.
+    private val keyStore by lazy {
+        KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
+    }
 
     fun encrypt(plaintext: String): String {
         val cipher = Cipher.getInstance(TRANSFORMATION).apply {

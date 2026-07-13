@@ -1,3 +1,4 @@
+import com.android.build.api.variant.FilterConfiguration
 import java.io.File
 import java.security.KeyStore
 import java.security.MessageDigest
@@ -115,6 +116,8 @@ android {
         arg("room.schemaLocation", "$projectDir/schemas")
     }
 
+    // Per-ABI outputs for every variant; debug ones are pruned to a single ABI
+    // in the androidComponents block below (the splits DSL is not variant-aware).
     splits {
         abi {
             isEnable = true
@@ -172,6 +175,28 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+}
+
+// Packaging four APKs (universal alone is ~250 MB of mostly ONNX assets) is the
+// slow tail of a build, so variants can be pruned to a single ABI's APK.
+// Variant-scoped, so it holds for any task from any launcher (Studio, CLI, CI).
+//   debug:   always one ABI; default arm64-v8a, -PdebugAbi=x86_64 for an emulator.
+//   release: all four by default; releaseAbi=arm64-v8a (gradle.properties or -P)
+//            for fast local signed builds, "all" or blank restores the full set.
+androidComponents {
+    onVariants { variant ->
+        val prop = if (variant.buildType == "release") "releaseAbi" else "debugAbi"
+        val only = (project.findProperty(prop) as String?)
+            ?.takeUnless { it.isBlank() || it == "all" }
+            ?: ("arm64-v8a".takeIf { variant.buildType != "release" })
+            ?: return@onVariants
+        variant.outputs.forEach { output ->
+            val abi = output.filters
+                .find { it.filterType == FilterConfiguration.FilterType.ABI }
+                ?.identifier
+            output.enabled.set(abi == only)
+        }
     }
 }
 

@@ -5,6 +5,8 @@ import android.graphics.Canvas
 import android.graphics.Color
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.scale
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import java.nio.FloatBuffer
 import kotlin.math.abs
 import kotlin.math.ceil
@@ -13,6 +15,23 @@ import kotlin.math.roundToInt
 
 private val IMAGENET_MEAN = floatArrayOf(0.485f, 0.456f, 0.406f)
 private val IMAGENET_STD = floatArrayOf(0.229f, 0.224f, 0.225f)
+
+// Channel values are 0..255 ints, so each normalization is a 256-entry lookup.
+// Entries hold the exact float the inline expression produced — bit-identical tensors.
+private fun normLut(mean: Float, std: Float) = FloatArray(256) { ((it / 255f) - mean) / std }
+
+private val IMAGENET_LUT = Array(3) { normLut(IMAGENET_MEAN[it], IMAGENET_STD[it]) }
+private val REC_LUT = FloatArray(256) { (it / 127.5f) - 1f }
+
+// Direct buffer lets ORT read the tensor in place instead of copying the heap
+// array into native memory. Filled with one bulk put: per-element puts on a
+// direct buffer are ~40ns each on ART and cost more than they save.
+private fun toDirect(out: FloatArray): FloatBuffer =
+    ByteBuffer.allocateDirect(out.size * Float.SIZE_BYTES)
+        .order(ByteOrder.nativeOrder())
+        .asFloatBuffer()
+        .put(out)
+        .apply { rewind() }
 
 object ImageOps {
 
@@ -46,15 +65,18 @@ object ImageOps {
         val plane = w * h
         val out = FloatArray(3 * plane)
         val bgr = bgrInput
+        val lut0 = normLut(mean[0], std[0])
+        val lut1 = normLut(mean[1], std[1])
+        val lut2 = normLut(mean[2], std[2])
         for (i in 0 until plane) {
             val p = px[i]
             val c0 = if (bgr) p and 0xFF else p shr 16 and 0xFF
             val c2 = if (bgr) p shr 16 and 0xFF else p and 0xFF
-            out[i] = ((c0 / 255f) - mean[0]) / std[0]
-            out[plane + i] = (((p shr 8 and 0xFF) / 255f) - mean[1]) / std[1]
-            out[2 * plane + i] = ((c2 / 255f) - mean[2]) / std[2]
+            out[i] = lut0[c0]
+            out[plane + i] = lut1[p shr 8 and 0xFF]
+            out[2 * plane + i] = lut2[c2]
         }
-        return FloatBuffer.wrap(out)
+        return toDirect(out)
     }
 
     /**
@@ -77,12 +99,12 @@ object ImageOps {
                 val i = y * side + x
                 val c0 = if (bgr) p and 0xFF else p shr 16 and 0xFF
                 val c2 = if (bgr) p shr 16 and 0xFF else p and 0xFF
-                out[i] = ((c0 / 255f) - IMAGENET_MEAN[0]) / IMAGENET_STD[0]
-                out[plane + i] = (((p shr 8 and 0xFF) / 255f) - IMAGENET_MEAN[1]) / IMAGENET_STD[1]
-                out[2 * plane + i] = ((c2 / 255f) - IMAGENET_MEAN[2]) / IMAGENET_STD[2]
+                out[i] = IMAGENET_LUT[0][c0]
+                out[plane + i] = IMAGENET_LUT[1][p shr 8 and 0xFF]
+                out[2 * plane + i] = IMAGENET_LUT[2][c2]
             }
         }
-        return FloatBuffer.wrap(out)
+        return toDirect(out)
     }
 
     /**
@@ -112,13 +134,13 @@ object ImageOps {
                     val o = y * batchW + x
                     val c0 = if (bgr) p and 0xFF else p shr 16 and 0xFF
                     val c2 = if (bgr) p shr 16 and 0xFF else p and 0xFF
-                    out[base + o] = (c0 / 127.5f) - 1f
-                    out[base + plane + o] = ((p shr 8 and 0xFF) / 127.5f) - 1f
-                    out[base + 2 * plane + o] = (c2 / 127.5f) - 1f
+                    out[base + o] = REC_LUT[c0]
+                    out[base + plane + o] = REC_LUT[p shr 8 and 0xFF]
+                    out[base + 2 * plane + o] = REC_LUT[c2]
                 }
             }
         }
-        return FloatBuffer.wrap(out) to batchW
+        return toDirect(out) to batchW
     }
 
     /** Perspective-warp a detected quad to an upright crop; rotates tall lines upright. */

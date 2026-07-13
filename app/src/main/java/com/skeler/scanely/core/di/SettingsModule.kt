@@ -18,12 +18,14 @@ import javax.inject.Singleton
 object SettingsModule {
 
     @Provides
+    @Singleton
     fun provideSettingsDataStore(
         @ApplicationContext context: Context,
         keyCipher: KeyCipher,
     ): SettingsDataStore = SettingsDataStore(context, keyCipher)
 
     @Provides
+    @Singleton
     fun provideSettingsRepository(dataStore: SettingsDataStore): SettingsRepository =
         SettingsRepositoryImpl(dataStore)
 

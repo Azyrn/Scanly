@@ -39,7 +39,7 @@ object LookupModule {
             .readTimeout(15, TimeUnit.SECONDS)
             .addInterceptor { chain ->
                 val request = chain.request().newBuilder()
-                    .header("User-Agent", "Scanly Android App - https://github.com/Azyrn/Scanly")
+                    .header("User-Agent", OpenFoodFactsApi.USER_AGENT)
                     .build()
                 chain.proceed(request)
             }

@@ -31,8 +31,8 @@ class OpenFoodFactsEngine @Inject constructor(
             Log.d(TAG, "Looking up: $barcode")
             val response = api.getProduct(barcode)
 
-            if (response.status == 1 && response.product != null) {
-                val food = response.product.toDomain()
+            if (response.isFound) {
+                val food = response.product?.toDomain()
                 if (food != null) {
                     val product = mapToProductInfo(barcode, food)
                     Log.d(TAG, "Found: ${product.name}")

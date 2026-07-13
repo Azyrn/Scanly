@@ -31,8 +31,9 @@ object RtlText {
         var rtl = 0
         var ltr = 0
         for (c in s) {
-            if (isRtl(c)) rtl++
-            else if (Character.getDirectionality(c) == Character.DIRECTIONALITY_LEFT_TO_RIGHT) ltr++
+            if (isRtl(c)) {
+                rtl++
+            } else if (Character.getDirectionality(c) == Character.DIRECTIONALITY_LEFT_TO_RIGHT) ltr++
         }
         return rtl > ltr
     }
@@ -66,8 +67,11 @@ object RtlText {
             var lo = i
             var hi = end
             while (lo < hi) {
-                val t = out[lo]; out[lo] = out[hi]; out[hi] = t
-                lo++; hi--
+                val t = out[lo];
+                out[lo] = out[hi];
+                out[hi] = t
+                lo++;
+                hi--
             }
             i = end + 1
         }

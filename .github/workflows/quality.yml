@@ -14,15 +14,33 @@ jobs:
   detekt:
     name: Static Analysis (Detekt)
     runs-on: ubuntu-latest
+    env:
+      DETEKT_VERSION: 1.23.8
     steps:
       - uses: actions/checkout@v6
-      
-      - name: Run Detekt
-        uses: detekt/detekt-action@v2
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
         with:
-          config: detekt.yml
-          report-sarif: true
-      
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Download Detekt
+        run: |
+          BASE="https://github.com/detekt/detekt/releases/download/v${DETEKT_VERSION}"
+          curl -sSfL -o detekt-cli.jar "$BASE/detekt-cli-${DETEKT_VERSION}-all.jar"
+          curl -sSfL -o detekt-formatting.jar "$BASE/detekt-formatting-${DETEKT_VERSION}.jar"
+
+      - name: Run Detekt
+        run: |
+          java -jar detekt-cli.jar \
+            --config detekt.yml \
+            --build-upon-default-config \
+            --plugins detekt-formatting.jar \
+            --baseline detekt-baseline.xml \
+            --input app/src/main/java \
+            --report sarif:results.sarif
+
       - name: Upload SARIF to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
         if: always()

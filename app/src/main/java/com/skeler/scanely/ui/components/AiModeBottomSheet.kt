@@ -1,5 +1,6 @@
 package com.skeler.scanely.ui.components
 
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -8,7 +9,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.annotation.DrawableRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.Card
@@ -90,7 +90,9 @@ fun AiModeBottomSheet(
                                     modifier = Modifier.size(FilterChipDefaults.IconSize)
                                 )
                             }
-                        } else null
+                        } else {
+                            null
+                        }
                     )
                 }
             }

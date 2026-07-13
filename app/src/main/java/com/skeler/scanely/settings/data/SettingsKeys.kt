@@ -11,6 +11,7 @@ enum class SettingsKeys(val default: Any?) {
     SEED_COLOR_INDEX(SeedPalettes.DEFAULT_INDEX), // Index into SeedPalettes.ALL
     LAST_AI_REQUEST_TIMESTAMP(0L), // epoch millis
     AI_REQUEST_COUNT(0),
+
     // Opt-in cross-provider fallback; default = selected only.
     AI_PROVIDER_FALLBACK(false),
     SELECTED_AI_PROVIDER(""), // AiProvider enum name

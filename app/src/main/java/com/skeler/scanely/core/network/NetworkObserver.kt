@@ -17,7 +17,7 @@ import javax.inject.Singleton
 class NetworkObserver @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
-    private val connectivityManager = 
+    private val connectivityManager =
         context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
     fun isCurrentlyOnline(): Boolean {
@@ -57,10 +57,10 @@ class NetworkObserver @Inject constructor(
         val initialState = connectivityManager.activeNetwork?.let { network ->
             connectivityManager.getNetworkCapabilities(network)?.let { capabilities ->
                 capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
-                capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+                    capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
             }
         } ?: false
-        
+
         trySend(initialState)
 
         connectivityManager.registerNetworkCallback(request, callback)

@@ -46,7 +46,9 @@ class PaddleFixesTest {
         repeat(lineCount) { i ->
             canvas.drawText(
                 "Line ${i + 1}: the quick brown fox jumps over the lazy dog",
-                100f, 160f + i * 64f, paint
+                100f,
+                160f + i * 64f,
+                paint
             )
         }
         return bmp
@@ -98,11 +100,13 @@ class PaddleFixesTest {
         )
         assertEquals(
             "deferred close must run once inference drains",
-            0, engine.openSessionCount()
+            0,
+            engine.openSessionCount()
         )
         assertEquals(
             "engine must recover by recreating sessions",
-            quads.size, engine.detect(page, 960).size
+            quads.size,
+            engine.detect(page, 960).size
         )
         crops.forEach { it.recycle() }
         page.recycle()
@@ -125,7 +129,8 @@ class PaddleFixesTest {
 
             assertEquals(
                 "correction did not restore upright: $results",
-                0, residual
+                0,
+                residual
             )
             val quads = engine.detect(corrected, 960)
             assertTrue(
@@ -145,8 +150,14 @@ class PaddleFixesTest {
         val charset = listOf("", "a", "b", " ")
 
         val soft = floatArrayOf(
-            0.05f, 0.80f, 0.10f, 0.05f,
-            0.90f, 0.04f, 0.03f, 0.03f
+            0.05f,
+            0.80f,
+            0.10f,
+            0.05f,
+            0.90f,
+            0.04f,
+            0.03f,
+            0.03f
         )
         assertTrue(CtcDecoder.isSoftmaxed(soft, 4))
         val softLine = CtcDecoder.decodeBatch(soft, 1, 2, 4, charset).single()
@@ -156,8 +167,14 @@ class PaddleFixesTest {
         // Raw logits whose max lands in [0,1] — the old range heuristic
         // would have reported 0.9 as a probability.
         val raw = floatArrayOf(
-            0.5f, 0.9f, -3.0f, -2.0f,
-            5.0f, 1.0f, 0.0f, 0.0f
+            0.5f,
+            0.9f,
+            -3.0f,
+            -2.0f,
+            5.0f,
+            1.0f,
+            0.0f,
+            0.0f
         )
         assertFalse(CtcDecoder.isSoftmaxed(raw, 4))
         val rawLine = CtcDecoder.decodeBatch(raw, 1, 2, 4, charset).single()

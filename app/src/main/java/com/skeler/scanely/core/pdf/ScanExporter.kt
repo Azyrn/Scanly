@@ -192,9 +192,14 @@ object ScanExporter {
                 pages.put(
                     JSONObject()
                         .put("page", number)
-                        .put("lines", JSONArray(lines.filter { it.isNotBlank() }.map {
-                            JSONObject().put("text", it)
-                        }))
+                        .put(
+                            "lines",
+                            JSONArray(
+                                lines.filter { it.isNotBlank() }.map {
+                                    JSONObject().put("text", it)
+                                }
+                            )
+                        )
                 )
             }
         } else {
@@ -249,7 +254,6 @@ object ScanExporter {
             .map { (number, lines) -> number to lines.dropWhile(String::isBlank).dropLastWhile(String::isBlank) }
     }
 
-
     /** Caller owns and must close the returned document. */
     private fun buildTextPdfDocument(text: String): PdfDocument {
         val contentWidth = PAGE_WIDTH - 2 * PAGE_MARGIN
@@ -285,7 +289,7 @@ object ScanExporter {
                 var end = line
                 while (end < lineCount &&
                     layout.getLineBottom(end) - top <= contentHeight
-                ) end++
+                    ) end++
                 // Oversized single line must still advance.
                 if (end == line) end = line + 1
 
@@ -527,21 +531,29 @@ object ScanExporter {
         append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
         append("<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">")
         repeat(pageCount) { index ->
-            append("<Relationship Id=\"rId${index + 1}\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/image\" Target=\"media/image${index + 1}.jpg\"/>")
+            append(
+                "<Relationship Id=\"rId${index + 1}\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/image\" Target=\"media/image${index + 1}.jpg\"/>"
+            )
         }
         append("</Relationships>")
     }
 
     private fun wordDocument(bitmaps: List<Bitmap>): String = buildString {
         append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
-        append("<w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\" xmlns:wp=\"http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" xmlns:pic=\"http://schemas.openxmlformats.org/drawingml/2006/picture\"><w:body>")
+        append(
+            "<w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\" xmlns:wp=\"http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" xmlns:pic=\"http://schemas.openxmlformats.org/drawingml/2006/picture\"><w:body>"
+        )
         bitmaps.forEachIndexed { index, bitmap ->
             val (cx, cy) = wordImageExtent(bitmap)
             val id = index + 1
-            append("<w:p><w:r><w:drawing><wp:inline distT=\"0\" distB=\"0\" distL=\"0\" distR=\"0\"><wp:extent cx=\"$cx\" cy=\"$cy\"/><wp:docPr id=\"$id\" name=\"Scan $id\"/><a:graphic><a:graphicData uri=\"http://schemas.openxmlformats.org/drawingml/2006/picture\"><pic:pic><pic:nvPicPr><pic:cNvPr id=\"0\" name=\"Scan $id\"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed=\"rId$id\"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x=\"0\" y=\"0\"/><a:ext cx=\"$cx\" cy=\"$cy\"/></a:xfrm><a:prstGeom prst=\"rect\"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>")
+            append(
+                "<w:p><w:r><w:drawing><wp:inline distT=\"0\" distB=\"0\" distL=\"0\" distR=\"0\"><wp:extent cx=\"$cx\" cy=\"$cy\"/><wp:docPr id=\"$id\" name=\"Scan $id\"/><a:graphic><a:graphicData uri=\"http://schemas.openxmlformats.org/drawingml/2006/picture\"><pic:pic><pic:nvPicPr><pic:cNvPr id=\"0\" name=\"Scan $id\"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed=\"rId$id\"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x=\"0\" y=\"0\"/><a:ext cx=\"$cx\" cy=\"$cy\"/></a:xfrm><a:prstGeom prst=\"rect\"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>"
+            )
             if (index != bitmaps.lastIndex) append("<w:p><w:r><w:br w:type=\"page\"/></w:r></w:p>")
         }
-        append("<w:sectPr><w:pgSz w:w=\"11906\" w:h=\"16838\"/><w:pgMar w:top=\"720\" w:right=\"720\" w:bottom=\"720\" w:left=\"720\"/></w:sectPr></w:body></w:document>")
+        append(
+            "<w:sectPr><w:pgSz w:w=\"11906\" w:h=\"16838\"/><w:pgMar w:top=\"720\" w:right=\"720\" w:bottom=\"720\" w:left=\"720\"/></w:sectPr></w:body></w:document>"
+        )
     }
 
     private fun wordTextDocument(text: String): String = buildString {

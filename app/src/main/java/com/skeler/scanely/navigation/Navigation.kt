@@ -18,10 +18,10 @@ import com.skeler.scanely.settings.presentation.screen.AiProvidersScreen
 import com.skeler.scanely.settings.presentation.screen.LookAndFeelScreen
 import com.skeler.scanely.settings.presentation.screen.SettingsScreen
 import com.skeler.scanely.settings.presentation.screen.TextRecognitionScreen
+import com.skeler.scanely.ui.screens.BarcodeScannerScreen
 import com.skeler.scanely.ui.screens.DocumentCaptureScreen
 import com.skeler.scanely.ui.screens.HomeScreen
 import com.skeler.scanely.ui.screens.ResultsScreen
-import com.skeler.scanely.ui.screens.BarcodeScannerScreen
 import com.skeler.scanely.ui.screens.ScanReviewScreen
 import com.skeler.scanely.ui.screens.TextComposeScreen
 import com.skeler.scanely.ui.screens.UnifiedResultsScreen

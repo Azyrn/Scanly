@@ -23,14 +23,14 @@ class OpenFoodFactsEngine @Inject constructor(
     override val name = "Open Food Facts"
     override val priority = 0
     override val category = ProductCategory.FOOD
-    
+
     override fun supports(barcode: String): Boolean = isEanUpc(barcode)
-    
+
     override suspend fun lookup(barcode: String): LookupResult {
         return try {
             Log.d(TAG, "Looking up: $barcode")
             val response = api.getProduct(barcode)
-            
+
             if (response.status == 1 && response.product != null) {
                 val food = response.product.toDomain()
                 if (food != null) {
@@ -49,7 +49,7 @@ class OpenFoodFactsEngine @Inject constructor(
             LookupResult.Error(name, e)
         }
     }
-    
+
     private fun mapToProductInfo(barcode: String, food: FoodProduct): ProductInfo {
         return ProductInfo(
             barcode = barcode,

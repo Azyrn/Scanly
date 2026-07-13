@@ -5,9 +5,9 @@ sealed interface LookupResult {
         val product: ProductInfo,
         val source: String
     ) : LookupResult
-    
+
     data class NotFound(val source: String) : LookupResult
-    
+
     data class Error(
         val source: String,
         val exception: Exception
@@ -16,11 +16,12 @@ sealed interface LookupResult {
 
 interface LookupEngine {
     val name: String
+
     /** Lower = higher priority in fallback order. */
     val priority: Int
     val category: ProductCategory
-    
+
     fun supports(barcode: String): Boolean
-    
+
     suspend fun lookup(barcode: String): LookupResult
 }

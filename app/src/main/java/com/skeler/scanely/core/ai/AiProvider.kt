@@ -4,7 +4,7 @@ enum class ProviderKind {
     OPENAI_COMPAT, // OpenRouter, OpenAI, most self-hosted / custom
     ANTHROPIC,
     GEMINI,
-    MISTRAL_OCR    // non-chat, non-streaming
+    MISTRAL_OCR // non-chat, non-streaming
 }
 
 enum class AiProvider(val displayName: String, val kind: ProviderKind) {

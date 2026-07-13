@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Settings
-
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -48,12 +47,12 @@ import com.skeler.scanely.ui.ScanViewModel
 import com.skeler.scanely.ui.components.AiModeBottomSheet
 import com.skeler.scanely.ui.components.GamifiedAiFab
 import com.skeler.scanely.ui.components.HistoryPillButton
+import com.skeler.scanely.ui.components.MAX_AI_FILES
 import com.skeler.scanely.ui.components.MainActionButton
 import com.skeler.scanely.ui.components.RateLimitDisplayState
 import com.skeler.scanely.ui.components.RateLimitSheet
 import com.skeler.scanely.ui.components.rememberGalleryPicker
 import com.skeler.scanely.ui.components.rememberMultiDocumentPicker
-import com.skeler.scanely.ui.components.MAX_AI_FILES
 import com.skeler.scanely.ui.components.rememberMultiGalleryPicker
 import com.skeler.scanely.ui.viewmodel.AiScanViewModel
 import com.skeler.scanely.ui.viewmodel.OcrViewModel
@@ -90,9 +89,10 @@ fun HomeScreen() {
             val provider = pendingAiProvider
             pendingAiMode = null
             if (scanViewModel.triggerAiWithRateLimit(provider) {
-                scanViewModel.onNewScanSelected()
-                aiViewModel.processMultipleFiles(uris, mode, provider)
-            }) {
+                    scanViewModel.onNewScanSelected()
+                    aiViewModel.processMultipleFiles(uris, mode, provider)
+                }
+            ) {
                 navController.navigate(Routes.RESULTS)
             }
         }
@@ -117,14 +117,16 @@ fun HomeScreen() {
             uris.forEach { uri ->
                 try {
                     context.contentResolver.takePersistableUriPermission(
-                        uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+                        uri,
+                        android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
                     )
                 } catch (_: Exception) { }
             }
             if (scanViewModel.triggerAiWithRateLimit(provider) {
-                scanViewModel.onNewScanSelected()
-                aiViewModel.processMultipleFiles(uris, mode, provider)
-            }) {
+                    scanViewModel.onNewScanSelected()
+                    aiViewModel.processMultipleFiles(uris, mode, provider)
+                }
+            ) {
                 navController.navigate(Routes.RESULTS)
             }
         }
@@ -146,7 +148,8 @@ fun HomeScreen() {
         if (uri != null) {
             try {
                 context.contentResolver.takePersistableUriPermission(
-                    uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    uri,
+                    android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
                 )
             } catch (_: Exception) { }
             aiViewModel.clearResult()
@@ -298,16 +301,16 @@ private fun rememberActionAccents(): ActionAccents {
     return if (LocalDarkMode.current) {
         ActionAccents(
             document = Color(0xFFB6A9DC), // muted lavender
-            gallery = Color(0xFFD8B878),  // muted ochre
-            pdf = Color(0xFFE0A79B),      // muted clay
-            qr = Color(0xFF9CC7AE)        // muted sage
+            gallery = Color(0xFFD8B878), // muted ochre
+            pdf = Color(0xFFE0A79B), // muted clay
+            qr = Color(0xFF9CC7AE) // muted sage
         )
     } else {
         ActionAccents(
-            document = Color(0xFF5E4E80),  // muted lavender
-            gallery = Color(0xFF9A7B3F),  // muted ochre
-            pdf = Color(0xFFA05A4E),      // muted clay
-            qr = Color(0xFF4F7A63)        // muted sage
+            document = Color(0xFF5E4E80), // muted lavender
+            gallery = Color(0xFF9A7B3F), // muted ochre
+            pdf = Color(0xFFA05A4E), // muted clay
+            qr = Color(0xFF4F7A63) // muted sage
         )
     }
 }

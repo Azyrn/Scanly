@@ -4,7 +4,6 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
-import androidx.core.net.toUri
 import android.net.wifi.WifiManager
 import android.net.wifi.WifiNetworkSuggestion
 import android.os.Build
@@ -12,6 +11,7 @@ import android.provider.CalendarContract
 import android.provider.ContactsContract
 import android.provider.Settings
 import android.widget.Toast
+import androidx.core.net.toUri
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
@@ -108,7 +108,7 @@ object ActionExecutor {
 
                 val wifiManager = context.getSystemService(Context.WIFI_SERVICE) as WifiManager
                 wifiManager.addNetworkSuggestions(listOf(suggestion))
-                
+
                 val intent = Intent(Settings.ACTION_WIFI_SETTINGS)
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 context.startActivity(intent)

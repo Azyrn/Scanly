@@ -7,14 +7,14 @@ import com.skeler.scanely.core.lookup.LookupResult
 import com.skeler.scanely.core.lookup.MedicineData
 import com.skeler.scanely.core.lookup.ProductCategory
 import com.skeler.scanely.core.lookup.ProductInfo
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 private const val TAG = "OpenFDAEngine"
 
@@ -41,7 +41,7 @@ class OpenFDAEngine @Inject constructor(
                 "https://api.fda.gov/drug/label.json?search=openfda.upc:\"$cleaned\"&limit=1",
                 "https://api.fda.gov/drug/label.json?search=openfda.package_ndc:\"$cleaned\"&limit=1"
             )
-            
+
             for (url in urls) {
                 Log.d(TAG, "Trying: $url")
 
@@ -64,7 +64,7 @@ class OpenFDAEngine @Inject constructor(
                     continue
                 }
             }
-            
+
             Log.d(TAG, "Not found: $barcode")
             LookupResult.NotFound(name)
         } catch (e: Exception) {
@@ -72,10 +72,10 @@ class OpenFDAEngine @Inject constructor(
             LookupResult.Error(name, e)
         }
     }
-    
+
     private fun mapToProductInfo(barcode: String, result: DrugLabel): ProductInfo {
         val openFda = result.openfda
-        
+
         return ProductInfo(
             barcode = barcode,
             source = name,

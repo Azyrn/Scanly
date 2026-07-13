@@ -1,10 +1,10 @@
 package com.skeler.scanely.ui.components
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
@@ -63,14 +63,14 @@ fun LanguageChipRow(
                 label = { Text(language) }
             )
         }
-        
+
         Box {
             FilterChip(
                 selected = false,
                 onClick = onShowLanguageMenu,
                 label = { Text("Translate") }
             )
-            
+
             DropdownMenu(
                 expanded = showLanguageMenu,
                 onDismissRequest = onDismissLanguageMenu

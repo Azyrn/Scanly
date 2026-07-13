@@ -29,10 +29,10 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -96,13 +96,11 @@ fun LookAndFeelScreen(
                 .padding(innerPadding),
             contentPadding = PaddingValues(bottom = 48.dp)
         ) {
-
             item {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-
                     PaletteShowcase(
                         modifier = Modifier.padding(top = 8.dp, start = 24.dp, end = 24.dp)
                     )
@@ -140,7 +138,6 @@ fun LookAndFeelScreen(
                 }
             }
 
-
             item {
                 SettingsSectionHeader(
                     text = "Color palette",
@@ -153,7 +150,6 @@ fun LookAndFeelScreen(
                     modifier = Modifier.fillMaxWidth(),
                     contentPadding = PaddingValues(horizontal = 24.dp, vertical = 4.dp)
                 ) {
-
                     item(key = "dynamic") {
                         PaletteChip(
                             label = "Dynamic",
@@ -181,7 +177,6 @@ fun LookAndFeelScreen(
             }
 
             item { Spacer(modifier = Modifier.height(36.dp)) }
-
 
             item {
                 SettingsSectionHeader(

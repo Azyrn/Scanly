@@ -11,6 +11,7 @@ complexity:
   LongMethod:
     active: true
     threshold: 40
+    ignoreAnnotated: ["Composable"]
   LongParameterList:
     active: true
     functionThreshold: 8
@@ -18,9 +19,10 @@ complexity:
     ignoreDefaultParameters: true
     ignoreDataClasses: true
     ignoreAnnotatedParameter: ["Composable"]
-  ComplexMethod:
+  CyclomaticComplexMethod:
     active: true
     threshold: 10
+    ignoreAnnotated: ["Composable"]
   TooManyFunctions:
     active: true
     thresholdInFiles: 15
@@ -31,6 +33,7 @@ complexity:
     ignoreDeprecated: true
     ignorePrivate: false
     ignoreOverridden: true
+    ignoreAnnotatedFunctions: ["Composable"]
   LargeClass:
     active: true
     threshold: 300
@@ -48,15 +51,28 @@ style:
   ReturnCount:
     active: true
     max: 3
-    excludedFunctions: "equals"
+    excludedFunctions: ["equals"]
     excludeGuardClauses: true
   ForbiddenComment:
     active: true
-    values: ["TODO:", "FIXME:", "STOPSHIP:"]
-    customMessage: "Use issue tracker for tracking todos"
+    comments:
+      - reason: "Use issue tracker for tracking todos"
+        value: "TODO:"
+      - reason: "Use issue tracker for tracking todos"
+        value: "FIXME:"
+      - reason: "Use issue tracker for tracking todos"
+        value: "STOPSHIP:"
   MagicNumber:
     active: true
-    excludes: ["**/test/**", "**/androidTest/**", "**/*.kts"]
+    # Numeric literals are the domain in these: HCT tone tables, tensor
+    # normalization means/stds, geometry. Naming each one obscures the math.
+    excludes:
+      - "**/test/**"
+      - "**/androidTest/**"
+      - "**/*.kts"
+      - "**/ui/theme/**"
+      - "**/core/ocr/paddle/**"
+      - "**/core/image/**"
     ignoreNumbers: ["-1", "0", "1", "2", "60", "100", "1000"]
     ignoreHashCodeFunction: true
     ignorePropertyDeclaration: true
@@ -66,6 +82,8 @@ style:
     ignoreAnnotation: true
     ignoreEnums: true
     ignoreRanges: true
+    # Compose layout literals (dp/sp/weights) are self-describing at the call site.
+    ignoreAnnotated: ["Composable"]
 
 empty-blocks:
   active: true
@@ -82,7 +100,7 @@ naming:
     active: true
     functionPattern: "[a-z][a-zA-Z0-9]*"
     excludes: ["**/test/**", "**/androidTest/**"]
-    excludeClassPattern: ".*Composable.*"
+    ignoreAnnotated: ["Composable"]
   TopLevelPropertyNaming:
     active: true
     constantPattern: "[A-Z][_A-Z0-9]*"

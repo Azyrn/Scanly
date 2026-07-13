@@ -110,7 +110,9 @@ class StructureReviewFindingsTest {
             tableOf = { table }
         )
 
-        assertTrue("text inside the table region must not vanish, got:\n$markdown",
-            markdown.contains("stray"))
+        assertTrue(
+            "text inside the table region must not vanish, got:\n$markdown",
+            markdown.contains("stray")
+        )
     }
 }

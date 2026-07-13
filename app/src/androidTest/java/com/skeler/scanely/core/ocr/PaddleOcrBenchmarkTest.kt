@@ -34,7 +34,9 @@ class PaddleOcrBenchmarkTest {
         repeat(35) { i ->
             canvas.drawText(
                 "Line ${i + 1}: the quick brown fox jumps over the lazy dog 0123456789",
-                120f, 200f + i * 58f, paint
+                120f,
+                200f + i * 58f,
+                paint
             )
         }
         return bmp

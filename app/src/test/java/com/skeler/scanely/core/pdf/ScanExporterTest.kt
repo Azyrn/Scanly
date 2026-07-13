@@ -46,9 +46,12 @@ class ScanExporterTest {
         assertEquals(1, pages.getJSONObject(0).getInt("page"))
         assertEquals("Invoice", firstLine.getString("text"))
         assertEquals(0.98, firstLine.getDouble("confidence"), 0.001)
-        assertEquals(listOf(10, 20, 110, 45), firstLine.getJSONArray("box").let { box ->
-            (0 until box.length()).map { box.getInt(it) }
-        })
+        assertEquals(
+            listOf(10, 20, 110, 45),
+            firstLine.getJSONArray("box").let { box ->
+                (0 until box.length()).map { box.getInt(it) }
+            }
+        )
         assertEquals(2, pages.getJSONObject(1).getInt("page"))
     }
 

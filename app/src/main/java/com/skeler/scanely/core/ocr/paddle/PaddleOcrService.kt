@@ -151,14 +151,17 @@ class PaddleOcrService @Inject constructor(
                 if (!opened) return@withContext OcrResult.Error("Failed to render PDF")
             }
 
-            if (text.isEmpty()) OcrResult.Empty
-            else OcrResult.Success(
-                text = text.toString(),
-                blocks = blocks,
-                confidence = if (pages > 0) confidence / pages else 0f,
-                source = OcrSource.PADDLE,
-                markdown = markdown.toString().ifBlank { null }
-            )
+            if (text.isEmpty()) {
+                OcrResult.Empty
+            } else {
+                OcrResult.Success(
+                    text = text.toString(),
+                    blocks = blocks,
+                    confidence = if (pages > 0) confidence / pages else 0f,
+                    source = OcrSource.PADDLE,
+                    markdown = markdown.toString().ifBlank { null }
+                )
+            }
         }
 
     /**
@@ -186,14 +189,16 @@ class PaddleOcrService @Inject constructor(
                         // Cell boxes come back in crop space; matching runs in page space,
                         // offset by the clamped crop origin, not the raw region box.
                         val structure = engine.recognizeTable(crop.bitmap)
-                        structure.copy(cells = structure.cells.map { cell ->
-                            cell.copy(
-                                left = cell.left + crop.left,
-                                top = cell.top + crop.top,
-                                right = cell.right + crop.left,
-                                bottom = cell.bottom + crop.top
-                            )
-                        })
+                        structure.copy(
+                            cells = structure.cells.map { cell ->
+                                cell.copy(
+                                    left = cell.left + crop.left,
+                                    top = cell.top + crop.top,
+                                    right = cell.right + crop.left,
+                                    bottom = cell.bottom + crop.top
+                                )
+                            }
+                        )
                     } finally {
                         // createBitmap returns the page itself for a full-page region.
                         if (crop.bitmap !== page) crop.bitmap.recycle()

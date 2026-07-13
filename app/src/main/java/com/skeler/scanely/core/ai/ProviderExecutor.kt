@@ -46,8 +46,11 @@ internal class ProviderExecutor @Inject constructor(
                 emit(
                     AiEvent.Stage(
                         AiStage.PROCESSING,
-                        if (lastFailureWasNetwork) "Connection trouble — $suffix"
-                        else "$name is busy — $suffix"
+                        if (lastFailureWasNetwork) {
+                            "Connection trouble — $suffix"
+                        } else {
+                            "$name is busy — $suffix"
+                        }
                     )
                 )
                 delay(wait)
@@ -110,15 +113,19 @@ internal class ProviderExecutor @Inject constructor(
         BACKOFF_BASE_MS * (1L shl (attempt - 1)) + Random.nextLong(BACKOFF_JITTER_MS)
 
     private fun attemptTimeout(imageCount: Int): Long =
-        (ATTEMPT_TIMEOUT_BASE_MS +
-            ATTEMPT_TIMEOUT_PER_EXTRA_IMAGE_MS * (imageCount - 1).coerceAtLeast(0))
+        (
+            ATTEMPT_TIMEOUT_BASE_MS +
+                ATTEMPT_TIMEOUT_PER_EXTRA_IMAGE_MS * (imageCount - 1).coerceAtLeast(0)
+            )
             .coerceAtMost(ATTEMPT_TIMEOUT_MAX_MS)
 
     private fun httpErrorMessage(code: Int): String = when (code) {
-        429 -> "Provider is rate-limited right now. Try again shortly, or add " +
-            "your own API key in Settings → AI Providers."
-        402 -> "Your API key has hit its usage or billing limit. Check your plan " +
-            "with the provider, then try again."
+        429 ->
+            "Provider is rate-limited right now. Try again shortly, or add " +
+                "your own API key in Settings → AI Providers."
+        402 ->
+            "Your API key has hit its usage or billing limit. Check your plan " +
+                "with the provider, then try again."
         401, 403 -> "Invalid or unauthorized API key. Check it in Settings → AI Providers."
         else -> "Request failed (HTTP $code)"
     }

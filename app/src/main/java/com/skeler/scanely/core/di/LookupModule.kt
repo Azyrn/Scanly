@@ -25,12 +25,12 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object LookupModule {
-    
+
     private val json = Json {
         ignoreUnknownKeys = true
         coerceInputValues = true
     }
-    
+
     @Provides
     @Singleton
     fun provideOkHttpClient(): OkHttpClient {
@@ -45,7 +45,7 @@ object LookupModule {
             }
             .build()
     }
-    
+
     @Provides
     @Singleton
     fun provideOpenFoodFactsApi(okHttpClient: OkHttpClient): OpenFoodFactsApi {
@@ -56,44 +56,43 @@ object LookupModule {
             .build()
             .create(OpenFoodFactsApi::class.java)
     }
-    
-    
+
     @Provides
     @IntoSet
     fun provideOpenFoodFactsEngine(api: OpenFoodFactsApi): LookupEngine {
         return OpenFoodFactsEngine(api)
     }
-    
+
     @Provides
     @IntoSet
     fun provideGoogleBooksEngine(okHttpClient: OkHttpClient): LookupEngine {
         return GoogleBooksEngine(okHttpClient)
     }
-    
+
     @Provides
     @IntoSet
     fun provideOpenFDAEngine(okHttpClient: OkHttpClient): LookupEngine {
         return OpenFDAEngine(okHttpClient)
     }
-    
+
     @Provides
     @IntoSet
     fun provideOpenBeautyFactsEngine(okHttpClient: OkHttpClient): LookupEngine {
         return OpenBeautyFactsEngine(okHttpClient)
     }
-    
+
     @Provides
     @IntoSet
     fun provideOpenPetFoodFactsEngine(okHttpClient: OkHttpClient): LookupEngine {
         return OpenPetFoodFactsEngine(okHttpClient)
     }
-    
+
     @Provides
     @IntoSet
     fun provideOpenLibraryEngine(okHttpClient: OkHttpClient): LookupEngine {
         return OpenLibraryEngine(okHttpClient)
     }
-    
+
     @Provides
     @Singleton
     fun provideLookupOrchestrator(engines: Set<@JvmSuppressWildcards LookupEngine>): LookupOrchestrator {

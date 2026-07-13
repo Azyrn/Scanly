@@ -8,14 +8,14 @@ import com.skeler.scanely.core.lookup.LookupResult
 import com.skeler.scanely.core.lookup.ProductCategory
 import com.skeler.scanely.core.lookup.ProductInfo
 import com.skeler.scanely.core.lookup.isEanUpc
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 private const val TAG = "OpenPetFoodFactsEngine"
 private const val FIELDS =

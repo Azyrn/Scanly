@@ -154,12 +154,42 @@ fun ScanningOverlay(modifier: Modifier = Modifier) {
 
         drawLine(accentColor, Offset(left, top + 24.dp.toPx()), Offset(left, top + cornerLength), cornerStroke)
         drawLine(accentColor, Offset(left + 24.dp.toPx(), top), Offset(left + cornerLength, top), cornerStroke)
-        drawLine(accentColor, Offset(left + scanBoxSize, top + 24.dp.toPx()), Offset(left + scanBoxSize, top + cornerLength), cornerStroke)
-        drawLine(accentColor, Offset(left + scanBoxSize - 24.dp.toPx(), top), Offset(left + scanBoxSize - cornerLength, top), cornerStroke)
-        drawLine(accentColor, Offset(left, top + scanBoxSize - 24.dp.toPx()), Offset(left, top + scanBoxSize - cornerLength), cornerStroke)
-        drawLine(accentColor, Offset(left + 24.dp.toPx(), top + scanBoxSize), Offset(left + cornerLength, top + scanBoxSize), cornerStroke)
-        drawLine(accentColor, Offset(left + scanBoxSize, top + scanBoxSize - 24.dp.toPx()), Offset(left + scanBoxSize, top + scanBoxSize - cornerLength), cornerStroke)
-        drawLine(accentColor, Offset(left + scanBoxSize - 24.dp.toPx(), top + scanBoxSize), Offset(left + scanBoxSize - cornerLength, top + scanBoxSize), cornerStroke)
+        drawLine(
+            accentColor,
+            Offset(left + scanBoxSize, top + 24.dp.toPx()),
+            Offset(left + scanBoxSize, top + cornerLength),
+            cornerStroke
+        )
+        drawLine(
+            accentColor,
+            Offset(left + scanBoxSize - 24.dp.toPx(), top),
+            Offset(left + scanBoxSize - cornerLength, top),
+            cornerStroke
+        )
+        drawLine(
+            accentColor,
+            Offset(left, top + scanBoxSize - 24.dp.toPx()),
+            Offset(left, top + scanBoxSize - cornerLength),
+            cornerStroke
+        )
+        drawLine(
+            accentColor,
+            Offset(left + 24.dp.toPx(), top + scanBoxSize),
+            Offset(left + cornerLength, top + scanBoxSize),
+            cornerStroke
+        )
+        drawLine(
+            accentColor,
+            Offset(left + scanBoxSize, top + scanBoxSize - 24.dp.toPx()),
+            Offset(left + scanBoxSize, top + scanBoxSize - cornerLength),
+            cornerStroke
+        )
+        drawLine(
+            accentColor,
+            Offset(left + scanBoxSize - 24.dp.toPx(), top + scanBoxSize),
+            Offset(left + scanBoxSize - cornerLength, top + scanBoxSize),
+            cornerStroke
+        )
     }
 }
 

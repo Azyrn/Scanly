@@ -53,7 +53,7 @@ data class NutrimentsDto(
 
 fun ProductDto.toDomain(): FoodProduct? {
     val productName = name?.takeIf { it.isNotBlank() } ?: return null
-    
+
     return FoodProduct(
         barcode = barcode ?: "",
         name = productName,

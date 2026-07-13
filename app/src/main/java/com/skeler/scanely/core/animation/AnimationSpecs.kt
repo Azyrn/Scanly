@@ -21,7 +21,6 @@ import androidx.compose.runtime.setValue
 import kotlinx.coroutines.delay
 import kotlin.math.pow
 
-
 val EaseOutExpo = Easing { fraction ->
     if (fraction == 1f) 1f else 1f - 2f.pow(-10f * fraction)
 }

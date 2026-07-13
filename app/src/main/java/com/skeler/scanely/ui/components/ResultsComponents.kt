@@ -190,7 +190,9 @@ fun ExportMenuItem(
     DropdownMenuItem(
         text = { Text(format.label) },
         enabled = enabled,
-        trailingIcon = if (enabled) null else {
+        trailingIcon = if (enabled) {
+            null
+        } else {
             {
                 Text(
                     text = "No table",

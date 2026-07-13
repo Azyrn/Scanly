@@ -37,9 +37,12 @@ class TextOcrService @Inject constructor(
     suspend fun recognizeFromUri(uri: Uri): OcrResult = when (engine()) {
         TextOcrEngine.PADDLE -> {
             val bitmap = loadBitmap(uri)
-            if (bitmap == null) OcrResult.Error("Failed to load image")
-            else paddle.recognize(bitmap).orFallback { mlKit.recognizeFromBitmap(bitmap) }
-                .also { bitmap.recycle() }
+            if (bitmap == null) {
+                OcrResult.Error("Failed to load image")
+            } else {
+                paddle.recognize(bitmap).orFallback { mlKit.recognizeFromBitmap(bitmap) }
+                    .also { bitmap.recycle() }
+            }
         }
         TextOcrEngine.ML_KIT -> mlKit.recognizeFromUri(uri)
     }

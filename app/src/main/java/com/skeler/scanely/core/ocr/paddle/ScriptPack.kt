@@ -31,8 +31,20 @@ enum class ScriptPack(
         bundledDict = "ocr/dict_arabic.txt"
     ),
     KOREAN("korean", "Korean", "Korean", "korean_PP-OCRv5_mobile_rec_onnx", sizeMb = 14),
-    CYRILLIC("cyrillic", "Cyrillic", "Russian, Ukrainian, Bulgarian, Serbian", "cyrillic_PP-OCRv5_mobile_rec_onnx", sizeMb = 8),
-    DEVANAGARI("devanagari", "Devanagari", "Hindi, Marathi, Nepali, Sanskrit", "devanagari_PP-OCRv5_mobile_rec_onnx", sizeMb = 9),
+    CYRILLIC(
+        "cyrillic",
+        "Cyrillic",
+        "Russian, Ukrainian, Bulgarian, Serbian",
+        "cyrillic_PP-OCRv5_mobile_rec_onnx",
+        sizeMb = 8
+    ),
+    DEVANAGARI(
+        "devanagari",
+        "Devanagari",
+        "Hindi, Marathi, Nepali, Sanskrit",
+        "devanagari_PP-OCRv5_mobile_rec_onnx",
+        sizeMb = 9
+    ),
     THAI("thai", "Thai", "Thai", "th_PP-OCRv5_mobile_rec_onnx", sizeMb = 8),
     GREEK("greek", "Greek", "Greek", "el_PP-OCRv5_mobile_rec_onnx", sizeMb = 8),
     TAMIL("tamil", "Tamil", "Tamil", "ta_PP-OCRv5_mobile_rec_onnx", sizeMb = 9),

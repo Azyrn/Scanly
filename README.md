@@ -4,8 +4,8 @@
 
 **A modern Android scanner for documents, barcodes, and QR codes.**
 
-Extract text from images and PDFs on-device by default, with optional cloud AI for handwriting and
-complex layouts — and export exactly what you see on screen.
+Fully offline OCR with PaddleOCR, or bring your own API key and let a vision model transcribe the
+page — your key, your provider, straight from your phone. Export exactly what you see on screen.
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.3-7F52FF.svg?logo=kotlin&logoColor=white)](#)
@@ -17,18 +17,23 @@ complex layouts — and export exactly what you see on screen.
 
 ## Features
 
-### AI Scan
+### AI Scan — transcription, not summarization
 
-- Optional cloud extraction for handwriting and complex layouts, returning structured Markdown.
-- Eleven providers, including any OpenAI-compatible endpoint (see [AI Scan](#ai-scan)).
+- A vision model **re-types the page as Markdown that mirrors it**: same words, same bold/italic and
+  headings, same line breaks, same tables. It transcribes; it never summarizes or paraphrases.
+- Reads what classical OCR chokes on: **handwriting, receipts, multi-column pages, and tables**.
+- **Bring your own API key** — eleven providers, or any OpenAI-compatible endpoint. Your key lives on
+  your device and your phone talks to the provider directly: **no Scanly server, no proxy**
+  (see [AI Scan](#ai-scan)).
+- Pick the model yourself per provider; the defaults are only defaults.
 - Token-by-token streaming, so text appears as the model produces it.
-- Opt-in cross-provider fallback when the selected provider is rate-limited or failing.
 - Translation of a result into 18 languages, cached per language.
 - Up to 3 images or PDF/text files per scan.
 
-### Offline OCR
+### Offline OCR — no key, no account, no network
 
-- PaddleOCR PP-OCRv6 running on-device through ONNX Runtime — the default engine.
+- **PaddleOCR PP-OCRv6** on-device through ONNX Runtime — the default engine. If you never want a
+  document to leave your phone, this is the whole app working with the radio off.
 - ML Kit text recognition as a faster alternative engine.
 - Nine script packs (two bundled, seven downloadable): Universal (Latin/Chinese/Japanese) and Arabic
   ship in the APK; Korean, Cyrillic, Devanagari, Thai, Greek, Tamil, and Telugu download on demand.
@@ -58,6 +63,8 @@ complex layouts — and export exactly what you see on screen.
 
 - Offline OCR never uploads anything; AI Scan is the only path that leaves the device
   (see [Privacy](#privacy)).
+- **No backend, no proxy, no telemetry on your documents** — AI requests go from your phone straight
+  to the provider you chose.
 - Your API keys are encrypted at rest with AES-GCM in the Android Keystore, and are sent in request
   headers — never in URLs or logs.
 
@@ -71,7 +78,32 @@ complex layouts — and export exactly what you see on screen.
 ## AI Scan
 
 AI Scan is optional. Nothing is sent anywhere until you explicitly run a scan with an online
-provider.
+provider. Offline OCR covers the normal case; AI Scan exists for the pages it cannot read.
+
+### What it actually does
+
+AI Scan sends your image or file to a **vision model** and asks it for a **visual-fidelity
+transcription in Markdown** — not a description of the document, not a summary of it. The model is
+told to reproduce what it sees:
+
+| It does | It does not |
+| --- | --- |
+| Re-type every word, number, and symbol as printed | Summarize, shorten, or "clean up" your text |
+| Map what it sees to Markdown: `#` headings by visual size, `**bold**`, `*italic*`, `~~strikethrough~~`, `<u>underline</u>` | Translate or correct the source (translation is a separate, explicit action) |
+| Keep the layout: line breaks, blank lines, indentation, column alignment | Re-wrap or merge lines |
+| Rebuild tables as real Markdown tables, and checkboxes as `[ ]` / `[x]` | Invent structure that isn't on the page |
+| Mark genuinely unreadable text `[unclear]` | Silently guess |
+
+That is why it handles the inputs classical OCR struggles with — **handwriting, receipts, forms,
+multi-column pages, and tables** — and why its output can go straight into the Markdown view, and
+from there into a PDF, `.docx`, or CSV with its structure intact. Multi-column pages are transcribed
+column by column, left to right. PDFs and plain-text files use their own extraction prompt with the
+same rule: every character, nothing summarized.
+
+**Its limits are the model's limits.** A vision model can misread a smudged digit where a
+purpose-built OCR engine would too, and a shared free-tier key can be rate-limited. It is a
+different tool from Offline OCR, not a strictly better one — if the page is clean printed text and
+you want determinism and zero network, use [Offline OCR](#offline-ocr).
 
 ### Supported providers
 
@@ -89,12 +121,9 @@ provider.
 | Claude | Anthropic | |
 | Custom | OpenAI-compatible | Any endpoint: your own base URL, model, and key |
 
-### Vision and OCR enhancement
-
-Images are sent to a vision model with an extraction prompt that asks for structured Markdown —
-headings, lists, and pipe tables — rather than a flat text dump. This is what makes AI Scan useful
-for handwriting, receipts, and multi-column layouts that trip up classical OCR. PDFs and plain-text
-files use a separate extraction prompt.
+Each provider ships with a sensible default model, and every one of them can be replaced with a model
+ID of your choice in **Settings → AI Providers**. With **Custom**, you supply the base URL, model, and
+key, so any OpenAI-compatible endpoint works — including one you run yourself.
 
 ### Streaming
 
@@ -112,34 +141,51 @@ supplied a key — the app never silently falls back from your key to a bundled 
 Within a single provider, failed attempts are retried with exponential backoff on HTTP 429 and 5xx
 responses.
 
-### API keys
+### Bring your own API key
 
-Add your own key per provider in **Settings → AI Providers**. Keys are stored in DataStore,
-encrypted with an AES-GCM key held in the Android Keystore, and are never logged.
+**Use your own key, on your own account, with your own provider.** Add one per provider in
+**Settings → AI Providers**.
+
+- **Your key stays on your device.** It is stored in DataStore, encrypted with an AES-GCM key held in
+  the Android Keystore. It is sent in a request header to the one provider it belongs to, and nowhere
+  else — never in a URL, never in a log.
+- **There is no Scanly server and no proxy.** Your phone calls the provider's API directly:
+  `generativelanguage.googleapis.com`, `api.anthropic.com`, `api.openai.com`, `api.groq.com`, and so
+  on. Your documents and your key never pass through any machine of ours, because there isn't one.
+  Nothing is relayed, mirrored, or logged on the way — the only party that sees the request is the
+  provider you chose.
+- **Your account, your billing, your rate limits.** Usage shows up on your provider dashboard, and
+  you can revoke the key there at any time.
 
 Builds may also ship bundled free-tier keys for some providers (obfuscated in the APK and pinned to
-the release signature). These are shared, so they are rate-limited; results show a badge saying
-whether the scan used a built-in key or yours. When the shared limit is hit, you can wait, add your
-own key, or watch an optional rewarded ad for one extra scan.
+the release signature) so the feature works before you have a key of your own. These are shared, so
+they are rate-limited; results show a badge saying whether the scan used a built-in key or yours.
+When the shared limit is hit, you can wait, add your own key, or watch an optional rewarded ad for
+one extra scan. Fallback never moves you from your key to a bundled one (see above).
 
 ### Local vs cloud
 
-| | Runs on-device | Sends data to a provider |
+| | Runs on-device | Leaves the device |
 | --- | --- | --- |
-| Offline OCR (PaddleOCR / ML Kit) | Yes | No |
-| Barcode scanning and parsing | Yes | No |
-| Product lookup | No | Barcode number only, to the lookup APIs |
-| AI Scan | No | The image or file you selected |
-| AI translation | No | The extracted text |
+| Offline OCR (PaddleOCR / ML Kit) | Yes | Nothing |
+| Barcode scanning and parsing | Yes | Nothing |
+| Product lookup | No | The barcode number only, to the lookup APIs |
+| AI Scan | No | The image or file you selected, straight to the provider you chose |
+| AI translation | No | The extracted text, straight to the provider you chose |
+
+Every row that leaves the device goes to a third party you picked — never through a Scanly service.
 
 ---
 
 ## Offline OCR
 
-The default engine is **PaddleOCR PP-OCRv6**, executed with ONNX Runtime. It runs fully offline: no
-account, no network, nothing leaves the phone. The Universal and Arabic recognition models are
-bundled in the APK; the other script packs download on demand and are verified by size and SHA-256
-before installing.
+**If you want local OCR, this is it — and it is already the default.** The engine is **PaddleOCR
+PP-OCRv6**, executed on-device with ONNX Runtime: no API key, no account, no network, nothing leaves
+the phone. Scanning, layout detection, table recognition, and every export work in airplane mode.
+
+The Universal and Arabic recognition models are bundled in the APK; the other script packs download
+on demand (that download is the one time the feature touches the network) and are verified by size
+and SHA-256 before installing.
 
 Configured in **Settings → Text Recognition**:
 
@@ -249,9 +295,12 @@ barcode number is sent.
   that provider; nothing is sent in the background.
 - **Barcode decoding is on-device.** Product lookup sends the barcode number — and nothing else — to
   the lookup APIs listed above.
+- **There is no Scanly server.** The app has no backend and no proxy. When you run an AI Scan, your
+  phone calls your provider's API directly — your documents and your key never transit any
+  infrastructure we control, because we operate none.
 - **Your API keys stay on your device.** They are stored encrypted (AES-GCM, key held in the Android
   Keystore), transmitted only in request headers to the provider they belong to, and never written to
-  logs or URLs.
+  logs or URLs. Revoke a key on your provider's dashboard and it is dead everywhere.
 - **Scan history is local**, kept as a JSON file with its images in the app's private storage.
 
 ---

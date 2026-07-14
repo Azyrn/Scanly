@@ -2,10 +2,16 @@
 
 # Scanly
 
-**A modern Android scanner for documents, barcodes, and QR codes.**
+**Point your phone at a page and get the text — offline, or through the AI provider of your choice.**
 
-Fully offline OCR with PaddleOCR, or bring your own API key and let a vision model transcribe the
-page — your key, your provider, straight from your phone. Export exactly what you see on screen.
+Scanly is an Android scanner for documents, barcodes, and QR codes. It reads a page two ways:
+**fully offline with PaddleOCR**, or with a **vision model that re-types the page as Markdown**.
+Then it gives you the result as **Markdown, PDF, Word, CSV, or JSON** — and can **translate** it into
+18 languages.
+
+**Your AI key, your provider, your account.** Add your own API key and your phone calls the provider
+directly. **There is no Scanly server and no proxy** — nothing we run ever sees your documents,
+because we run nothing.
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.3-7F52FF.svg?logo=kotlin&logoColor=white)](#)
@@ -15,76 +21,73 @@ page — your key, your provider, straight from your phone. Export exactly what 
 
 ---
 
-## Features
+## The three things to know first
 
-### AI Scan — transcription, not summarization
+**1. It works with the radio off.** The default engine is **PaddleOCR PP-OCRv6**, running on your
+phone through ONNX Runtime. No key, no account, no network. Scanning, layout detection, table
+recognition, and every export work in airplane mode. → [Offline OCR](#offline-ocr)
 
-- A vision model **re-types the page as Markdown that mirrors it**: same words, same bold/italic and
-  headings, same line breaks, same tables. It transcribes; it never summarizes or paraphrases.
-- Reads what classical OCR chokes on: **handwriting, receipts, multi-column pages, and tables**.
-- **Bring your own API key** — eleven providers, or any OpenAI-compatible endpoint. Your key lives on
-  your device and your phone talks to the provider directly: **no Scanly server, no proxy**
-  (see [AI Scan](#ai-scan)).
-- Pick the model yourself per provider; the defaults are only defaults.
-- Token-by-token streaming, so text appears as the model produces it.
-- Translation of a result into 18 languages, cached per language.
-- Up to 3 images or PDF/text files per scan.
+**2. The AI mode transcribes — it does not summarize.** A vision model re-types the page as Markdown
+that mirrors it: same words, same headings, same bold, same line breaks, same tables. That is what
+lets it read **handwriting, receipts, forms, multi-column pages, and tables** that classical OCR
+chokes on — and why its output drops straight into a PDF or Word file with its structure intact.
+→ [AI Scan](#ai-scan)
 
-### Offline OCR — no key, no account, no network
+**3. Bring your own key, straight to the provider.** Eleven providers, or any OpenAI-compatible
+endpoint including one you host yourself. Your key is encrypted on-device and sent in a request
+header to the one provider it belongs to. Your phone talks to `api.openai.com` or `api.groq.com` or
+your own URL **directly — no relay, no proxy, no backend of ours in the middle**. Your account, your
+billing, your dashboard, revocable by you at any time. → [Bring your own API key](#bring-your-own-api-key)
 
-- **PaddleOCR PP-OCRv6** on-device through ONNX Runtime — the default engine. If you never want a
-  document to leave your phone, this is the whole app working with the radio off.
-- ML Kit text recognition as a faster alternative engine.
-- Nine script packs (two bundled, seven downloadable): Universal (Latin/Chinese/Japanese) and Arabic
-  ship in the APK; Korean, Cyrillic, Devanagari, Thai, Greek, Tamil, and Telugu download on demand.
-- Layout detection, table recognition, dewarping, and orientation fixes (see [Offline OCR](#offline-ocr)).
+---
 
-### Document Processing
+## What you can do with it
 
-- Multi-page document capture via the ML Kit document scanner, with a CameraX fallback on devices
-  without Google Play services.
-- PDF import and page-by-page text extraction.
-- Gallery import for single images.
-- Scan history, stored locally as JSON with the captured images.
+### Scan
+
+- **Documents** — multi-page capture through the ML Kit document scanner, with a CameraX fallback on
+  devices without Google Play services.
+- **PDFs** — imported and extracted page by page.
+- **Images** — from the gallery, up to 3 per scan.
+- **Barcodes and QR codes** — real-time, on-device, with an action offered per result type.
+- **History** — every scan kept locally with its images. Nothing is uploaded.
+
+### Read
+
+- **Markdown view** — the result rendered as a real document: headings, bold/italic/strikethrough,
+  lists, task checkboxes, quotes, code blocks, and tables drawn as actual grids. This is what makes a
+  receipt or a form readable at a glance instead of a wall of recognized lines.
+- **Original view** — the same result as plain text, when you want the raw characters.
+- **Translation** — turn the result into any of 18 languages, in place, cached per language.
+  → [Translation](#translation)
 
 ### Export
 
-- PDF, Word (`.docx`), Markdown, CSV, and JSON, written to `Downloads/Scanly` and offered for sharing.
-- Every export reflects the view you are currently looking at (see [Export](#export)).
-- Printing through the system print dialog, which also offers Save-as-PDF.
+Whatever you can see, you can export — and the file matches the view you are looking at.
 
-### Barcode
+| Format | What you get |
+| --- | --- |
+| **PDF** | The rendered document — headings, emphasis, lists, code blocks, bordered tables, paginated with table headers repeated across pages |
+| **Word (.docx)** | The same structure as real OOXML: heading runs, bold/italic/underline, monospaced code, indented lists, and real Word tables you can edit |
+| **Markdown (.md)** | The Markdown source, unchanged |
+| **CSV** | Table data only, pulled from the tables on screen |
+| **JSON** | The text plus per-line bounding boxes, confidence scores, and page numbers (offline PaddleOCR scans) — for when you want to feed the scan into something else |
 
-- Real-time CameraX scanning with ML Kit (default) or ZXing-C++.
-- Content-aware actions per result, plus product lookup for EAN/UPC and ISBN codes
-  (see [Barcode](#barcode)).
-
-### Privacy
-
-- Offline OCR never uploads anything; AI Scan is the only path that leaves the device
-  (see [Privacy](#privacy)).
-- **No backend, no proxy, no telemetry on your documents** — AI requests go from your phone straight
-  to the provider you chose.
-- Your API keys are encrypted at rest with AES-GCM in the Android Keystore, and are sent in request
-  headers — never in URLs or logs.
-
-### UI/UX
-
-- Material 3 Expressive UI, built entirely in Jetpack Compose.
-- Dynamic color plus selectable palettes, dark theme, and a pure-black OLED mode.
+Everything lands in `Downloads/Scanly` and is offered for sharing. Printing goes through the system
+print dialog, which also offers Save-as-PDF. → [Export](#export)
 
 ---
 
 ## AI Scan
 
-AI Scan is optional. Nothing is sent anywhere until you explicitly run a scan with an online
+AI Scan is optional and explicit. Nothing is sent anywhere until you run a scan with an online
 provider. Offline OCR covers the normal case; AI Scan exists for the pages it cannot read.
 
 ### What it actually does
 
-AI Scan sends your image or file to a **vision model** and asks it for a **visual-fidelity
-transcription in Markdown** — not a description of the document, not a summary of it. The model is
-told to reproduce what it sees:
+It sends your image or file to a **vision model** and asks for a **visual-fidelity transcription in
+Markdown** — not a description of the document, not a summary of it. The model is told to reproduce
+what it sees:
 
 | It does | It does not |
 | --- | --- |
@@ -94,16 +97,19 @@ told to reproduce what it sees:
 | Rebuild tables as real Markdown tables, and checkboxes as `[ ]` / `[x]` | Invent structure that isn't on the page |
 | Mark genuinely unreadable text `[unclear]` | Silently guess |
 
-That is why it handles the inputs classical OCR struggles with — **handwriting, receipts, forms,
-multi-column pages, and tables** — and why its output can go straight into the Markdown view, and
-from there into a PDF, `.docx`, or CSV with its structure intact. Multi-column pages are transcribed
-column by column, left to right. PDFs and plain-text files use their own extraction prompt with the
-same rule: every character, nothing summarized.
+That fidelity is the whole point. Because the model returns *structure* and not prose, the result
+goes straight into the Markdown view, and from there into a PDF, `.docx`, or CSV with its headings
+and tables intact. Multi-column pages are transcribed column by column, left to right. PDFs and
+plain-text files use their own extraction prompt under the same rule: every character, nothing
+summarized.
+
+Text streams in token by token while the model works, so you watch the page appear rather than
+staring at a spinner. Up to 3 images, or a PDF or text file, per scan.
 
 **Its limits are the model's limits.** A vision model can misread a smudged digit where a
-purpose-built OCR engine would too, and a shared free-tier key can be rate-limited. It is a
-different tool from Offline OCR, not a strictly better one — if the page is clean printed text and
-you want determinism and zero network, use [Offline OCR](#offline-ocr).
+purpose-built OCR engine would too, and a shared free-tier key can be rate-limited. It is a different
+tool from Offline OCR, not a strictly better one — if the page is clean printed text and you want
+determinism and zero network, use [Offline OCR](#offline-ocr).
 
 ### Supported providers
 
@@ -121,25 +127,10 @@ you want determinism and zero network, use [Offline OCR](#offline-ocr).
 | Claude | Anthropic | |
 | Custom | OpenAI-compatible | Any endpoint: your own base URL, model, and key |
 
-Each provider ships with a sensible default model, and every one of them can be replaced with a model
-ID of your choice in **Settings → AI Providers**. With **Custom**, you supply the base URL, model, and
-key, so any OpenAI-compatible endpoint works — including one you run yourself.
-
-### Streaming
-
-Every provider streams except Mistral OCR, whose endpoint is not a chat API. Streamed text is shown
-live while the scan runs. If a provider accepts a streaming request but sends nothing, the run is
-retried without streaming.
-
-### Provider fallback
-
-Off by default: the selected provider is the only one used. Enabling **Settings → AI Providers →
-fallback** lets other configured providers take over automatically when the selected one is
-exhausted. If your own API key is in use, fallback only considers other providers where you also
-supplied a key — the app never silently falls back from your key to a bundled one.
-
-Within a single provider, failed attempts are retried with exponential backoff on HTTP 429 and 5xx
-responses.
+Each provider ships with a sensible default model, and **every one of them can be swapped for a model
+ID of your choice** in **Settings → AI Providers**. The defaults are only defaults. With **Custom**,
+you supply the base URL, model, and key — so any OpenAI-compatible endpoint works, including a local
+or self-hosted one.
 
 ### Bring your own API key
 
@@ -147,8 +138,8 @@ responses.
 **Settings → AI Providers**.
 
 - **Your key stays on your device.** It is stored in DataStore, encrypted with an AES-GCM key held in
-  the Android Keystore. It is sent in a request header to the one provider it belongs to, and nowhere
-  else — never in a URL, never in a log.
+  the Android Keystore. It is sent in a request *header* to the one provider it belongs to, and
+  nowhere else — never in a URL, never in a log.
 - **There is no Scanly server and no proxy.** Your phone calls the provider's API directly:
   `generativelanguage.googleapis.com`, `api.anthropic.com`, `api.openai.com`, `api.groq.com`, and so
   on. Your documents and your key never pass through any machine of ours, because there isn't one.
@@ -159,11 +150,22 @@ responses.
 
 Builds may also ship bundled free-tier keys for some providers (obfuscated in the APK and pinned to
 the release signature) so the feature works before you have a key of your own. These are shared, so
-they are rate-limited; results show a badge saying whether the scan used a built-in key or yours.
-When the shared limit is hit, you can wait, add your own key, or watch an optional rewarded ad for
-one extra scan. Fallback never moves you from your key to a bundled one (see above).
+they are rate-limited; every result carries a badge saying whether the scan used a built-in key or
+yours. When the shared limit is hit, you can wait, add your own key, or watch an optional rewarded ad
+for one extra scan.
 
-### Local vs cloud
+### Streaming, retries, and fallback
+
+Every provider streams except Mistral OCR, whose endpoint is not a chat API. If a provider accepts a
+streaming request but sends nothing, the run is retried without streaming. Failed attempts are
+retried with exponential backoff on HTTP 429 and 5xx.
+
+**Provider fallback is off by default** — the provider you selected is the only one used. Enabling
+**Settings → AI Providers → fallback** lets other *configured* providers take over when the selected
+one is exhausted. If your own key is in use, fallback only considers providers where you also
+supplied a key: **the app never silently falls back from your key to a bundled one.**
+
+### What leaves the device
 
 | | Runs on-device | Leaves the device |
 | --- | --- | --- |
@@ -173,7 +175,8 @@ one extra scan. Fallback never moves you from your key to a bundled one (see abo
 | AI Scan | No | The image or file you selected, straight to the provider you chose |
 | AI translation | No | The extracted text, straight to the provider you chose |
 
-Every row that leaves the device goes to a third party you picked — never through a Scanly service.
+Every row that leaves the device goes to a third party **you** picked — never through a Scanly
+service.
 
 ---
 
@@ -182,10 +185,12 @@ Every row that leaves the device goes to a third party you picked — never thro
 **If you want local OCR, this is it — and it is already the default.** The engine is **PaddleOCR
 PP-OCRv6**, executed on-device with ONNX Runtime: no API key, no account, no network, nothing leaves
 the phone. Scanning, layout detection, table recognition, and every export work in airplane mode.
+ML Kit text recognition is available as a faster alternative engine.
 
-The Universal and Arabic recognition models are bundled in the APK; the other script packs download
-on demand (that download is the one time the feature touches the network) and are verified by size
-and SHA-256 before installing.
+**Scripts.** Nine packs. Universal (Latin/Chinese/Japanese) and Arabic are bundled in the APK; Korean,
+Cyrillic, Devanagari, Thai, Greek, Tamil, and Telugu download on demand — that download is the one
+time this feature touches the network, and each pack is verified by size and SHA-256 before it
+installs. Downloads continue if you leave the settings screen.
 
 Configured in **Settings → Text Recognition**:
 
@@ -199,60 +204,64 @@ Configured in **Settings → Text Recognition**:
 | Recognize tables | SLANet_plus | 8 MB download, off by default |
 
 - **Auto-rotate page** detects sideways and upside-down pages before recognition.
-- **Fix flipped lines** corrects individual upside-down text lines within an otherwise upright page.
-- **Flatten curved pages** dewarps books and folded documents. Slower — it is opt-in for that reason.
-- **Detect layout** classifies regions (headings, paragraphs, tables) and establishes reading order.
-  This is what produces the Markdown view; with it off, you get plain recognized lines only.
-- **Recognize tables** reconstructs table structure into Markdown grids, which is also what makes CSV
+- **Fix flipped lines** corrects individual upside-down lines within an otherwise upright page.
+- **Flatten curved pages** dewarps books and folded documents. Slower — that is why it is opt-in.
+- **Detect layout** classifies regions (headings, paragraphs, tables) and works out the reading order.
+  **This is what produces the Markdown view offline**; with it off, you get plain recognized lines.
+- **Recognize tables** reconstructs table structure into Markdown grids — which is also what makes CSV
   export possible from an offline scan.
-
-Downloads continue if you leave the settings screen, and the toggle reflects the result when you
-return.
 
 ---
 
 ## Markdown
 
-A result that has Markdown behind it — an AI extraction, or an offline scan with layout detection
-enabled — is shown with two views you can switch between:
+Any result with Markdown behind it — an AI transcription, or an offline scan with layout detection on
+— is shown in two views you can switch between at any time:
 
-- **Original** — the text as plain text. For an AI result, that is the Markdown source with its
-  syntax stripped back out. For an offline scan, it is the recognized lines.
 - **Markdown** — the rendered document: headings, bold/italic/strikethrough, inline code, bullet and
   numbered lists, task checkboxes, block quotes, code blocks, horizontal rules, and tables drawn as
-  real grids.
+  real grids. **This is the view where you actually read the thing** — a receipt's totals line up, a
+  form's fields are legible, a table is a table.
+- **Original** — the same result as plain text. For an AI result that is the Markdown source with its
+  syntax stripped back out; for an offline scan it is the recognized lines.
 
 ### WYSIWYE — What You See Is What You Export
 
-Exports read the currently visible view and nothing else. There is no hidden "original" text that a
-file might silently fall back to: if you are looking at rendered Markdown, that is what your PDF and
-Word files contain; if you are looking at plain text, your files contain plain text, with no Markdown
+Exports read the currently visible view and nothing else. There is no hidden "original" text a file
+might silently fall back to: if you are looking at rendered Markdown, that is what your PDF and Word
+files contain; if you are looking at plain text, your files contain plain text, with no Markdown
 interpretation applied.
 
-### CSV extraction
+---
 
-CSV carries table data only, taken from what is on screen:
+## Translation
 
-- In the **Markdown** view, cells come from the rendered Markdown tables, with inline formatting
-  removed.
-- In the **Original** view, columns are detected from text that already lines up on screen
-  (tab-, pipe-, or multi-space-separated rows).
-- When the visible text has no table in it, CSV is shown as unavailable rather than producing an
-  empty or nonsensical file.
+Any result can be translated in place from the result screen into **18 languages** — Arabic, Chinese,
+Dutch, English, French, German, Hindi, Italian, Japanese, Korean, Marathi, Polish, Portuguese,
+Russian, Spanish, Telugu, Turkish, and Urdu.
+
+Translation is an explicit, separate action: the transcription itself is never translated or
+"corrected" behind your back. Each language is cached, so switching back and forth costs nothing.
+It runs through your AI provider, so it sends the extracted text — not the image — straight to the
+provider you chose.
 
 ---
 
 ## Export
 
-All exports are written to `Downloads/Scanly` and then offered for sharing.
+All exports are written to `Downloads/Scanly` and then offered for sharing. Each format respects the
+view you are in:
 
 | Format | Original view | Markdown view |
 | --- | --- | --- |
 | **PDF** | The plain text exactly as displayed, no Markdown parsing | The rendered document: headings, emphasis, lists, quotes, code blocks, and bordered table grids, paginated with table headers repeated across pages |
 | **Word (.docx)** | The plain text, one paragraph per line | The same structure as OOXML: sized heading runs, bold/italic/strikethrough/underline runs, monospaced code, indented lists, bordered quotes, and real Word tables |
 | **Markdown (.md)** | The visible plain text, written as-is — no Markdown is inferred or reconstructed | The Markdown source, unchanged |
-| **CSV** | Columns detected in the visible text; unavailable when there are none | Cells from the visible Markdown tables |
+| **CSV** | Columns detected in the visible text (tab-, pipe-, or multi-space-separated rows); unavailable when there are none | Cells from the visible Markdown tables, with inline formatting removed |
 | **JSON** | Offline PaddleOCR scans only: the text plus per-line bounding boxes, confidence, and page number | Same, with the visible text |
+
+When the visible text contains no table at all, CSV is shown as unavailable rather than handing you an
+empty or nonsensical file.
 
 Printing is available from the same screen and follows the same rule — the print preview renders
 Markdown or plain text to match the view you are in.
@@ -262,7 +271,7 @@ Markdown or plain text to match the view you are in.
 ## Barcode
 
 Real-time scanning through CameraX, using **ML Kit** by default or **ZXing-C++** (selectable in
-settings).
+settings), with pinch-to-zoom and tap-to-focus.
 
 **Formats:** QR Code, Aztec, Data Matrix, PDF417, EAN-13, EAN-8, UPC-A, UPC-E, Code 128, Code 39.
 
@@ -280,9 +289,8 @@ settings).
 | EAN/UPC or ISBN | Look up product |
 | Any | Copy, or show raw content |
 
-**Product lookup** resolves a scanned code against Open Food Facts, Open Beauty Facts,
-Open Pet Food Facts, OpenFDA, Google Books, and Open Library, trying them in priority order. Only the
-barcode number is sent.
+**Product lookup** resolves a scanned code against Open Food Facts, Open Beauty Facts, Open Pet Food
+Facts, OpenFDA, Google Books, and Open Library, in priority order. Only the barcode number is sent.
 
 ---
 
@@ -291,17 +299,23 @@ barcode number is sent.
 - **Offline OCR never uploads your documents.** PaddleOCR and ML Kit run entirely on-device. Scanning,
   layout detection, table recognition, and every export work with no network connection at all.
 - **AI Scan is the only feature that transmits document content**, and only when you explicitly start
-  a scan or a translation with an online provider. The image, file, or text you selected is sent to
-  that provider; nothing is sent in the background.
-- **Barcode decoding is on-device.** Product lookup sends the barcode number — and nothing else — to
-  the lookup APIs listed above.
+  a scan or a translation with an online provider. Nothing is sent in the background, ever.
+- **Barcode decoding is on-device.** Product lookup sends the barcode number — and nothing else.
 - **There is no Scanly server.** The app has no backend and no proxy. When you run an AI Scan, your
   phone calls your provider's API directly — your documents and your key never transit any
   infrastructure we control, because we operate none.
-- **Your API keys stay on your device.** They are stored encrypted (AES-GCM, key held in the Android
-  Keystore), transmitted only in request headers to the provider they belong to, and never written to
-  logs or URLs. Revoke a key on your provider's dashboard and it is dead everywhere.
+- **Your API keys stay on your device.** Stored encrypted (AES-GCM, key held in the Android Keystore),
+  transmitted only in request headers to the provider they belong to, never written to logs or URLs.
+  Revoke a key on your provider's dashboard and it is dead everywhere.
 - **Scan history is local**, kept as a JSON file with its images in the app's private storage.
+- **No telemetry on your documents.**
+
+---
+
+## UI
+
+Material 3 Expressive, built entirely in Jetpack Compose — dynamic color plus selectable palettes,
+dark theme, and a pure-black OLED mode.
 
 ---
 
@@ -339,10 +353,10 @@ cd Scanly
 
 Requires the Android SDK and JDK 21. Minimum Android 7.0 (API 24), targets API 36.
 
-Offline scanning, barcode scanning, and every export work out of the box with no configuration.
+**Offline scanning, barcode scanning, and every export work out of the box with no configuration.**
 
-For cloud AI you can either add your key in the app's settings at runtime, or bundle one at build
-time by adding it to `local.properties` (gitignored):
+For cloud AI you can either add your key in the app's settings at runtime, or bundle one at build time
+by adding it to `local.properties` (gitignored):
 
 ```properties
 GEMINI_API_KEY=your_key_here
@@ -356,7 +370,7 @@ Release builds are signed from `local.properties` (`storeFile`, `storePassword`,
 `keyPassword`) and use R8 full mode. Debug builds use Google's AdMob test ad units.
 
 ```bash
-./gradlew testDebugUnitTest        # unit tests
+./gradlew testDebugUnitTest         # unit tests
 ./gradlew connectedDebugAndroidTest # instrumented tests (device required)
 ```
 

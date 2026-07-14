@@ -81,6 +81,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.skeler.scanely.core.ai.AiProvider
+import com.skeler.scanely.core.ai.EndpointUrl
 import com.skeler.scanely.navigation.LocalNavController
 import com.skeler.scanely.settings.data.SettingsKeys
 import com.skeler.scanely.settings.presentation.viewmodel.ProviderVerificationViewModel
@@ -136,7 +137,10 @@ fun AiProvidersScreen(
                 )
             }
 
-            item { BundledKeyNote() }
+            item {
+                val bundled by verificationViewModel.bundledKeyProviders.collectAsState()
+                BundledKeyNote(bundled)
+            }
 
             item {
                 SettingsSectionHeader(
@@ -204,7 +208,10 @@ fun AiProvidersScreen(
 }
 
 @Composable
-private fun BundledKeyNote() {
+private fun BundledKeyNote(bundled: Set<AiProvider>) {
+    if (bundled.isEmpty()) return
+
+    val names = bundled.joinToString(", ") { it.displayName }
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -221,8 +228,8 @@ private fun BundledKeyNote() {
                 modifier = Modifier.size(20.dp)
             )
             Text(
-                text = "Using the bundled free-tier API key. Add your own provider API key " +
-                    "to use your personal quota and avoid shared limits.",
+                text = "$names still use the bundled free-tier key, shared with everyone. " +
+                    "Add your own key to a provider to use your personal quota.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSecondaryContainer
             )
@@ -247,7 +254,7 @@ private val PROVIDERS = listOf(
         provider = AiProvider.GEMINI,
         settingsKey = SettingsKeys.GEMINI_API_KEY,
         modelKey = SettingsKeys.GEMINI_MODEL,
-        defaultModel = "gemma-4-31b-it",
+        defaultModel = "gemini-3.1-flash-lite",
         name = "Gemini",
         icon = ProviderIcons.Gemini,
         hint = "AIza…",
@@ -458,6 +465,9 @@ private fun CloudflareProviderCard(
             verifyState = verifyState
         )
 
+        // Both halves are needed: with only one, the app falls back to the bundled key.
+        val accountMissing = key.isNotBlank() && accountId.isBlank()
+
         OutlinedTextField(
             value = accountId,
             onValueChange = {
@@ -469,8 +479,14 @@ private fun CloudflareProviderCard(
             },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
+            isError = accountMissing,
             label = { Text("Account ID") },
             placeholder = { Text("32-char account id") },
+            supportingText = if (accountMissing) {
+                { Text("Required — Cloudflare needs your Account ID as well as the token") }
+            } else {
+                null
+            },
             leadingIcon = { Icon(Icons.Rounded.Tag, contentDescription = null) },
             shape = MaterialTheme.shapes.large
         )
@@ -554,6 +570,9 @@ private fun CustomProviderCard(
             verifyState = verifyState
         )
 
+        val resolvedUrl = remember(url) { EndpointUrl.normalize(url) }
+        val urlInvalid = url.isNotBlank() && resolvedUrl == null
+
         OutlinedTextField(
             value = url,
             onValueChange = {
@@ -565,8 +584,10 @@ private fun CustomProviderCard(
             },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
+            isError = urlInvalid,
             label = { Text("Endpoint URL") },
             placeholder = { Text("https://host/v1/chat/completions") },
+            supportingText = endpointHint(url, resolvedUrl)?.let { msg -> { Text(msg) } },
             leadingIcon = { Icon(Icons.Rounded.Link, contentDescription = null) },
             shape = MaterialTheme.shapes.large
         )
@@ -576,7 +597,9 @@ private fun CustomProviderCard(
             settingsKey = SettingsKeys.CUSTOM_MODEL,
             label = "Model",
             hint = "model-id",
-            leading = Icons.Rounded.Category
+            leading = Icons.Rounded.Category,
+            // Unlike the built-in providers there is no default to fall back to.
+            required = url.isNotBlank() || key.isNotBlank()
         )
 
         OutlinedTextField(
@@ -897,7 +920,8 @@ private fun PlainField(
     settingsKey: SettingsKeys,
     label: String,
     hint: String,
-    leading: ImageVector
+    leading: ImageVector,
+    required: Boolean = false
 ) {
     var value by rememberSaveable(settingsKey) { mutableStateOf("") }
     var seeded by rememberSaveable(settingsKey) { mutableStateOf(false) }
@@ -910,6 +934,8 @@ private fun PlainField(
         }
     }
 
+    val missing = required && value.isBlank()
+
     OutlinedTextField(
         value = value,
         onValueChange = {
@@ -919,11 +945,24 @@ private fun PlainField(
         },
         modifier = Modifier.fillMaxWidth(),
         singleLine = true,
+        isError = missing,
         label = { Text(label) },
         placeholder = { Text(hint) },
+        supportingText = if (missing) {
+            { Text("Required — this provider has no default model") }
+        } else {
+            null
+        },
         leadingIcon = { Icon(leading, contentDescription = null) },
         shape = MaterialTheme.shapes.large
     )
+}
+
+private fun endpointHint(raw: String, resolved: String?): String? = when {
+    raw.isBlank() -> null
+    resolved == null -> "Enter a full https:// endpoint URL"
+    resolved != raw.trim() -> "Will call $resolved"
+    else -> null
 }
 
 private fun keyTransform(revealed: Boolean): VisualTransformation =

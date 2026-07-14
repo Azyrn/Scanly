@@ -4,13 +4,16 @@ import android.os.SystemClock
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.skeler.scanely.core.ai.AiProvider
+import com.skeler.scanely.core.ai.GenerativeAiService
 import com.skeler.scanely.core.ai.KeyVerifier
 import com.skeler.scanely.core.ai.VerificationResult
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -33,11 +36,16 @@ data class VerificationEntry(val key: String, val state: VerifyState)
 
 @HiltViewModel
 class ProviderVerificationViewModel @Inject constructor(
-    private val verifier: KeyVerifier
+    private val verifier: KeyVerifier,
+    aiService: GenerativeAiService
 ) : ViewModel() {
 
     private val _states = MutableStateFlow<Map<AiProvider, VerificationEntry>>(emptyMap())
     val states: StateFlow<Map<AiProvider, VerificationEntry>> = _states.asStateFlow()
+
+    /** Providers still running on the bundled free-tier key because the user added none. */
+    val bundledKeyProviders: StateFlow<Set<AiProvider>> = aiService.bundledKeyProviders()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), emptySet())
 
     private val jobs = mutableMapOf<AiProvider, Job>()
     private val lastRequestAt = mutableMapOf<AiProvider, Long>()
@@ -98,5 +106,6 @@ class ProviderVerificationViewModel @Inject constructor(
 
     private companion object {
         const val DEBOUNCE_MS = 500L
+        const val STOP_TIMEOUT_MS = 5_000L
     }
 }

@@ -28,8 +28,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-
-private const val RATE_LIMIT_SECONDS = 60
+import com.skeler.scanely.ui.ratelimit.RATE_LIMIT_SECONDS
+import com.skeler.scanely.ui.ratelimit.formatCountdown
 
 @Composable
 fun RateLimitSheet(
@@ -107,7 +107,7 @@ fun RateLimitSheet(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "${remainingSeconds}s remaining",
+                text = "${formatCountdown(remainingSeconds)} remaining",
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.primary

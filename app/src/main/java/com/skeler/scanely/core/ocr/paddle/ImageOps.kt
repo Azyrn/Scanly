@@ -108,14 +108,20 @@ object ImageOps {
     }
 
     /**
+     * The width each crop occupies in a rec batch. A crop narrower than the batch is padded, so
+     * it fills only [recWidths]/batchWidth of the tensor — which is what a CTC timestep has to be
+     * scaled by before it means anything as a position within the crop.
+     */
+    fun recWidths(crops: List<Bitmap>, height: Int, maxWidth: Int): List<Int> = crops.map { c ->
+        ceil(c.width.toDouble() * height / c.height).toInt().coerceIn(16, maxWidth)
+    }
+
+    /**
      * Rec batch tensor: every crop resized to [height] keeping aspect, zero-padded
      * to the batch's widest. Normalized (x/127.5 - 1).
      */
     fun recBatchTensor(crops: List<Bitmap>, height: Int, maxWidth: Int): Pair<FloatBuffer, Int> {
-        val widths = crops.map { c ->
-            val w = ceil(c.width.toDouble() * height / c.height).toInt()
-            w.coerceIn(16, maxWidth)
-        }
+        val widths = recWidths(crops, height, maxWidth)
         val batchW = widths.max()
         val plane = height * batchW
         val out = FloatArray(crops.size * 3 * plane)
@@ -143,8 +149,26 @@ object ImageOps {
         return toDirect(out) to batchW
     }
 
+    /**
+     * A page whose pixels are pulled out of the Bitmap at most once. Every skewed quad
+     * samples the whole page, and getPixels on a 12 MP photo moves 48 MB — doing that per
+     * line turned cropping into the slowest stage of an offline scan.
+     */
+    class Page(val bitmap: Bitmap) {
+        val width: Int get() = bitmap.width
+        val height: Int get() = bitmap.height
+
+        // Lazy: a square-on page never takes the warp path and never pays for this.
+        val pixels: IntArray by lazy {
+            IntArray(width * height).also { bitmap.getPixels(it, 0, width, 0, 0, width, height) }
+        }
+    }
+
+    fun cropQuad(src: Bitmap, q: Quad): Bitmap = cropQuad(Page(src), q)
+
     /** Perspective-warp a detected quad to an upright crop; rotates tall lines upright. */
-    fun cropQuad(src: Bitmap, q: Quad): Bitmap {
+    fun cropQuad(page: Page, q: Quad): Bitmap {
+        val src = page.bitmap
         val wTop = hypot(q.x(1) - q.x(0), q.y(1) - q.y(0))
         val wBot = hypot(q.x(2) - q.x(3), q.y(2) - q.y(3))
         val hLeft = hypot(q.x(3) - q.x(0), q.y(3) - q.y(0))
@@ -155,10 +179,9 @@ object ImageOps {
         axisAlignedCrop(src, q, w, h)?.let { return it }
 
         val m = perspectiveInverse(q, w.toFloat(), h.toFloat())
-        val srcW = src.width
-        val srcH = src.height
-        val srcPx = IntArray(srcW * srcH)
-        src.getPixels(srcPx, 0, srcW, 0, 0, srcW, srcH)
+        val srcW = page.width
+        val srcH = page.height
+        val srcPx = page.pixels
 
         val dst = IntArray(w * h)
         for (y in 0 until h) {
@@ -207,26 +230,6 @@ object ImageOps {
     }
 
     /** PaddleClas eval transform: scale short side to [shortSide], centre-crop [crop] square. */
-    /**
-     * Fits [src] into [w]x[h] keeping its aspect ratio, centred on white. Squashing a
-     * crop to a fixed box instead skews narrow ones so badly the orientation classifier
-     * reads them as noise.
-     */
-    fun letterbox(src: Bitmap, w: Int, h: Int): Bitmap {
-        val ratio = minOf(w.toFloat() / src.width, h.toFloat() / src.height)
-        val fw = (src.width * ratio).roundToInt().coerceIn(1, w)
-        val fh = (src.height * ratio).roundToInt().coerceIn(1, h)
-        val fitted = if (fw == src.width && fh == src.height) src else src.scale(fw, fh)
-
-        val out = createBitmap(w, h)
-        Canvas(out).apply {
-            drawColor(Color.WHITE)
-            drawBitmap(fitted, ((w - fw) / 2f), ((h - fh) / 2f), null)
-        }
-        if (fitted !== src) fitted.recycle()
-        return out
-    }
-
     fun resizeShortCenterCrop(src: Bitmap, shortSide: Int, crop: Int): Bitmap {
         val scale = shortSide.toFloat() / minOf(src.width, src.height)
         val w = (src.width * scale).roundToInt().coerceAtLeast(shortSide)

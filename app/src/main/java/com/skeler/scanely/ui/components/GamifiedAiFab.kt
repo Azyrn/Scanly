@@ -34,6 +34,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.skeler.scanely.R
+import com.skeler.scanely.ui.ratelimit.formatCountdown
 
 data class RateLimitDisplayState(
     val remainingSeconds: Int = 0,
@@ -115,7 +116,7 @@ fun GamifiedAiFab(
                 )
                 Spacer(modifier = Modifier.width(10.dp))
                 Text(
-                    text = "${rateLimitState.remainingSeconds}s",
+                    text = formatCountdown(rateLimitState.remainingSeconds),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold
                 )

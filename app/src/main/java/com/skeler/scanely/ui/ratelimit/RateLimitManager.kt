@@ -19,8 +19,11 @@ import javax.inject.Singleton
 private const val TAG = "RateLimitManager"
 
 private const val MAX_REQUESTS_BEFORE_COOLDOWN = 5
-private const val RATE_LIMIT_MS = 60_000L
-private const val RATE_LIMIT_SECONDS = 60
+private const val RATE_LIMIT_MS = 300_000L
+const val RATE_LIMIT_SECONDS = 300
+
+fun formatCountdown(seconds: Int): String =
+    if (seconds >= 60) "${seconds / 60}:${(seconds % 60).toString().padStart(2, '0')}" else "${seconds}s"
 
 // Kept out of ScanUiState so countdown ticks don't recompose unrelated UI.
 data class RateLimitState(

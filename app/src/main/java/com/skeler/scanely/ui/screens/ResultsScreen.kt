@@ -154,6 +154,8 @@ fun ResultsScreen() {
             currentLanguage != null -> aiViewModel.updateText(edited)
             historyText != null -> scanViewModel.updateHistoryText(edited)
             isAiResult -> aiViewModel.updateText(edited)
+            // Editing the offline engine's Markdown view feeds Markdown back, not plain text.
+            markdownMode && structuredMarkdown != null -> ocrViewModel.updateMarkdown(edited)
             else -> ocrViewModel.updateText(edited)
         }
     }

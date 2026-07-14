@@ -160,7 +160,8 @@ fun TextRecognitionScreen(
                             SettingsTileDivider()
                             SettingSwitchTile(
                                 title = "Fix flipped lines",
-                                subtitle = "Corrects individual upside-down text lines",
+                                subtitle = "For pages mixing upright and upside-down lines. " +
+                                    "Unreliable on Arabic",
                                 icon = Icons.Rounded.Rotate90DegreesCcw,
                                 checked = lineOrientation,
                                 onCheckedChange = {

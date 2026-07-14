@@ -3,6 +3,7 @@ package com.skeler.scanely.core.ocr.paddle
 import android.graphics.Bitmap
 import android.net.Uri
 import android.util.Log
+import androidx.annotation.VisibleForTesting
 import com.skeler.scanely.core.ocr.OcrResult
 import com.skeler.scanely.core.ocr.OcrSource
 import com.skeler.scanely.core.ocr.PdfRendererHelper
@@ -20,6 +21,17 @@ private const val TAG = "PaddleOcrService"
 private const val DET_LIMIT = 960
 private const val MIN_CONFIDENCE = 0.3f
 private const val MIN_TABLE_SIDE = 32
+
+// Lines sampled to settle upright vs upside-down, widest first: a long line carries the
+// most evidence, and one batch of them costs a fraction of the full recognition pass.
+private const val ORIENTATION_SAMPLE = 5
+
+// A flipped read has to beat the upright one by this much before the page is turned over.
+private const val FLIP_MARGIN = 1.15f
+
+// Below this, neither orientation read as text (wrong script, or an unreadable page):
+// there is nothing to base a decision on, so the page is left as it is.
+private const val ORIENTATION_MIN_SCORE = 3f
 
 /** Offline PP-OCR pipeline: orient -> dewarp -> detect -> deskew lines -> recognize. */
 @Singleton
@@ -41,8 +53,15 @@ class PaddleOcrService @Inject constructor(
             var page = bitmap
 
             if (useDocOrientation) {
+                // Only the sideways decision comes from the classifier. It centre-crops to 224,
+                // so on a photo where the page does not fill the frame it judges mostly margin
+                // and answers "180" whichever way up the page is (0.90 confidence on both a real
+                // upright photo and its flip). The 90/270 axis survives that framing; the
+                // upright-vs-upside-down call does not, and acting on it reverses the reading
+                // order of the whole page. That call is settled below, by recognition, which is
+                // the only signal here that knows what text is supposed to look like.
                 val degrees = engine.detectPageRotation(page)
-                if (degrees != 0) {
+                if (degrees % 180 != 0) {
                     page = ImageOps.rotate(page, degrees)
                     derived.add(page)
                 }
@@ -52,12 +71,27 @@ class PaddleOcrService @Inject constructor(
                 derived.add(page)
             }
 
-            val quads = engine.detect(page, DET_LIMIT)
+            var quads = engine.detect(page, DET_LIMIT)
             if (quads.isEmpty()) return@withContext OcrResult.Empty
 
-            val visualLines = groupLines(quads)
-            val scanned = visualLines.flatten()
-            crops = scanned.map { ImageOps.cropQuad(page, it) }
+            var visualLines = groupLines(quads)
+            var scanned = visualLines.flatten()
+            crops = cropLines(page, scanned)
+
+            if (useDocOrientation && isUpsideDown(crops, pack)) {
+                // Turned as a page, never per line: the quads carry the reading order, so a page
+                // read bottom-up has to be re-detected on the corrected page, not patched crop by
+                // crop.
+                crops.forEach { it.recycle() }
+                crops = emptyList()
+                page = ImageOps.rotate(page, 180)
+                derived.add(page)
+                quads = engine.detect(page, DET_LIMIT)
+                if (quads.isEmpty()) return@withContext OcrResult.Empty
+                visualLines = groupLines(quads)
+                scanned = visualLines.flatten()
+                crops = cropLines(page, scanned)
+            }
 
             if (useLineOrientation) {
                 val flipped = engine.detectFlippedLines(crops)
@@ -66,7 +100,10 @@ class PaddleOcrService @Inject constructor(
                 }
             }
 
-            val recognized = engine.recognize(crops, pack)
+            var recognized = engine.recognizeWithLatin(crops, pack)
+            if (looksLikeWrongScript(recognized, crops.size)) {
+                recognized = retryOtherBundledPacks(crops, pack, recognized)
+            }
             crops.forEach { it.recycle() }
             crops = emptyList()
 
@@ -163,6 +200,83 @@ class PaddleOcrService @Inject constructor(
                 )
             }
         }
+
+    private fun cropLines(page: Bitmap, ordered: List<Quad>): List<Bitmap> {
+        val pixels = ImageOps.Page(page)
+        return ordered.map { ImageOps.cropQuad(pixels, it) }
+    }
+
+    /**
+     * Whether the page reads better turned over. Recognition decides it, not the orientation
+     * classifier: only the recogniser knows what text is supposed to look like, and it scores an
+     * upside-down page roughly a third of an upright one. Costs two batches on a sample of the
+     * widest lines, and needs a clear margin to act, so an ambiguous page stays as it was shot.
+     */
+    @VisibleForTesting
+    internal fun isUpsideDown(crops: List<Bitmap>, pack: ScriptPack): Boolean {
+        val sample = crops
+            .sortedByDescending { it.width.toFloat() / it.height }
+            .take(ORIENTATION_SAMPLE)
+        if (sample.isEmpty()) return false
+
+        val flipped = sample.map { ImageOps.rotate180(it) }
+        try {
+            // The selected pack may be the wrong script for this page, which would leave both
+            // orientations scoring nothing; the other bundled packs then get to cast the vote.
+            val candidates = listOf(pack) + ScriptPack.entries.filter { it.isBundled && it != pack }
+            var upright = 0f
+            var upsideDown = 0f
+            for (candidate in candidates) {
+                upright = maxOf(upright, orientationScore(engine.recognize(sample, candidate)))
+                upsideDown = maxOf(upsideDown, orientationScore(engine.recognize(flipped, candidate)))
+                if (maxOf(upright, upsideDown) >= ORIENTATION_MIN_SCORE) break
+            }
+            if (maxOf(upright, upsideDown) < ORIENTATION_MIN_SCORE) return false
+
+            val flip = upsideDown > upright * FLIP_MARGIN
+            if (flip) Log.d(TAG, "Page is upside down ($upsideDown vs $upright); rotating 180")
+            return flip
+        } finally {
+            flipped.forEach { it.recycle() }
+        }
+    }
+
+    /** Confident characters per line: a garbled read is both shorter and less certain. */
+    private fun orientationScore(lines: List<RecLine>): Float =
+        if (lines.isEmpty()) 0f else lines.sumOf { (it.confidence * it.text.trim().length).toDouble() }
+            .toFloat() / lines.size
+
+    /**
+     * A recognition model can only emit the glyphs in its own dictionary: the universal
+     * model has no Arabic, the Arabic model no CJK. Scan an Arabic page on the default pack
+     * and detection finds every line while recognition returns near-nothing — so a page that
+     * detected well but recognized badly is a script mismatch, not an unreadable page.
+     */
+    private fun looksLikeWrongScript(lines: List<RecLine>, detected: Int): Boolean =
+        lines.count { it.confidence >= MIN_CONFIDENCE && it.text.isNotBlank() } * 2 < detected
+
+    /** Both fallbacks are bundled, so a wrong-script page costs a second pass, never a download. */
+    private fun retryOtherBundledPacks(
+        crops: List<Bitmap>,
+        used: ScriptPack,
+        first: List<RecLine>
+    ): List<RecLine> {
+        var best = first
+        var bestScore = recognizedChars(first)
+        for (pack in ScriptPack.entries.filter { it.isBundled && it != used }) {
+            val lines = engine.recognizeWithLatin(crops, pack)
+            val score = recognizedChars(lines)
+            if (score > bestScore) {
+                best = lines
+                bestScore = score
+                Log.d(TAG, "Script fallback: ${used.id} -> ${pack.id} ($score chars)")
+            }
+        }
+        return best
+    }
+
+    private fun recognizedChars(lines: List<RecLine>): Int =
+        lines.sumOf { if (it.confidence >= MIN_CONFIDENCE) it.text.trim().length else 0 }
 
     /**
      * The PP-StructureV3 subset that fits on a phone: layout regions from PP-DocLayout-S,

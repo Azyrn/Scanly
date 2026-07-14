@@ -21,7 +21,10 @@ object RtlText {
     private fun isLtrStrong(c: Char): Boolean =
         Character.getDirectionality(c) == Character.DIRECTIONALITY_LEFT_TO_RIGHT || c.isDigit()
 
-    private fun isRunJoiner(c: Char): Boolean = c in ".,:/-+"
+    // A space joins too, so a multi-word Latin phrase inside an RTL line stays one run: without
+    // it "Version 2.5" is reversed as two runs and comes back out as "2.5 Version". A joiner only
+    // extends a run when another LTR character follows, so Arabic after a space is unaffected.
+    private fun isRunJoiner(c: Char): Boolean = c in ".,:/-+ "
 
     /**
      * Whether a line reads right-to-left. Digits are deliberately not counted: they are

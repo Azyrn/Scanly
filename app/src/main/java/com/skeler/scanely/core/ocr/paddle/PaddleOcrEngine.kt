@@ -29,6 +29,9 @@ private const val ORI_HEIGHT = 80
 private const val ORI_MIN_ASPECT = 2.5f
 private const val ORI_MIN_CONFIDENCE = 0.8f
 
+// A script line holding a character this unsure, or a Latin one at all, may hide a Latin word.
+private const val LATIN_SUSPECT_CONFIDENCE = 0.9f
+
 /** ONNX sessions for the PP-OCR graphs. Sessions are lazy and reusable across scans. */
 @Singleton
 class PaddleOcrEngine @Inject constructor(
@@ -136,7 +139,41 @@ class PaddleOcrEngine @Inject constructor(
 
     /** CTC recognition, batched by similar width. Returns text + mean per-character confidence. */
     fun recognize(crops: List<Bitmap>, pack: ScriptPack): List<RecLine> = withSessions {
-        if (crops.isEmpty()) return@withSessions emptyList()
+        decode(crops, pack).map { it.toLogical() }
+    }
+
+    /**
+     * Recognition for a script that is not Latin, with the Latin words inside each line repaired.
+     * The same crops are read a second time by the universal model and the two readings merged by
+     * position ([ScriptMerge]), so an Arabic line keeps its Arabic *and* its "Original"/"GPT-5".
+     * Costs one extra recognition pass over the crops that need it.
+     */
+    fun recognizeWithLatin(crops: List<Bitmap>, pack: ScriptPack): List<RecLine> = withSessions {
+        val primary = decode(crops, pack)
+        if (pack == ScriptPack.DEFAULT) return@withSessions primary.map { it.toLogical() }
+
+        // A page of nothing but confident Arabic has no Latin hiding in it, and is spared the pass
+        // entirely. But once it is worth running, it runs over *every* crop: a batch is padded to
+        // its widest member, and padding changes what the model reads, not just where. Handing the
+        // second model a subset re-batches the crops and it comes back with different text.
+        if (primary.none { mayHideLatin(it) }) return@withSessions primary.map { it.toLogical() }
+
+        val latin = decode(crops, ScriptPack.DEFAULT)
+        primary.mapIndexed { i, line ->
+            ScriptMerge.merge(line, latin[i]).toLogical()
+        }
+    }
+
+    // Keyed off the characters, not the pack: any model can emit an RTL run, and the
+    // conversion is a no-op on a string that has none.
+    private fun RecLine.toLogical() = copy(text = RtlText.visualToLogical(text))
+
+    /** A confident, wholly-script line has nothing for the Latin model to add. */
+    private fun mayHideLatin(line: RecLine): Boolean =
+        line.chars.any { it.text.isNotBlank() && (it.confidence < LATIN_SUSPECT_CONFIDENCE || it.text.all { c -> c.code < 0x0590 }) }
+
+    private fun decode(crops: List<Bitmap>, pack: ScriptPack): List<RecLine> {
+        if (crops.isEmpty()) return emptyList()
         val (session, charset) = recognizer(pack)
 
         val order = crops.indices.sortedBy { crops[it].width.toFloat() / crops[it].height }
@@ -147,36 +184,39 @@ class PaddleOcrEngine @Inject constructor(
             val (tensor, width) = ImageOps.recBatchTensor(batch, REC_HEIGHT, REC_MAX_WIDTH)
             val shape = longArrayOf(batch.size.toLong(), 3, REC_HEIGHT.toLong(), width.toLong())
 
+            // A padded crop fills only part of the batch tensor. Without this the character
+            // positions are fractions of the widest crop in the batch, and two models batched
+            // differently — as they are whenever only some lines get a second pass — report
+            // different positions for the same character, so nothing lines up.
+            val fill = ImageOps.recWidths(batch, REC_HEIGHT, REC_MAX_WIDTH)
+                .map { it.toFloat() / width }
+
             val decoded = run(session, tensor, shape) { buf, outShape ->
                 val steps = outShape[1].toInt()
                 val classes = outShape[2].toInt()
                 val flat = FloatArray(batch.size * steps * classes).also { buf.get(it) }
-                CtcDecoder.decodeBatch(flat, batch.size, steps, classes, charset)
+                CtcDecoder.decodeBatch(flat, batch.size, steps, classes, charset, fill)
             }
             chunk.forEachIndexed { i, srcIndex -> results[srcIndex] = decoded[i] }
         }
-        // Keyed off the characters, not the pack: any model can emit an RTL run, and the
-        // conversion is a no-op on a string that has none.
-        results.map { line ->
-            val r = line ?: RecLine("", 0f)
-            r.copy(text = RtlText.visualToLogical(r.text))
-        }
+        return results.map { it ?: RecLine("", 0f) }
     }
 
     /**
      * True where the line is upside down (PP-LCNet textline orientation).
      *
-     * Two guards, because a false positive here silently corrupts the text — a rotated
-     * "80" reads back as "08". The crop is letterboxed rather than squashed to 160x80,
-     * and a short crop (a table cell, a page number) is left alone: 180-degree rotation
-     * is near-symmetric for digits, so the model's answer there is close to a coin toss.
+     * The crop is squashed to 160x80 without preserving aspect, which is how the model is
+     * trained. Letterboxing it onto a padded canvas instead put the input off-distribution
+     * and the two classes came back near 0.5 — upright Arabic lines were "corrected" into
+     * garbage. A short crop (a table cell, a page number) is still left alone: 180-degree
+     * rotation is near-symmetric for digits, so the answer there is close to a coin toss.
      * A whole page that is upside down is [detectPageRotation]'s job, not this one.
      */
     fun detectFlippedLines(crops: List<Bitmap>): BooleanArray = withSessions {
         if (crops.isEmpty()) return@withSessions BooleanArray(0)
         val flags = BooleanArray(crops.size)
         crops.chunked(REC_BATCH).forEachIndexed { chunkIndex, chunk ->
-            val scaled = chunk.map { ImageOps.letterbox(it, ORI_WIDTH, ORI_HEIGHT) }
+            val scaled = chunk.map { it.scale(ORI_WIDTH, ORI_HEIGHT) }
             val tensor = concatTensors(scaled.map { ImageOps.imagenetTensor(it) })
             scaled.forEachIndexed { i, s -> if (s !== chunk[i]) s.recycle() }
 
@@ -386,22 +426,40 @@ class PaddleOcrEngine @Inject constructor(
     fun openSessionCount(): Int = synchronized(this) { sessions.size }
 }
 
-data class RecLine(val text: String, val confidence: Float)
+/**
+ * One decoded character, with the position it was read at. CTC timesteps run left to right
+ * across the crop, so [x] — the timestep as a fraction of the line width — is where in the line
+ * this character sits. That is what lets two models that read the same crop be compared
+ * position by position ([ScriptMerge]).
+ */
+data class RecChar(val text: String, val x: Float, val confidence: Float)
+
+data class RecLine(
+    val text: String,
+    val confidence: Float,
+    val chars: List<RecChar> = emptyList()
+)
 
 object CtcDecoder {
 
+    /**
+     * [fill] is the share of the batch tensor each crop actually occupies (1.0 when unpadded).
+     * Character positions are reported as a fraction of the crop, not of the padded batch.
+     */
     fun decodeBatch(
         logits: FloatArray,
         batch: Int,
         steps: Int,
         classes: Int,
-        charset: List<String>
+        charset: List<String>,
+        fill: List<Float> = emptyList()
     ): List<RecLine> {
         val softmaxed = isSoftmaxed(logits, classes)
         return (0 until batch).map { n ->
             val sb = StringBuilder(steps)
+            val chars = ArrayList<RecChar>(steps)
+            val share = fill.getOrElse(n) { 1f }.coerceIn(0.01f, 1f)
             var confSum = 0f
-            var confCount = 0
             var prev = -1
 
             for (t in 0 until steps) {
@@ -416,17 +474,24 @@ object CtcDecoder {
                     }
                 }
                 if (best != 0 && best != prev) {
-                    sb.append(charset.getOrElse(best) { "" })
-                    confSum += if (softmaxed) {
+                    val text = charset.getOrElse(best) { "" }
+                    val confidence = if (softmaxed) {
                         bestScore.coerceIn(0f, 1f)
                     } else {
                         softmax(logits, base, classes, bestScore)
                     }
-                    confCount++
+                    sb.append(text)
+                    val x = ((t + 0.5f) / steps / share).coerceAtMost(1f)
+                    chars.add(RecChar(text, x, confidence))
+                    confSum += confidence
                 }
                 prev = best
             }
-            RecLine(sb.toString(), if (confCount == 0) 0f else confSum / confCount)
+            RecLine(
+                text = sb.toString(),
+                confidence = if (chars.isEmpty()) 0f else confSum / chars.size,
+                chars = chars
+            )
         }
     }
 

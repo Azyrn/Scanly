@@ -49,7 +49,11 @@ class PaddleMarksTableTest {
 
     @Before
     fun setUp() {
-        engine = PaddleOcrEngine(PaddleModelStore(context, OkHttpClient()))
+        val store = PaddleModelStore(context, OkHttpClient())
+        // The table model is a download, and ModelDownloadSurvivesScreenTest deletes it on the way
+        // out; without this the pipe table only appears when that test happens to run afterwards.
+        runBlocking { store.downloadTable() }
+        engine = PaddleOcrEngine(store)
         service = PaddleOcrService(engine, DefaultSettings(), PdfRendererHelper(context))
     }
 

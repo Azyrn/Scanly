@@ -23,23 +23,57 @@ import kotlin.system.measureTimeMillis
 @RunWith(AndroidJUnit4::class)
 class PaddleOcrBenchmarkTest {
 
-    private fun page(): Bitmap {
-        val bmp = createBitmap(1654, 2339)
+    private fun page(skewDegrees: Float = 0f, width: Int = 1654, height: Int = 2339): Bitmap {
+        val bmp = createBitmap(width, height)
         val canvas = Canvas(bmp)
         canvas.drawColor(Color.WHITE)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.BLACK
-            textSize = 40f
+            textSize = 40f * (width / 1654f)
         }
+        if (skewDegrees != 0f) canvas.rotate(skewDegrees, width / 2f, height / 2f)
+        val scale = width / 1654f
         repeat(35) { i ->
             canvas.drawText(
                 "Line ${i + 1}: the quick brown fox jumps over the lazy dog 0123456789",
-                120f,
-                200f + i * 58f,
+                120f * scale,
+                (200f + i * 58f) * scale,
                 paint
             )
         }
         return bmp
+    }
+
+    /**
+     * A photographed page is never square-on, so the crops take the perspective-warp path
+     * rather than the native subrect. This is the shape of a real camera scan: 12 MP, skewed.
+     */
+    @Test
+    fun measureSkewedCameraPage() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val engine = PaddleOcrEngine(PaddleModelStore(context, OkHttpClient()))
+        val bitmap = page(skewDegrees = 1.5f, width = 3024, height = 4032)
+
+        val quads = engine.detect(bitmap, 960)
+
+        var crops = emptyList<Bitmap>()
+        val cropMs = measureTimeMillis {
+            val pagePixels = ImageOps.Page(bitmap)
+            crops = quads.map { ImageOps.cropQuad(pagePixels, it) }
+        }
+
+        var recMs: Long
+        recMs = measureTimeMillis { engine.recognize(crops, ScriptPack.UNIVERSAL) }
+        crops.forEach { it.recycle() }
+
+        val report = buildString {
+            appendLine("page      : ${bitmap.width}x${bitmap.height} (12 MP, 1.5° skew)")
+            appendLine("lines     : ${quads.size}")
+            appendLine("crop      : $cropMs ms  (${cropMs / quads.size.coerceAtLeast(1)} ms/line)")
+            appendLine("recognize : $recMs ms")
+        }
+        File(context.getExternalFilesDir(null), "paddle_bench_skewed.txt").writeText(report)
+        assertTrue(report, quads.isNotEmpty())
     }
 
     @Test

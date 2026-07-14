@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.skeler.scanely.core.ocr.OcrResult
 import com.skeler.scanely.core.ocr.TextOcrService
+import com.skeler.scanely.core.text.MarkdownParser
 import com.skeler.scanely.history.data.HistoryManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
@@ -67,14 +68,27 @@ class OcrViewModel @Inject constructor(
         val current = _uiState.value.result
         if (current !is OcrResult.Success) return
         // Boxes and structured Markdown describe the scan, not the edit — drop them.
-        _uiState.value = _uiState.value.copy(
-            result = current.copy(text = newText, blocks = emptyList(), markdown = null)
+        applyEdit(current.copy(text = newText, blocks = emptyList(), markdown = null), newText)
+    }
+
+    /** An edit made in the Markdown view stays Markdown; the plain view re-derives from it. */
+    fun updateMarkdown(newMarkdown: String) {
+        val current = _uiState.value.result
+        if (current !is OcrResult.Success) return
+        val plain = MarkdownParser.toPlainText(newMarkdown)
+        applyEdit(
+            current.copy(text = plain, blocks = emptyList(), markdown = newMarkdown),
+            plain
         )
+    }
+
+    private fun applyEdit(result: OcrResult.Success, historyText: String) {
+        _uiState.value = _uiState.value.copy(result = result)
         val pendingId = savedHistoryId ?: return
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val id = pendingId.await() ?: return@launch
-                historyManager.updateItemText(id, newText)
+                historyManager.updateItemText(id, historyText)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

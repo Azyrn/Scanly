@@ -52,17 +52,16 @@ UPC, and ISBN get a product lookup; only the number is sent.
 
 ## Privacy
 
-| | On-device | Leaves the device |
-| --- | --- | --- |
-| Offline OCR, barcode scanning | Yes | Nothing |
-| Product lookup | No | The barcode number only |
-| AI Scan | No | The image or file you picked, straight to your provider |
-| AI translation | No | The extracted text, straight to your provider |
+**Nothing is uploaded unless you tap AI Scan.** Offline OCR and barcode scanning happen entirely on
+your phone — your documents never go anywhere, and your scan history stays on the device.
 
-AI Scan is the only feature that transmits document content, and only when you start it — never in the
-background. Everything that leaves the device goes to a third party **you** picked, never through a
-Scanly service, because there is no Scanly service. History stays local. No telemetry on your
-documents.
+When you *do* tap AI Scan or Translate, the image (or the text, for a translation) goes to the AI
+provider **you** chose, and only then. It goes there directly. There is no Scanly server in between —
+we never see your documents or your key, because we don't run anything to see them with. Nothing is
+sent in the background, and nothing about your documents is tracked.
+
+The one small exception: looking up a scanned barcode sends the barcode number — just the number,
+nothing else — to the product databases.
 
 ## Build
 

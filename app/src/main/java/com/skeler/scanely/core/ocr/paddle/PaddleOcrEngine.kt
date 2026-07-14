@@ -32,6 +32,9 @@ private const val ORI_MIN_CONFIDENCE = 0.8f
 // A script line holding a character this unsure, or a Latin one at all, may hide a Latin word.
 private const val LATIN_SUSPECT_CONFIDENCE = 0.9f
 
+// First code point of the RTL scripts (Hebrew onwards); below it is Latin, digits, punctuation.
+private const val RTL_BLOCK_START = 0x0590
+
 /** ONNX sessions for the PP-OCR graphs. Sessions are lazy and reusable across scans. */
 @Singleton
 class PaddleOcrEngine @Inject constructor(
@@ -169,8 +172,10 @@ class PaddleOcrEngine @Inject constructor(
     private fun RecLine.toLogical() = copy(text = RtlText.visualToLogical(text))
 
     /** A confident, wholly-script line has nothing for the Latin model to add. */
-    private fun mayHideLatin(line: RecLine): Boolean =
-        line.chars.any { it.text.isNotBlank() && (it.confidence < LATIN_SUSPECT_CONFIDENCE || it.text.all { c -> c.code < 0x0590 }) }
+    private fun mayHideLatin(line: RecLine): Boolean = line.chars.any { c ->
+        val latin = c.text.all { it.code < RTL_BLOCK_START }
+        c.text.isNotBlank() && (c.confidence < LATIN_SUSPECT_CONFIDENCE || latin)
+    }
 
     private fun decode(crops: List<Bitmap>, pack: ScriptPack): List<RecLine> {
         if (crops.isEmpty()) return emptyList()
@@ -464,22 +469,13 @@ object CtcDecoder {
 
             for (t in 0 until steps) {
                 val base = (n * steps + t) * classes
-                var best = 0
-                var bestScore = logits[base]
-                for (c in 1 until classes) {
-                    val v = logits[base + c]
-                    if (v > bestScore) {
-                        bestScore = v;
-                        best = c
-                    }
-                }
+                val best = argmax(logits, base, classes)
+
+                // CTC: a repeat of the previous class is the same character held across two
+                // timesteps, and class 0 is the blank that separates two real ones.
                 if (best != 0 && best != prev) {
                     val text = charset.getOrElse(best) { "" }
-                    val confidence = if (softmaxed) {
-                        bestScore.coerceIn(0f, 1f)
-                    } else {
-                        softmax(logits, base, classes, bestScore)
-                    }
+                    val confidence = confidenceOf(logits, base, classes, best, softmaxed)
                     sb.append(text)
                     val x = ((t + 0.5f) / steps / share).coerceAtMost(1f)
                     chars.add(RecChar(text, x, confidence))
@@ -493,6 +489,31 @@ object CtcDecoder {
                 chars = chars
             )
         }
+    }
+
+    /** The likeliest class at one timestep. */
+    private fun argmax(logits: FloatArray, base: Int, classes: Int): Int {
+        var best = 0
+        var bestScore = logits[base]
+        for (c in 1 until classes) {
+            val v = logits[base + c]
+            if (v > bestScore) {
+                bestScore = v
+                best = c
+            }
+        }
+        return best
+    }
+
+    private fun confidenceOf(
+        logits: FloatArray,
+        base: Int,
+        classes: Int,
+        best: Int,
+        softmaxed: Boolean
+    ): Float {
+        val score = logits[base + best]
+        return if (softmaxed) score.coerceIn(0f, 1f) else softmax(logits, base, classes, score)
     }
 
     /**

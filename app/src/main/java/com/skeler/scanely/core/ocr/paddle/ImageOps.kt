@@ -1,8 +1,6 @@
 package com.skeler.scanely.core.ocr.paddle
 
 import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Color
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.scale
 import java.nio.ByteBuffer

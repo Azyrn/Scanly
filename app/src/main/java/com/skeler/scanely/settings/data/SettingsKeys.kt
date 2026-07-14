@@ -32,6 +32,7 @@ enum class SettingsKeys(val default: Any?) {
     PADDLE_SCRIPT("universal"), // ScriptPack.id
     PADDLE_DOC_ORIENTATION(true),
     PADDLE_DOC_UNWARP(false), // UVDoc; only helps curved/folded pages
+
     // Near a coin toss on Arabic, and page-level orientation already covers the usual case;
     // only a page with genuinely mixed line directions needs it.
     PADDLE_LINE_ORIENTATION(false),

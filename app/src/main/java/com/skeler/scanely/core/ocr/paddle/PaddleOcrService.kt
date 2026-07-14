@@ -242,9 +242,11 @@ class PaddleOcrService @Inject constructor(
     }
 
     /** Confident characters per line: a garbled read is both shorter and less certain. */
-    private fun orientationScore(lines: List<RecLine>): Float =
-        if (lines.isEmpty()) 0f else lines.sumOf { (it.confidence * it.text.trim().length).toDouble() }
-            .toFloat() / lines.size
+    private fun orientationScore(lines: List<RecLine>): Float {
+        if (lines.isEmpty()) return 0f
+        val score = lines.sumOf { (it.confidence * it.text.trim().length).toDouble() }
+        return (score / lines.size).toFloat()
+    }
 
     /**
      * A recognition model can only emit the glyphs in its own dictionary: the universal

@@ -9,7 +9,7 @@ Scanly is an Android scanner for documents, barcodes, and QR codes. It reads a p
 Then it gives you the result as **Markdown, PDF, Word, CSV, or JSON** — and can **translate** it into
 18 languages.
 
-**Your AI key, your provider, your account.** Add your own API key and your phone calls the provider
+**Your AI key, your provider** Add your own API key and your phone calls the provider
 directly. **There is no Scanly server and no proxy** — nothing we run ever sees your documents,
 because we run nothing.
 

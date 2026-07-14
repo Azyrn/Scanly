@@ -7,6 +7,7 @@
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.3-7F52FF.svg?logo=kotlin&logoColor=white)](#)
 [![Compose](https://img.shields.io/badge/Jetpack_Compose-Material_3-4285F4.svg?logo=jetpackcompose&logoColor=white)](#)
+[![Telegram](https://img.shields.io/badge/Telegram-ScanlyOCR-26A5E4.svg?logo=telegram&logoColor=white)](https://telegram.me/ScanlyOCR)
 
 </div>
 
@@ -69,7 +70,7 @@ nothing else — to the product databases.
 git clone https://github.com/Azyrn/Scanly.git && cd Scanly && ./gradlew assembleDebug
 ```
 
-Android SDK, JDK 21. Min API 24, targets API 36. Offline scanning, barcodes, and exports need no
+Android SDK, JDK 21. Min API 24, targets API 37. Offline scanning, barcodes, and exports need no
 configuration. For cloud AI, add a key in the app's settings, or bundle one at build time in
 `local.properties` (gitignored) as `GEMINI_API_KEY`, `GROQ_API_KEY`, `OPENROUTER_API_KEY`, and so on.
 Release builds are signed from `local.properties` and use R8 full mode.

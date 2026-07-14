@@ -95,9 +95,9 @@ android {
     defaultConfig {
         applicationId = "com.skeler.scanely"
         minSdk = 24
-        targetSdk = 36
-        versionCode = 17
-        versionName = "3.2.0"
+        targetSdk = 37
+        versionCode = 18
+        versionName = "3.3.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

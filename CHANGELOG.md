@@ -1,5 +1,23 @@
 # Changelog
 
+## [3.3.0] - 2026-07-14
+### Added
+- **Barcode scanner controls**: pinch-to-zoom and tap-to-focus, with the scan box lifted clear of the controls
+- **WYSIWYE exports**: exports now match the preview you see on screen
+- **New launcher icon** and a full-resolution splash logo
+
+### Fixed
+- **Scan history**: a corrupt `scan_history.json` no longer wipes every saved scan
+- **Custom AI endpoints**: no longer crash the app or leak API keys
+- **Arabic OCR**: pages are read the right way up and embedded Latin words are preserved
+- **AI Scan**: stopped requesting camera permission it never needed
+- **Model downloads**: continue when you leave the Settings screen
+- **AI providers**: the required fields for each provider are now stated up front
+
+### Changed
+- **Open Food Facts**: migrated to API v3
+- **Startup and packaging**: single-ABI packaging, lazier startup, LUT tensor normalization
+
 ## [3.2.0] - 2026-01-23
 ### Added
 - **Multi-Source Product Lookup**: Books (Google Books, Open Library), Medicine (OpenFDA), Cosmetics (Open Beauty Facts), Pet Food

@@ -14,6 +14,12 @@ jobs:
   detekt:
     name: Static Analysis (Detekt)
     runs-on: ubuntu-latest
+    # The repo's default token is read-only, and a push event — unlike a pull_request one — is
+    # not granted this implicitly, so the SARIF upload was failing main on every merge while
+    # Detekt itself passed.
+    permissions:
+      contents: read
+      security-events: write
     env:
       DETEKT_VERSION: 1.23.8
     steps:

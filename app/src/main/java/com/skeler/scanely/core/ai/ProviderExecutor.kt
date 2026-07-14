@@ -6,6 +6,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeout
+import kotlinx.serialization.SerializationException
 import retrofit2.HttpException
 import java.io.IOException
 import javax.inject.Inject
@@ -98,12 +99,21 @@ internal class ProviderExecutor @Inject constructor(
                 }
             } catch (e: IOException) {
                 aiDebug { "$name attempt ${attempt + 1} IO: ${e.message}" }
+                if (e.message?.contains("CLEARTEXT", ignoreCase = true) == true) {
+                    return ProviderOutcome.Fatal(AiResult.Error(CLEARTEXT_MESSAGE))
+                }
                 sawNetworkIo = true
                 lastFailureWasNetwork = true
                 if (!networkObserver.isCurrentlyOnline()) {
                     return ProviderOutcome.Exhausted(networkProblem = true)
                 }
                 if (useStreaming && !streamedAnything[0]) useStreaming = false
+            } catch (e: SerializationException) {
+                aiDebug { "$name attempt ${attempt + 1} unparsable body: ${e.message}" }
+                return ProviderOutcome.Fatal(AiResult.Error(BAD_RESPONSE_MESSAGE))
+            } catch (e: Exception) {
+                aiDebug { "$name attempt ${attempt + 1} ${e::class.simpleName}: ${e.message}" }
+                return ProviderOutcome.Fatal(AiResult.Error(UNEXPECTED_MESSAGE))
             }
         }
         return ProviderOutcome.Exhausted(networkProblem = sawNetworkIo)
@@ -127,11 +137,29 @@ internal class ProviderExecutor @Inject constructor(
             "Your API key has hit its usage or billing limit. Check your plan " +
                 "with the provider, then try again."
         401, 403 -> "Invalid or unauthorized API key. Check it in Settings → AI Providers."
+        HTTP_BAD_REQUEST, HTTP_NOT_FOUND, HTTP_UNPROCESSABLE ->
+            "The provider rejected this request (HTTP $code). The model ID is " +
+                "usually the cause — check it in Settings → AI Providers, or clear " +
+                "the field to use the default model."
         else -> "Request failed (HTTP $code)"
     }
 
     companion object {
         private const val MAX_ATTEMPTS = 3
+
+        private const val HTTP_BAD_REQUEST = 400
+        private const val HTTP_NOT_FOUND = 404
+        private const val HTTP_UNPROCESSABLE = 422
+
+        private const val BAD_RESPONSE_MESSAGE =
+            "The provider sent back something this app can't read. Check the " +
+                "endpoint URL and model ID in Settings → AI Providers."
+        private const val UNEXPECTED_MESSAGE =
+            "Something went wrong talking to the provider. Check your settings " +
+                "in Settings → AI Providers and try again."
+        private const val CLEARTEXT_MESSAGE =
+            "This endpoint uses plain http://, which Android blocks. Use an " +
+                "https:// endpoint in Settings → AI Providers."
         private const val BACKOFF_BASE_MS = 1200L
         private const val BACKOFF_JITTER_MS = 600L
 

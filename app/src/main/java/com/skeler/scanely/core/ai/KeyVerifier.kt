@@ -92,9 +92,11 @@ class KeyVerifier @Inject constructor(
                 }
 
                 AiProvider.CUSTOM -> {
-                    val url = customUrl?.trim()?.ifBlank { null }
+                    val raw = customUrl?.trim()?.ifBlank { null }
                         ?: return VerificationResult.Invalid("Set the endpoint URL first")
-                    val modelsUrl = deriveModelsUrl(url)
+                    val url = EndpointUrl.normalize(raw)
+                        ?: return VerificationResult.Invalid("That endpoint URL isn't valid")
+                    val modelsUrl = EndpointUrl.modelsUrl(url)
                         ?: return VerificationResult.Failed("Can't auto-check this endpoint")
                     api.get(modelsUrl, bearer(trimmed)).code()
                 }
@@ -124,11 +126,6 @@ class KeyVerifier @Inject constructor(
             VerificationResult.Invalid("Key was rejected")
         code in 500..599 -> VerificationResult.Failed("Provider error — try again")
         else -> VerificationResult.Failed("Unexpected response (HTTP $code)")
-    }
-
-    private fun deriveModelsUrl(chatUrl: String): String? {
-        val idx = chatUrl.indexOf("/chat/completions")
-        return if (idx >= 0) chatUrl.substring(0, idx) + "/models" else null
     }
 
     private companion object {

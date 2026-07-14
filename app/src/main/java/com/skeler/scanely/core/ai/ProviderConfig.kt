@@ -107,6 +107,8 @@ internal class ProviderConfigResolver @Inject constructor(
             val bundledAccount = Secrets.cloudflareAccountId.trim().ifBlank { null }
             val pair = when {
                 userKey != null && userAccount != null -> Triple(userKey, userAccount, false)
+                // Half-filled own credentials: never silently bill the bundled account.
+                userKey != null || userAccount != null -> null
                 bundledKey != null && bundledAccount != null -> Triple(bundledKey, bundledAccount, true)
                 else -> null
             }
@@ -137,7 +139,7 @@ internal class ProviderConfigResolver @Inject constructor(
         }
         AiProvider.CUSTOM -> {
             val key = settingValue(SettingsKeys.CUSTOM_API_KEY)
-            val url = settingValue(SettingsKeys.CUSTOM_BASE_URL)
+            val url = settingValue(SettingsKeys.CUSTOM_BASE_URL)?.let { EndpointUrl.normalize(it) }
             val model = settingValue(SettingsKeys.CUSTOM_MODEL)
             if (key != null && url != null && model != null) {
                 ProviderConfig(ProviderKind.OPENAI_COMPAT, model, key, url)

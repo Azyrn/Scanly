@@ -6,6 +6,8 @@ import android.Manifest
 import android.content.ClipData
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.camera.core.Camera
+import androidx.camera.view.PreviewView
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -65,6 +67,7 @@ import com.skeler.scanely.settings.data.SettingsKeys
 import com.skeler.scanely.settings.presentation.viewmodel.SettingsViewModel
 import com.skeler.scanely.ui.components.BarcodeActionsSheet
 import com.skeler.scanely.ui.components.BarcodeCameraPreview
+import com.skeler.scanely.ui.components.CameraGestureOverlay
 import com.skeler.scanely.ui.components.ProductDetailSheet
 import com.skeler.scanely.ui.components.ScanningOverlay
 import com.skeler.scanely.ui.components.TextDetailSheet
@@ -72,6 +75,9 @@ import com.skeler.scanely.ui.components.rememberGalleryPicker
 import com.skeler.scanely.ui.viewmodel.UnifiedScanViewModel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+
+// Lifts the scan box off centre so it clears the hint and gallery buttons.
+private const val SCAN_BOX_BIAS = 0.36f
 
 @OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -95,6 +101,10 @@ fun BarcodeScannerScreen(
     var showProductSheet by remember { mutableStateOf(false) }
     var lookupResult by remember { mutableStateOf<LookupResult?>(null) }
     var isLookupLoading by remember { mutableStateOf(false) }
+
+    var camera by remember { mutableStateOf<Camera?>(null) }
+    var previewView by remember { mutableStateOf<PreviewView?>(null) }
+    var userZoomed by remember { mutableStateOf(false) }
 
     val galleryPicker = rememberGalleryPicker { uri ->
         if (uri != null) {
@@ -156,8 +166,22 @@ fun BarcodeScannerScreen(
             .background(Color.Black)
     ) {
         if (cameraPermissionState.status.isGranted) {
-            barcodeAnalyzer?.let { BarcodeCameraPreview(barcodeAnalyzer = it) }
-            ScanningOverlay()
+            barcodeAnalyzer?.let {
+                BarcodeCameraPreview(
+                    barcodeAnalyzer = it,
+                    autoZoomEnabled = { !userZoomed },
+                    onCameraBound = { boundCamera, view ->
+                        camera = boundCamera
+                        previewView = view
+                    }
+                )
+            }
+            ScanningOverlay(verticalBias = SCAN_BOX_BIAS)
+            CameraGestureOverlay(
+                camera = camera,
+                previewView = previewView,
+                onUserZoom = { userZoomed = true }
+            )
 
             AnimatedVisibility(
                 visible = !showActionsSheet && !showProductSheet,
@@ -176,9 +200,10 @@ fun BarcodeScannerScreen(
                         shape = MaterialTheme.shapes.medium
                     ) {
                         Text(
-                            text = "Point camera at barcode or QR code",
+                            text = "Point camera at barcode or QR code\nPinch to zoom · tap to focus",
                             style = MaterialTheme.typography.bodyMedium,
                             color = Color.White,
+                            textAlign = TextAlign.Center,
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                         )
                     }

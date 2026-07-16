@@ -29,7 +29,7 @@ data class OpenFoodFactsResponse(
     val isFound: Boolean get() = status == OFF_STATUS_SUCCESS && product != null
 }
 
-// API v3 reports outcome as a string; a missing product still returns HTTP 200.
+// API v3 reports outcome as a string, and answers a missing product with HTTP 404.
 const val OFF_STATUS_SUCCESS = "success"
 
 @Serializable

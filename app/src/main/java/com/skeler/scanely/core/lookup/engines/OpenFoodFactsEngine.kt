@@ -10,10 +10,12 @@ import com.skeler.scanely.core.lookup.LookupResult
 import com.skeler.scanely.core.lookup.ProductCategory
 import com.skeler.scanely.core.lookup.ProductInfo
 import com.skeler.scanely.core.lookup.isEanUpc
+import retrofit2.HttpException
 import javax.inject.Inject
 import javax.inject.Singleton
 
 private const val TAG = "OpenFoodFactsEngine"
+private const val HTTP_NOT_FOUND = 404
 
 @Singleton
 class OpenFoodFactsEngine @Inject constructor(
@@ -43,6 +45,15 @@ class OpenFoodFactsEngine @Inject constructor(
             } else {
                 Log.d(TAG, "Not found: $barcode")
                 LookupResult.NotFound(name)
+            }
+        } catch (e: HttpException) {
+            // v3 answers an absent product with 404, not a 200 "failure" body.
+            if (e.code() == HTTP_NOT_FOUND) {
+                Log.d(TAG, "Not found: $barcode")
+                LookupResult.NotFound(name)
+            } else {
+                Log.e(TAG, "Error looking up $barcode", e)
+                LookupResult.Error(name, e)
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error looking up $barcode", e)

@@ -176,6 +176,12 @@ android {
         compose = true
         buildConfig = true
     }
+
+    testOptions {
+        unitTests {
+            isReturnDefaultValues = true
+        }
+    }
 }
 
 // Packaging four APKs (universal alone is ~250 MB of mostly ONNX assets) is the

@@ -1,5 +1,22 @@
 # Changelog
 
+## [3.3.1] - 2026-07-16 (versionCode 19)
+### Added
+- **Longer PDF scans**: AI Scan now reads up to 20 pages of a PDF, up from 3
+
+### Fixed
+- **Product lookup**: a product missing from Open Food Facts now reads "not found" instead of
+  "Errors: HTTP 404" — v3 answers an absent barcode with a 404, which was being treated as a failure
+
+### Changed
+- **One request per scan**: up to 5 images now travel in a single request instead of one request
+  each, and a PDF goes to Mistral OCR whole rather than a request per page — several times less
+  free-tier quota per scan
+- **Per-provider page limits**: a scan is trimmed to what the provider documents (5 on Groq and
+  Cerebras, 1 where the cap is undocumented) and the result says so, rather than being split across
+  requests or rejected outright
+- **AI Scan picks one PDF at a time**; the image picker now takes 5
+
 ## [3.3.0] - 2026-07-14 (versionCode 18)
 ### Added
 - **Barcode scanner controls**: pinch-to-zoom and tap-to-focus, with the scan box lifted clear of the controls

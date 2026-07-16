@@ -18,7 +18,7 @@ class GenerativeAiService @Inject internal constructor(
     private val executor: ProviderExecutor,
     private val networkObserver: NetworkObserver
 ) {
-    fun processImageEvents(uri: Uri, mode: AiMode, provider: AiProvider): Flow<AiEvent> =
+    fun processImageEvents(uris: List<Uri>, mode: AiMode, provider: AiProvider): Flow<AiEvent> =
         channelFlow {
             val totalStart = SystemClock.elapsedRealtime()
             send(AiEvent.Stage(AiStage.PREPARING))
@@ -28,16 +28,24 @@ class GenerativeAiService @Inject internal constructor(
                 return@channelFlow
             }
 
-            val payload = try {
-                payloadFactory.create(uri, mode)
-            } catch (e: PayloadFactory.PayloadException) {
-                send(AiEvent.Finished(AiResult.Error(e.message ?: "Failed to read file")))
-                return@channelFlow
-            }
-
             val chain = resolver.chain(provider)
             if (chain.isEmpty()) {
                 send(AiEvent.Finished(missingConfigError(provider)))
+                return@channelFlow
+            }
+
+            // Both are expensive on a large PDF, so prepare only what this chain can consume:
+            // the source document for Mistral OCR, rendered pages for everyone else.
+            val kinds = chain.map { (prov, _) -> prov.kind }
+            val payload = try {
+                payloadFactory.create(
+                    uris = uris,
+                    mode = mode,
+                    includePdfSource = kinds.any { it == ProviderKind.MISTRAL_OCR },
+                    renderPages = kinds.any { it != ProviderKind.MISTRAL_OCR }
+                )
+            } catch (e: PayloadFactory.PayloadException) {
+                send(AiEvent.Finished(AiResult.Error(e.message ?: "Failed to read file")))
                 return@channelFlow
             }
 
@@ -56,12 +64,16 @@ class GenerativeAiService @Inject internal constructor(
                         )
                     )
                 }
+                // One request per scan: trim to what this provider accepts rather than
+                // splitting across requests, which would multiply free-tier quota use.
+                val sent = ScanBudget.trimFor(prov, payload)
                 val outcome = executor.run(
                     name = prov.displayName,
                     config = config,
                     systemInstruction = AiPrompts.SYSTEM_INSTRUCTION,
                     prompt = payload.prompt,
-                    images = payload.images,
+                    images = sent.images,
+                    pdfBase64 = sent.pdfBase64,
                     allowStreaming = true,
                     emit = { send(it) }
                 )
@@ -69,9 +81,14 @@ class GenerativeAiService @Inject internal constructor(
                     is ProviderOutcome.Success -> {
                         send(AiEvent.Stage(AiStage.COMPLETE))
                         aiDebug { "total ${SystemClock.elapsedRealtime() - totalStart} ms" }
+                        val text = if (sent.dropped > 0) {
+                            outcome.text + "\n\n" + ScanBudget.truncationNotice(prov, payload.images.size)
+                        } else {
+                            outcome.text
+                        }
                         send(
                             AiEvent.Finished(
-                                AiResult.Success(outcome.text),
+                                AiResult.Success(text),
                                 AiRunInfo(prov, config.model, config.usesBundledKey)
                             )
                         )
@@ -101,7 +118,7 @@ class GenerativeAiService @Inject internal constructor(
 
     suspend fun processImage(uri: Uri, mode: AiMode, provider: AiProvider): AiResult {
         var final: AiResult = AiResult.Error("No response generated")
-        processImageEvents(uri, mode, provider).collect { event ->
+        processImageEvents(listOf(uri), mode, provider).collect { event ->
             if (event is AiEvent.Finished) final = event.result
         }
         return final
@@ -128,6 +145,7 @@ class GenerativeAiService @Inject internal constructor(
             systemInstruction = null,
             prompt = AiPrompts.translate(text, targetLanguage),
             images = emptyList(),
+            pdfBase64 = null,
             allowStreaming = false,
             emit = {}
         )

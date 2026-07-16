@@ -115,7 +115,6 @@ fun EditableReadableText(
 
 @Composable
 fun ProcessingContent(
-    currentFile: Int = 0,
     totalFiles: Int = 0,
     stage: AiStage? = null,
     stageMessage: String? = null,
@@ -141,7 +140,7 @@ fun ProcessingContent(
                 AiStage.GENERATING -> "Generating…"
                 AiStage.COMPLETE -> "Complete"
                 null -> if (totalFiles > 1) {
-                    "Processing file $currentFile of $totalFiles..."
+                    "Extracting text from $totalFiles files…"
                 } else {
                     "Extracting text..."
                 }
@@ -168,7 +167,7 @@ fun ProcessingContent(
         if (totalFiles > 1 && stage != null) {
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "File $currentFile of $totalFiles",
+                text = "$totalFiles files in one request",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

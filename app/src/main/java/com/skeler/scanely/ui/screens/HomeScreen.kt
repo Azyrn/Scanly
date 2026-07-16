@@ -27,7 +27,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,7 +51,7 @@ import com.skeler.scanely.ui.components.MainActionButton
 import com.skeler.scanely.ui.components.RateLimitDisplayState
 import com.skeler.scanely.ui.components.RateLimitSheet
 import com.skeler.scanely.ui.components.rememberGalleryPicker
-import com.skeler.scanely.ui.components.rememberMultiDocumentPicker
+import com.skeler.scanely.ui.components.rememberDocumentPicker
 import com.skeler.scanely.ui.components.rememberMultiGalleryPicker
 import com.skeler.scanely.ui.viewmodel.AiScanViewModel
 import com.skeler.scanely.ui.viewmodel.OcrViewModel
@@ -69,7 +68,6 @@ fun HomeScreen() {
     val ocrViewModel: OcrViewModel = hiltViewModel(activity)
     val unifiedViewModel: UnifiedScanViewModel = hiltViewModel(activity)
     val navController = LocalNavController.current
-    val scope = rememberCoroutineScope()
 
     val snackbarHostState = remember { SnackbarHostState() }
     var showAiBottomSheet by remember { mutableStateOf(false) }
@@ -98,33 +96,22 @@ fun HomeScreen() {
         }
     }
 
-    val aiMultiDocumentPicker = rememberMultiDocumentPicker(
+    val aiDocumentPicker = rememberDocumentPicker(
         mimeTypes = arrayOf("application/pdf", "text/plain")
-    ) { selectedUris ->
-        if (selectedUris.isNotEmpty() && pendingAiMode != null) {
-            // SAF can't cap selection count, so enforce it here.
-            val uris = selectedUris.take(MAX_AI_FILES)
-            if (selectedUris.size > MAX_AI_FILES) {
-                scope.launch {
-                    snackbarHostState.showSnackbar(
-                        "Up to $MAX_AI_FILES files per scan — using the first $MAX_AI_FILES."
-                    )
-                }
-            }
+    ) { uri ->
+        if (pendingAiMode != null) {
             val mode = pendingAiMode!!
             val provider = pendingAiProvider
             pendingAiMode = null
-            uris.forEach { uri ->
-                try {
-                    context.contentResolver.takePersistableUriPermission(
-                        uri,
-                        android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
-                    )
-                } catch (_: Exception) { }
-            }
+            try {
+                context.contentResolver.takePersistableUriPermission(
+                    uri,
+                    android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            } catch (_: Exception) { }
             if (scanViewModel.triggerAiWithRateLimit(provider) {
                     scanViewModel.onNewScanSelected()
-                    aiViewModel.processMultipleFiles(uris, mode, provider)
+                    aiViewModel.processMultipleFiles(listOf(uri), mode, provider)
                 }
             ) {
                 navController.navigate(Routes.RESULTS)
@@ -166,7 +153,7 @@ fun HomeScreen() {
         showAiBottomSheet = false
         when (mode) {
             AiMode.EXTRACT_TEXT -> aiMultiGalleryPicker()
-            AiMode.EXTRACT_PDF_TEXT -> aiMultiDocumentPicker()
+            AiMode.EXTRACT_PDF_TEXT -> aiDocumentPicker()
             else -> aiMultiGalleryPicker()
         }
     }

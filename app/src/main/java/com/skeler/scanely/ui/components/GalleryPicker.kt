@@ -8,8 +8,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 
-/** Max images/files accepted per AI scan (matches the per-file 20 MB cap in PayloadFactory). */
-const val MAX_AI_FILES = 3
+/**
+ * Max images per AI scan. They travel in one request, so this is the smallest documented
+ * per-request image cap across providers (Groq and Cerebras both stop at 5).
+ */
+const val MAX_AI_FILES = 5
 
 @Suppress("ComposableNaming") // Returns a lambda, not a Unit-returning composable
 @Composable
@@ -48,16 +51,17 @@ fun rememberMultiGalleryPicker(
     }
 }
 
+/** One document per scan: a PDF's pages already fill the request's image budget. */
 @Suppress("ComposableNaming")
 @Composable
-fun rememberMultiDocumentPicker(
+fun rememberDocumentPicker(
     mimeTypes: Array<String> = arrayOf("application/pdf", "text/plain"),
-    onDocumentsSelected: (List<Uri>) -> Unit
+    onDocumentSelected: (Uri) -> Unit
 ): () -> Unit {
     val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenMultipleDocuments()
-    ) { uris ->
-        onDocumentsSelected(uris)
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let(onDocumentSelected)
     }
 
     return { launcher.launch(mimeTypes) }

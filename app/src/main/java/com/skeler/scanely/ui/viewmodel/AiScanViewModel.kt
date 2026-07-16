@@ -46,7 +46,6 @@ data class AiScanState(
     val isTranslating: Boolean = false,
     val lastImageUri: Uri? = null,
     val totalFiles: Int = 0,
-    val currentFileIndex: Int = 0,
     val allUris: List<Uri> = emptyList(),
     val message: String? = null
 )
@@ -88,14 +87,18 @@ class AiScanViewModel @Inject constructor(
                 lastImageUri = imageUri
             )
 
-            val result = collectPipeline(imageUri, mode, provider)
+            val result = collectPipeline(listOf(imageUri), mode, provider)
             publishFinalResult(result, imageUri)
         }
     }
 
-    private suspend fun collectPipeline(uri: Uri, mode: AiMode, provider: AiProvider): AiResult {
+    private suspend fun collectPipeline(
+        uris: List<Uri>,
+        mode: AiMode,
+        provider: AiProvider
+    ): AiResult {
         var result: AiResult = AiResult.Error("Cancelled")
-        aiService.processImageEvents(uri, mode, provider).collect { event ->
+        aiService.processImageEvents(uris, mode, provider).collect { event ->
             when (event) {
                 is AiEvent.Stage -> _aiState.value = _aiState.value.copy(
                     stage = event.stage,
@@ -151,39 +154,14 @@ class AiScanViewModel @Inject constructor(
                 mode = mode,
                 provider = provider,
                 totalFiles = uris.size,
-                currentFileIndex = 1,
                 allUris = uris,
                 lastImageUri = uris.first()
             )
 
-            val allResults = StringBuilder()
-
-            uris.forEachIndexed { index, uri ->
-                _aiState.value = _aiState.value.copy(
-                    currentFileIndex = index + 1,
-                    lastImageUri = uri
-                )
-
-                val result = collectPipeline(uri, mode, provider)
-                _aiState.value = _aiState.value.copy(streamingText = null)
-
-                val (label, body) = when (result) {
-                    is AiResult.Success -> "" to result.text
-                    is AiResult.Error -> " (Error)" to "Error: ${result.message}"
-                }
-                if (allResults.isNotEmpty()) {
-                    allResults.append("\n\n--- File ${index + 1}$label ---\n\n")
-                }
-                allResults.append(body)
-            }
-
-            val combinedResult = if (allResults.isNotEmpty()) {
-                AiResult.Success(allResults.toString())
-            } else {
-                AiResult.Error("No text extracted from any file")
-            }
-
-            publishFinalResult(combinedResult, uris.first())
+            // Every file rides in one request; a request per file would multiply free-tier quota use.
+            val result = collectPipeline(uris, mode, provider)
+            _aiState.value = _aiState.value.copy(streamingText = null)
+            publishFinalResult(result, uris.first())
         }
     }
 

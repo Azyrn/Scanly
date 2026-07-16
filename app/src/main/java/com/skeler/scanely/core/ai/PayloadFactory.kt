@@ -21,53 +21,93 @@ internal class PayloadFactory @Inject constructor(
 ) {
     class PayloadException(message: String) : Exception(message)
 
-    data class Payload(val prompt: String, val images: List<String>)
+    /**
+     * [pdfBase64] is the untouched source PDF, set only for a lone PDF so [ProviderKind.MISTRAL_OCR]
+     * can read every page from one request instead of one request per rendered page.
+     */
+    data class Payload(
+        val prompt: String,
+        val images: List<String>,
+        val pdfBase64: String? = null
+    )
 
-    fun create(uri: Uri, mode: AiMode): Payload {
-        val size = fileSizeBytes(uri)
-        if (size != null && size > MAX_FILE_SIZE_BYTES) {
+    /**
+     * Renders up to [MAX_SCAN_PAGES]; providers trim further to their own cap at send time.
+     * [includePdfSource] and [renderPages] let the caller skip work no provider in its chain needs —
+     * both are costly on a 20 MB PDF.
+     */
+    fun create(
+        uris: List<Uri>,
+        mode: AiMode,
+        includePdfSource: Boolean = false,
+        renderPages: Boolean = true
+    ): Payload {
+        if (uris.isEmpty()) throw PayloadException("No files selected")
+        uris.forEach(::checkFileSize)
+
+        val prompt = AiPrompts.forMode(mode)
+        val single = uris.singleOrNull()
+        if (single != null && mimeTypeOf(single) == PDF_MIME_TYPE) {
+            val images = if (renderPages) renderPdfToBase64(single) else emptyList()
+            val pdfBase64 = if (includePdfSource) loadBase64(single) else null
+            if (images.isEmpty() && pdfBase64 == null) throw PayloadException("Failed to read PDF file")
+            return Payload(prompt, images, pdfBase64)
+        }
+
+        val texts = mutableListOf<String>()
+        val images = mutableListOf<String>()
+        uris.forEach { uri ->
+            when (val mimeType = mimeTypeOf(uri)) {
+                TEXT_MIME_TYPE -> {
+                    val bytes = loadFileBytes(uri) ?: throw PayloadException("Failed to read text file")
+                    texts += bytes.toString(Charsets.UTF_8)
+                }
+
+                PDF_MIME_TYPE -> images += renderPdfToBase64(uri)
+
+                else -> if (mimeType.startsWith("image/")) {
+                    val bitmap = loadBitmapFromUri(uri)
+                        ?: throw PayloadException("Failed to load image")
+                    try {
+                        images += encodeBase64Jpeg(bitmap)
+                    } finally {
+                        bitmap.recycle()
+                    }
+                } else {
+                    throw PayloadException(unsupportedMessage(mimeType))
+                }
+            }
+        }
+
+        if (texts.isEmpty() && images.isEmpty()) throw PayloadException("Failed to read the selected files")
+
+        val fullPrompt = if (texts.isEmpty()) prompt else "$prompt\n\n${texts.joinToString("\n\n")}"
+        return Payload(fullPrompt, images.take(MAX_SCAN_PAGES))
+    }
+
+    private fun mimeTypeOf(uri: Uri): String =
+        context.contentResolver.getType(uri) ?: "application/octet-stream"
+
+    private fun checkFileSize(uri: Uri) {
+        val size = fileSizeBytes(uri) ?: return
+        if (size > MAX_FILE_SIZE_BYTES) {
             throw PayloadException(
                 "File too large (${size / (1024 * 1024)} MB). " +
                     "The maximum size for an AI scan is $MAX_FILE_SIZE_MB MB."
             )
         }
-
-        val mimeType = context.contentResolver.getType(uri) ?: "application/octet-stream"
-        val prompt = AiPrompts.forMode(mode)
-
-        return when {
-            mimeType == TEXT_MIME_TYPE -> {
-                val bytes = loadFileBytes(uri)
-                    ?: throw PayloadException("Failed to read text file")
-                Payload("$prompt\n\n${bytes.toString(Charsets.UTF_8)}", emptyList())
-            }
-
-            mimeType == PDF_MIME_TYPE -> {
-                val images = renderPdfToBase64(uri)
-                if (images.isEmpty()) throw PayloadException("Failed to read PDF file")
-                Payload(prompt, images)
-            }
-
-            mimeType.startsWith("image/") -> {
-                val bitmap = loadBitmapFromUri(uri)
-                    ?: throw PayloadException("Failed to load image")
-                try {
-                    Payload(prompt, listOf(encodeBase64Jpeg(bitmap)))
-                } finally {
-                    bitmap.recycle()
-                }
-            }
-
-            else -> throw PayloadException(
-                "Unsupported file type: $mimeType\n\n" +
-                    "Supported:\n" +
-                    "• PDF files (.pdf)\n" +
-                    "• Text files (.txt)\n" +
-                    "• Images (.jpg, .png, .webp)\n\n" +
-                    "For Word/PowerPoint/Excel files, please convert to PDF first."
-            )
-        }
     }
+
+    private fun unsupportedMessage(mimeType: String) =
+        "Unsupported file type: $mimeType\n\n" +
+            "Supported:\n" +
+            "• PDF files (.pdf)\n" +
+            "• Text files (.txt)\n" +
+            "• Images (.jpg, .png, .webp)\n\n" +
+            "For Word/PowerPoint/Excel files, please convert to PDF first."
+
+    private fun loadBase64(uri: Uri): String? =
+        loadFileBytes(uri)?.let { Base64.encodeToString(it, Base64.NO_WRAP) }
 
     private fun encodeBase64Jpeg(bitmap: Bitmap): String {
         val scaled = downscale(bitmap)
@@ -120,7 +160,7 @@ internal class PayloadFactory @Inject constructor(
 
             ParcelFileDescriptor.open(tempFile, ParcelFileDescriptor.MODE_READ_ONLY).use { fd ->
                 PdfRenderer(fd).use { renderer ->
-                    val pageCount = minOf(renderer.pageCount, MAX_INPUT_IMAGES)
+                    val pageCount = minOf(renderer.pageCount, MAX_SCAN_PAGES)
                     for (i in 0 until pageCount) {
                         val bitmap = renderer.openPage(i).use { page ->
                             val width = (page.width * PDF_RENDER_SCALE).toInt()
@@ -152,7 +192,6 @@ internal class PayloadFactory @Inject constructor(
 
         private const val MAX_FILE_SIZE_MB = 20
         private const val MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB.toLong() * 1024 * 1024
-        private const val MAX_INPUT_IMAGES = 3
 
         private const val MAX_IMAGE_DIMENSION = 1536
         private const val JPEG_QUALITY = 85

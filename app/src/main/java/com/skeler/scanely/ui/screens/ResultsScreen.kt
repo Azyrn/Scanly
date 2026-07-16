@@ -226,7 +226,6 @@ fun ResultsScreen() {
                 when {
                     aiState.isProcessing -> {
                         ProcessingContent(
-                            currentFile = aiState.currentFileIndex,
                             totalFiles = aiState.totalFiles,
                             stage = aiState.stage,
                             stageMessage = aiState.stageMessage,

@@ -31,6 +31,7 @@ internal class ProviderExecutor @Inject constructor(
         systemInstruction: String?,
         prompt: String,
         images: List<String>,
+        pdfBase64: String? = null,
         allowStreaming: Boolean,
         emit: suspend (AiEvent) -> Unit
     ): ProviderOutcome {
@@ -66,7 +67,7 @@ internal class ProviderExecutor @Inject constructor(
                         client.stream(config, systemInstruction, prompt, images, streamedAnything, emit)
                     } else {
                         emit(AiEvent.Stage(AiStage.PROCESSING))
-                        client.once(config, systemInstruction, prompt, images)
+                        client.once(config, systemInstruction, prompt, images, pdfBase64)
                     }
                 }
                 aiDebug { "$name attempt ${attempt + 1} ok in ${SystemClock.elapsedRealtime() - start} ms" }

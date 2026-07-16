@@ -171,7 +171,8 @@ internal class ProviderClient @Inject constructor(
         config: ProviderConfig,
         systemInstruction: String?,
         prompt: String,
-        images: List<String>
+        images: List<String>,
+        pdfBase64: String? = null
     ): String = when (config.kind) {
         ProviderKind.OPENAI_COMPAT -> {
             val url = config.url ?: throw FatalAiException(AiResult.Error("Missing endpoint URL"))
@@ -217,45 +218,54 @@ internal class ProviderClient @Inject constructor(
                 ?.trim()
                 .orEmpty()
         }
-        ProviderKind.MISTRAL_OCR -> mistralOcr(config, systemInstruction, prompt, images)
+        ProviderKind.MISTRAL_OCR -> mistralOcr(config, systemInstruction, prompt, images, pdfBase64)
     }
 
     private suspend fun mistralOcr(
         config: ProviderConfig,
         systemInstruction: String?,
         prompt: String,
-        images: List<String>
+        images: List<String>,
+        pdfBase64: String?
     ): String {
-        if (images.isEmpty()) {
-            return once(ProviderConfig.mistralChat(config.apiKey), systemInstruction, prompt, images)
+        // The OCR endpoint takes one document per request, but reads every page of a PDF from it —
+        // so send the source PDF whole rather than one request per rendered page.
+        val document = when {
+            pdfBase64 != null -> MistralDocument(
+                type = "document_url",
+                document_url = "data:application/pdf;base64,$pdfBase64"
+            )
+            images.isNotEmpty() -> MistralDocument(
+                type = "image_url",
+                image_url = "data:image/jpeg;base64,${images.first()}"
+            )
+            else -> return once(
+                ProviderConfig.mistralChat(config.apiKey),
+                systemInstruction,
+                prompt,
+                images
+            )
         }
 
         val auth = "Bearer ${config.apiKey}"
         var model = config.model
-        val results = images.map { base64 ->
-            val document = MistralDocument(
-                type = "image_url",
-                image_url = "data:image/jpeg;base64,$base64"
-            )
-            val response = try {
+        val response = try {
+            mistralApi.ocr(auth, MistralOcrRequest(model, document))
+        } catch (e: HttpException) {
+            if (model == ProviderConfig.MISTRAL_OCR_DEFAULT &&
+                e.code() in 400..499 && e.code() != 429
+            ) {
+                aiDebug { "Mistral $model rejected (HTTP ${e.code()}), trying $MISTRAL_OCR_FALLBACK_MODEL" }
+                model = MISTRAL_OCR_FALLBACK_MODEL
                 mistralApi.ocr(auth, MistralOcrRequest(model, document))
-            } catch (e: HttpException) {
-                if (model == ProviderConfig.MISTRAL_OCR_DEFAULT &&
-                    e.code() in 400..499 && e.code() != 429
-                ) {
-                    aiDebug { "Mistral $model rejected (HTTP ${e.code()}), trying $MISTRAL_OCR_FALLBACK_MODEL" }
-                    model = MISTRAL_OCR_FALLBACK_MODEL
-                    mistralApi.ocr(auth, MistralOcrRequest(model, document))
-                } else {
-                    throw e
-                }
+            } else {
+                throw e
             }
-            response.pages
-                .sortedBy { it.index }
-                .joinToString("\n\n") { it.markdown }
-                .trim()
         }
-        return results.filter { it.isNotEmpty() }.joinToString("\n\n").trim()
+        return response.pages
+            .sortedBy { it.index }
+            .joinToString("\n\n") { it.markdown.trim() }
+            .trim()
     }
 
     companion object {

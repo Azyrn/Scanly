@@ -1,6 +1,6 @@
 # Changelog
 
-## [3.3.0] - 2026-07-14
+## [3.3.0] - 2026-07-14 (versionCode 18)
 ### Added
 - **Barcode scanner controls**: pinch-to-zoom and tap-to-focus, with the scan box lifted clear of the controls
 - **WYSIWYE exports**: exports now match the preview you see on screen
@@ -18,7 +18,34 @@
 - **Open Food Facts**: migrated to API v3
 - **Startup and packaging**: single-ABI packaging, lazier startup, LUT tensor normalization
 
-## [3.2.0] - 2026-01-23
+## [3.2.0] - 2026-07-12 (versionCode 17)
+### Added
+- **Offline OCR engine**: PaddleOCR PP-OCRv6 via ONNX Runtime (detection, recognition, classification,
+  layout) — pure Kotlin, no key, no network
+- **Markdown results view**: Original/Markdown chips and a Compose renderer for tables, headings,
+  emphasis, lists, checkboxes, code and quotes; printing via the system dialog
+- **Exports**: Word (`.docx`), Markdown and JSON alongside PDF and CSV, saved to `Downloads/Scanly`
+- **ZXing barcode engine** and content parser
+- **New launcher branding**, provider logos, and a NOTICE file for attribution
+
+### Fixed
+- Provenance-gated markdown detection; copy/export/print/edit now consistent with the visible view
+- WebView print leak; print rendering moved off the main thread
+- Escaped-pipe and unmatched-marker parsing in the Markdown renderer
+
+## [3.1.3] - 2026-07-09 (versionCode 16)
+### Added
+- **Real provider logos** in the AI Providers screen — brand wordmarks tinted in each provider's color,
+  replacing the generic Material glyphs
+
+### Security
+- **Personal API keys are now encrypted at rest.** Keys you type in (OpenRouter, Gemini, OpenAI, Claude,
+  Mistral, Hugging Face, NVIDIA, Groq, Cerebras, Cloudflare, custom) were stored as plain text in the
+  settings DataStore and were eligible for Android Auto Backup. They are now encrypted with AES-256-GCM
+  backed by the hardware Keystore, and the settings file is excluded from cloud backup and device
+  transfer. Keys saved before this change still work and are upgraded to ciphertext on next save.
+
+## [3.2.0] - 2026-01-23 (versionCode 13, superseded)
 ### Added
 - **Multi-Source Product Lookup**: Books (Google Books, Open Library), Medicine (OpenFDA), Cosmetics (Open Beauty Facts), Pet Food
 - **Empty State Fallbacks**: All product categories now show helpful messages when data is missing

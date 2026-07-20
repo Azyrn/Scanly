@@ -7,6 +7,15 @@ package com.skeler.scanely.core.ocr.paddle
  */
 object RtlText {
 
+    // A blank run wider than this many times the line's own letter pitch is a word gap, not the
+    // space between two joined letters. Arabic is cursive: letters within a word sit a pitch apart,
+    // words a multiple of it — the inverse of Latin, where the intra-word gaps are the wide ones,
+    // which is why this runs only between two Arabic-script neighbours.
+    private const val WORD_GAP_FACTOR = 2.3f
+
+    private const val ARABIC_BLOCK_START = 0x0600
+    private const val ARABIC_BLOCK_END = 0x06FF
+
     private val MIRROR = mapOf(
         '(' to ')', ')' to '(', '[' to ']', ']' to '[',
         '{' to '}', '}' to '{', '<' to '>', '>' to '<', '«' to '»', '»' to '«'
@@ -39,6 +48,39 @@ object RtlText {
             } else if (Character.getDirectionality(c) == Character.DIRECTIONALITY_LEFT_TO_RIGHT) ltr++
         }
         return rtl > ltr
+    }
+
+    private fun isArabicChar(c: Char): Boolean = c.code in ARABIC_BLOCK_START..ARABIC_BLOCK_END
+
+    /**
+     * Rebuilds a line's visual-order text from its CTC characters, restoring the word spaces the
+     * recognizer dropped. The recognizer emits a space glyph at some word boundaries and not others;
+     * where it skipped one it still left the blank timesteps behind, so a gap wider than the line's
+     * typical letter pitch is a missing space. Only ever inserted between two Arabic-script letters,
+     * never beside an existing space or a Latin run, and a no-op on a line of two characters or
+     * fewer. Returns [fallback] when there are no positions to reason about.
+     */
+    fun recoverWordSpaces(chars: List<RecChar>, fallback: String, factor: Float = WORD_GAP_FACTOR): String {
+        if (chars.size < 3) return fallback
+        val ordered = chars.sortedBy { it.x }
+        val gaps = ordered.zipWithNext { a, b -> b.x - a.x }.filter { it > 0f }.sorted()
+        if (gaps.isEmpty()) return fallback
+        val pitch = gaps[gaps.size / 2]
+        val limit = pitch * factor
+
+        val sb = StringBuilder()
+        for (i in ordered.indices) {
+            val c = ordered[i]
+            if (i > 0) {
+                val prev = ordered[i - 1]
+                val split = c.x - prev.x > limit &&
+                    prev.text.isNotBlank() && c.text.isNotBlank() &&
+                    prev.text.all { isArabicChar(it) } && c.text.all { isArabicChar(it) }
+                if (split) sb.append(' ')
+            }
+            sb.append(c.text)
+        }
+        return sb.toString().replace(Regex(" {2,}"), " ")
     }
 
     fun visualToLogical(s: String): String {

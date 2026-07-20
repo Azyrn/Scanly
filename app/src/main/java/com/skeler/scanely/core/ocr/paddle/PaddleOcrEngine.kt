@@ -153,23 +153,29 @@ class PaddleOcrEngine @Inject constructor(
      */
     fun recognizeWithLatin(crops: List<Bitmap>, pack: ScriptPack): List<RecLine> = withSessions {
         val primary = decode(crops, pack)
-        if (pack == ScriptPack.DEFAULT) return@withSessions primary.map { it.toLogical() }
+        if (pack == ScriptPack.DEFAULT) return@withSessions primary.map { it.toLogicalSpaced() }
 
         // A page of nothing but confident Arabic has no Latin hiding in it, and is spared the pass
         // entirely. But once it is worth running, it runs over *every* crop: a batch is padded to
         // its widest member, and padding changes what the model reads, not just where. Handing the
         // second model a subset re-batches the crops and it comes back with different text.
-        if (primary.none { mayHideLatin(it) }) return@withSessions primary.map { it.toLogical() }
+        if (primary.none { mayHideLatin(it) }) return@withSessions primary.map { it.toLogicalSpaced() }
 
         val latin = decode(crops, ScriptPack.DEFAULT)
         primary.mapIndexed { i, line ->
-            ScriptMerge.merge(line, latin[i]).toLogical()
+            ScriptMerge.merge(line, latin[i]).toLogicalSpaced()
         }
     }
 
     // Keyed off the characters, not the pack: any model can emit an RTL run, and the
     // conversion is a no-op on a string that has none.
     private fun RecLine.toLogical() = copy(text = RtlText.visualToLogical(text))
+
+    // The scan path also restores the word spaces the recognizer dropped, from the gaps its own
+    // character positions leave behind. Kept out of [toLogical] so the orientation probes and the
+    // plain [recognize] entry point are unaffected.
+    private fun RecLine.toLogicalSpaced() =
+        copy(text = RtlText.visualToLogical(RtlText.recoverWordSpaces(chars, text)))
 
     /** A confident, wholly-script line has nothing for the Latin model to add. */
     private fun mayHideLatin(line: RecLine): Boolean = line.chars.any { c ->

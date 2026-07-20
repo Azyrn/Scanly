@@ -94,6 +94,19 @@ class ScriptMergeTest {
         }
     }
 
+    /** The Instagram overlay line that came back as "RRepost": the primary read the "R" too, but
+     *  reported it further left than the Latin model, just outside the run's padded span. */
+    @Test
+    fun primaryEchoOfARunsEdgeLetterDoesNotDoubleIt() {
+        val primary = chars(
+            Triple("R", 0.03f, 0.70f), Triple(" ", 0.25f, 0.90f),
+            Triple("ب", 0.30f, 0.50f), Triple("س", 0.34f, 0.45f)
+        )
+        val latin = line("Repost", from = 0.06f, pitch = 0.02f, confidence = 0.96f)
+
+        assertEquals("Repost بس", ScriptMerge.merge(primary, latin).text.trim())
+    }
+
     @Test
     fun aLineWithNoLatinIsReturnedUntouched() {
         val primary = line("مرحبا", confidence = 0.98f)

@@ -43,6 +43,12 @@ object ScriptMerge {
     // The primary's kept space can land beside the run's own, and two spaces are never wanted.
     private val DOUBLE_SPACE = Regex(" {2,}")
 
+    // The two models disagree slightly on where the same character sits, so the primary's own
+    // reading of a run's first letter can land just outside the padded span and survive as a
+    // doubled letter ("Repost" came back as "RRepost"). Latin the primary read this close to a
+    // run is its echo of the run itself, never a separate word — a separate word is its own run.
+    private const val LATIN_ECHO_MARGIN = 0.035f
+
     /**
      * [primary] is the script model's reading, [latin] the universal model's reading of the same
      * crop. Both must be raw CTC output in visual order.
@@ -58,7 +64,11 @@ object ScriptMerge {
         // "تعديلOriginal"), so a space is only dropped where the run itself already carries one:
         // inside the word, never at its edge.
         val kept = primary.chars.filterNot { c ->
-            if (c.text.isBlank()) runs.any { it.coversCore(c.x) } else runs.any { it.covers(c.x) }
+            when {
+                c.text.isBlank() -> runs.any { it.coversCore(c.x) }
+                isLatin(c.text) -> runs.any { it.coversEcho(c.x) }
+                else -> runs.any { it.covers(c.x) }
+            }
         }
         val merged = (kept + runs.map { it.asChar(latin.chars) }).sortedBy { it.x }
         val text = merged.joinToString("") { it.text }.replace(DOUBLE_SPACE, " ")
@@ -78,6 +88,9 @@ object ScriptMerge {
 
         /** The word itself, without the margin either side of it. */
         fun coversCore(x: Float) = x in chars.first().x..chars.last().x
+
+        fun coversEcho(x: Float) =
+            x in (chars.first().x - LATIN_ECHO_MARGIN)..(chars.last().x + LATIN_ECHO_MARGIN)
 
         /**
          * The run's text, spaces included — but only the spaces the model itself emitted inside

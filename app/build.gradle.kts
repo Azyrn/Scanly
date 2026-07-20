@@ -257,6 +257,7 @@ dependencies {
     // android.jar's org.json is a throwing stub; the real one lets us unit-test JSON export.
     testImplementation(libs.json)
     androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.litertlm.android)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)

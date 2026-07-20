@@ -20,6 +20,7 @@ zxingcpp = "3.1.0"
 mlkitTextRecognition = "16.0.1"
 mlkitDocumentScanner = "16.0.0"
 onnxruntime = "1.27.0"
+litertlm = "0.14.0"
 material3 = "1.5.0-alpha23"
 datastore = "1.2.1"
 hilt = "2.60.1"
@@ -79,6 +80,7 @@ zxing-cpp = { group = "io.github.zxing-cpp", name = "android", version.ref = "zx
 mlkit-text-recognition = { group = "com.google.mlkit", name = "text-recognition", version.ref = "mlkitTextRecognition" }
 mlkit-document-scanner = { group = "com.google.android.gms", name = "play-services-mlkit-document-scanner", version.ref = "mlkitDocumentScanner" }
 onnxruntime-android = { group = "com.microsoft.onnxruntime", name = "onnxruntime-android", version.ref = "onnxruntime" }
+litertlm-android = { group = "com.google.ai.edge.litertlm", name = "litertlm-android", version.ref = "litertlm" }
 # DataStore
 datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }

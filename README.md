@@ -13,6 +13,27 @@
 
 An Android scanner for documents, barcodes, and QR codes.
 
+## Preview
+
+<table>
+  <thead>
+    <tr>
+      <th align="center">Before</th>
+      <th align="center">After</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td align="center"><img src="docs/screenshots/legal-page-before.jpg" alt="Legal document before scanning" width="360"></td>
+      <td align="center"><img src="docs/screenshots/legal-page-after.jpg" alt="Legal document extracted by Scanly" width="360"></td>
+    </tr>
+    <tr>
+      <td align="center"><img src="docs/screenshots/arabic-page-before.jpg" alt="Arabic article before scanning" width="360"></td>
+      <td align="center"><img src="docs/screenshots/arabic-page-after.jpg" alt="Arabic article extracted by Scanly" width="360"></td>
+    </tr>
+  </tbody>
+</table>
+
 **Works with the radio off.** The default engine is **PaddleOCR PP-OCRv6**, on-device via ONNX
 Runtime. No key, no account, no network — scanning, layout detection, table recognition, and every
 export work in airplane mode. Nine script packs; Latin/Chinese/Japanese and Arabic ship in the APK,

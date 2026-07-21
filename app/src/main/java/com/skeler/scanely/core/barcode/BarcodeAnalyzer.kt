@@ -225,7 +225,9 @@ class BarcodeAnalyzer(
             }
 
             Barcode.TYPE_GEO -> {
-                actions.add(ScanAction.OpenUrl("geo:${barcode.geoPoint?.lat},${barcode.geoPoint?.lng}"))
+                barcode.geoPoint?.let { geo ->
+                    actions.add(ScanAction.OpenUrl("geo:${geo.lat},${geo.lng}"))
+                }
             }
 
             Barcode.TYPE_CALENDAR_EVENT -> {

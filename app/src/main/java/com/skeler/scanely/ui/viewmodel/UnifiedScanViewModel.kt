@@ -1,6 +1,7 @@
 package com.skeler.scanely.ui.viewmodel
 
 import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.skeler.scanely.core.actions.ScanAction
@@ -10,12 +11,17 @@ import com.skeler.scanely.core.ocr.TextBlockData
 import com.skeler.scanely.core.scan.UnifiedScanService
 import com.skeler.scanely.history.data.HistoryManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
+
+private const val TAG = "UnifiedScanViewModel"
 
 @HiltViewModel
 class UnifiedScanViewModel @Inject constructor(
@@ -38,10 +44,6 @@ class UnifiedScanViewModel @Inject constructor(
             val success = result.textResult as? OcrResult.Success
             val extractedText = success?.text
 
-            if (extractedText != null) {
-                historyManager.saveItem(extractedText, uri.toString())
-            }
-
             _uiState.value = UnifiedScanUiState(
                 isLoading = false,
                 extractedText = extractedText,
@@ -54,6 +56,18 @@ class UnifiedScanViewModel @Inject constructor(
                 hasBarcodes = result.hasBarcodes,
                 isEmpty = result.isEmpty
             )
+
+            if (extractedText != null) {
+                try {
+                    withContext(Dispatchers.IO) {
+                        historyManager.saveItem(extractedText, uri.toString())
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Log.e(TAG, "History save failed", e)
+                }
+            }
         }
     }
 

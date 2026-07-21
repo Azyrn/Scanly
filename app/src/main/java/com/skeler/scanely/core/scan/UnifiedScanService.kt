@@ -271,7 +271,9 @@ class UnifiedScanService @Inject constructor(
                 } ?: ScanAction.CopyText(rawValue, "Copy")
             }
             Barcode.TYPE_GEO -> {
-                ScanAction.OpenUrl("geo:${barcode.geoPoint?.lat},${barcode.geoPoint?.lng}")
+                barcode.geoPoint?.let { geo ->
+                    ScanAction.OpenUrl("geo:${geo.lat},${geo.lng}")
+                } ?: ScanAction.CopyText(rawValue, "Copy")
             }
             Barcode.TYPE_CALENDAR_EVENT -> {
                 barcode.calendarEvent?.let { event ->

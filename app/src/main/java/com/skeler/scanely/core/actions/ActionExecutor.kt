@@ -20,6 +20,15 @@ import java.util.Locale
 import java.util.TimeZone
 
 private const val TAG = "ActionExecutor"
+private val HAS_SCHEME = Regex("^[a-zA-Z][a-zA-Z0-9+-]*:")
+
+internal fun ensureScheme(url: String): String {
+    val trimmed = url.trim()
+    if (!HAS_SCHEME.containsMatchIn(trimmed)) return "https://$trimmed"
+
+    val schemeEnd = trimmed.indexOf(':') + 1
+    return trimmed.substring(0, schemeEnd).lowercase(Locale.ROOT) + trimmed.substring(schemeEnd)
+}
 
 object ActionExecutor {
 
@@ -58,11 +67,7 @@ object ActionExecutor {
 
     private fun openUrl(context: Context, url: String) {
         tryAction(context, "Cannot open URL") {
-            var finalUrl = url
-            if (!url.startsWith("http://") && !url.startsWith("https://")) {
-                finalUrl = "https://$url"
-            }
-            val intent = Intent(Intent.ACTION_VIEW, finalUrl.toUri())
+            val intent = Intent(Intent.ACTION_VIEW, ensureScheme(url).toUri())
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(intent)
         }

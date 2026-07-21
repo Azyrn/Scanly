@@ -218,8 +218,11 @@ class PaddleOcrService @Inject constructor(
     /**
      * Whether the page reads better turned over. Recognition decides it, not the orientation
      * classifier: only the recogniser knows what text is supposed to look like, and it scores an
-     * upside-down page roughly a third of an upright one. Costs two batches on a sample of the
-     * widest lines, and needs a clear margin to act, so an ambiguous page stays as it was shot.
+     * upside-down page roughly a third of an upright one. Every bundled pack votes rather than the
+     * first to cross the floor — the selected pack may be the wrong script for this page, scoring
+     * its own confident nonsense in one orientation, and on its own would turn the page over. The
+     * pack that truly reads this script scores far higher, so the strongest read wins. Costs a
+     * couple of batches on a sample of the widest lines, and needs a clear margin to act.
      */
     @VisibleForTesting
     internal fun isUpsideDown(crops: List<Bitmap>, pack: ScriptPack): Boolean {
@@ -230,20 +233,15 @@ class PaddleOcrService @Inject constructor(
 
         val flipped = sample.map { ImageOps.rotate180(it) }
         try {
-            // The selected pack may be the wrong script for this page, which would leave both
-            // orientations scoring nothing; the other bundled packs then get to cast the vote.
-            val candidates = listOf(pack) + ScriptPack.entries.filter { it.isBundled && it != pack }
-            var upright = 0f
-            var upsideDown = 0f
-            for (candidate in candidates) {
-                upright = maxOf(upright, orientationScore(engine.recognize(sample, candidate)))
-                upsideDown = maxOf(upsideDown, orientationScore(engine.recognize(flipped, candidate)))
-                if (maxOf(upright, upsideDown) >= ORIENTATION_MIN_SCORE) break
-            }
-            if (maxOf(upright, upsideDown) < ORIENTATION_MIN_SCORE) return false
-
-            val flip = upsideDown > upright * FLIP_MARGIN
-            if (flip) Log.d(TAG, "Page is upside down ($upsideDown vs $upright); rotating 180")
+            val reads = (listOf(pack) + ScriptPack.entries.filter { it.isBundled && it != pack })
+                .map { candidate ->
+                    OrientationRead(
+                        orientationScore(engine.recognize(sample, candidate)),
+                        orientationScore(engine.recognize(flipped, candidate))
+                    )
+                }
+            val flip = isPageUpsideDown(reads)
+            if (flip) Log.d(TAG, "Page is upside down; rotating 180")
             return flip
         } finally {
             flipped.forEach { it.recycle() }
@@ -405,6 +403,21 @@ class PaddleOcrService @Inject constructor(
         }
         return sb.toString()
     }
+}
+
+internal class OrientationRead(val upright: Float, val flipped: Float)
+
+/**
+ * A 180 flip decided from every bundled pack's upright/flipped score. Taken over the strongest
+ * read of each orientation across packs, so a wrong-script pack scoring confident nonsense in one
+ * orientation cannot turn the page over on its own; only a clear margin acts, so an ambiguous or
+ * unreadable page is left as it was shot.
+ */
+internal fun isPageUpsideDown(reads: List<OrientationRead>): Boolean {
+    val upright = reads.maxOfOrNull { it.upright } ?: 0f
+    val flipped = reads.maxOfOrNull { it.flipped } ?: 0f
+    if (maxOf(upright, flipped) < ORIENTATION_MIN_SCORE) return false
+    return flipped > upright * FLIP_MARGIN
 }
 
 /** Confident characters in a read: a garbled or wrong-script line is both shorter and less certain. */

@@ -70,7 +70,7 @@ class GenerativeAiService @Inject internal constructor(
                 val outcome = executor.run(
                     name = prov.displayName,
                     config = config,
-                    systemInstruction = AiPrompts.SYSTEM_INSTRUCTION,
+                    systemInstruction = AiPrompts.systemFor(mode),
                     prompt = payload.prompt,
                     images = sent.images,
                     pdfBase64 = sent.pdfBase64,

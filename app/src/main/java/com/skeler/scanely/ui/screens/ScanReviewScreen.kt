@@ -79,9 +79,17 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.skeler.scanely.R
 import com.skeler.scanely.core.image.ScanFilter
 import com.skeler.scanely.core.pdf.ScanExporter
+import com.skeler.scanely.core.text.FilenameSuggester
 import com.skeler.scanely.navigation.LocalNavController
+import com.skeler.scanely.ui.components.ExportNameDialog
 import com.skeler.scanely.ui.viewmodel.DocumentScanViewModel
 import com.skeler.scanely.ui.viewmodel.FilterPreview
+
+private enum class ScanExportChoice(val extension: String) {
+    PDF("pdf"),
+    WORD("docx"),
+    IMAGES("jpg")
+}
 
 @Composable
 fun ScanReviewScreen() {
@@ -93,6 +101,7 @@ fun ScanReviewScreen() {
     val snackbarHostState = remember { SnackbarHostState() }
 
     var showExportSheet by remember { mutableStateOf(false) }
+    var pendingExport by remember { mutableStateOf<ScanExportChoice?>(null) }
     var pendingDelete by remember { mutableStateOf<Int?>(null) }
 
     val pages = state.pages
@@ -204,18 +213,34 @@ fun ScanReviewScreen() {
         ExportSheet(
             pageCount = pages.size,
             onPdf = {
-                showExportSheet = false;
-                vm.exportPdf()
+                showExportSheet = false
+                pendingExport = ScanExportChoice.PDF
             },
             onWord = {
-                showExportSheet = false;
-                vm.exportWord()
+                showExportSheet = false
+                pendingExport = ScanExportChoice.WORD
             },
             onImages = {
-                showExportSheet = false;
-                vm.saveImages()
+                showExportSheet = false
+                pendingExport = ScanExportChoice.IMAGES
             },
             onDismiss = { showExportSheet = false }
+        )
+    }
+
+    pendingExport?.let { choice ->
+        ExportNameDialog(
+            suggestion = FilenameSuggester.FALLBACK,
+            extension = choice.extension,
+            onDismiss = { pendingExport = null },
+            onConfirm = { name ->
+                pendingExport = null
+                when (choice) {
+                    ScanExportChoice.PDF -> vm.exportPdf(name)
+                    ScanExportChoice.WORD -> vm.exportWord(name)
+                    ScanExportChoice.IMAGES -> vm.saveImages(name)
+                }
+            }
         )
     }
 

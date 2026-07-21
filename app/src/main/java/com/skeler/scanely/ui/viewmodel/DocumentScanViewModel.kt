@@ -23,8 +23,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.text.SimpleDateFormat
-import java.util.Locale
 import javax.inject.Inject
 import kotlin.math.max
 
@@ -149,19 +147,19 @@ class DocumentScanViewModel @Inject constructor(
         buildPreviews(index.coerceAtMost(originals.lastIndex))
     }
 
-    fun exportPdf() = export(ScanExportFormat.PDF)
+    fun exportPdf(name: String) = export(ScanExportFormat.PDF, name)
 
-    fun exportWord() = export(ScanExportFormat.WORD)
+    fun exportWord(name: String) = export(ScanExportFormat.WORD, name)
 
-    private fun export(format: ScanExportFormat) {
+    private fun export(format: ScanExportFormat, name: String) {
         val pages = _uiState.value.pages
         if (pages.isEmpty() || _uiState.value.isExporting) return
         _uiState.update { it.copy(isExporting = true) }
         viewModelScope.launch {
             val result = runCatching {
                 when (format) {
-                    ScanExportFormat.PDF -> ScanExporter.exportPdf(appContext, pages, timestampName())
-                    ScanExportFormat.WORD -> ScanExporter.exportWord(appContext, pages, timestampName())
+                    ScanExportFormat.PDF -> ScanExporter.exportPdf(appContext, pages, name)
+                    ScanExportFormat.WORD -> ScanExporter.exportWord(appContext, pages, name)
                 }
             }
             _uiState.update {
@@ -182,13 +180,13 @@ class DocumentScanViewModel @Inject constructor(
         }
     }
 
-    fun saveImages() {
+    fun saveImages(name: String) {
         val pages = _uiState.value.pages
         if (pages.isEmpty() || _uiState.value.isExporting) return
         _uiState.update { it.copy(isExporting = true) }
         viewModelScope.launch {
             val count = runCatching {
-                ScanExporter.saveImagesToGallery(appContext, pages, timestampName())
+                ScanExporter.saveImagesToGallery(appContext, pages, name)
             }.getOrDefault(0)
             _uiState.update {
                 it.copy(
@@ -293,7 +291,4 @@ class DocumentScanViewModel @Inject constructor(
         if (rotated != bitmap) bitmap.recycle()
         return rotated
     }
-
-    private fun timestampName(): String =
-        "Scan_" + SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(System.currentTimeMillis())
 }

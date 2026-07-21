@@ -3,14 +3,17 @@ package com.skeler.scanely.ui.components
 import android.content.Context
 import android.widget.Toast
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import com.skeler.scanely.core.ocr.TextBlockData
 import com.skeler.scanely.core.pdf.ScanExporter
+import com.skeler.scanely.core.text.FilenameSuggester
 import com.skeler.scanely.core.text.TextTables
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Locale
 
 enum class TextExportFormat(val mimeType: String, val extension: String, val label: String) {
     PDF(ScanExporter.PDF_MIME_TYPE, "pdf", "Save as PDF"),
@@ -49,11 +52,34 @@ fun unavailableFormats(content: ExportContent): Set<TextExportFormat> =
         setOf(TextExportFormat.CSV)
     }
 
-/** Writes straight to Downloads/Scanly (like the image exports), then offers to share. */
+private class PendingExport(
+    val content: ExportContent,
+    val format: TextExportFormat,
+    val rows: List<List<String>>,
+    val suggestedName: String
+)
+
+/**
+ * Prompts with an offline-derived filename, then writes straight to Downloads/Scanly (like the
+ * image exports) and offers to share.
+ */
 @Composable
 fun rememberTextExporter(): (ExportContent, TextExportFormat) -> Unit {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    var pending by remember { mutableStateOf<PendingExport?>(null) }
+
+    pending?.let { export ->
+        ExportNameDialog(
+            suggestion = export.suggestedName,
+            extension = export.format.extension,
+            onDismiss = { pending = null },
+            onConfirm = { name ->
+                pending = null
+                scope.launch { write(context, export, name) }
+            }
+        )
+    }
 
     return exporter@{ content: ExportContent, format: TextExportFormat ->
         val text = content.text
@@ -70,36 +96,38 @@ fun rememberTextExporter(): (ExportContent, TextExportFormat) -> Unit {
             toast(context, "No table data to export")
             return@exporter
         }
-        scope.launch {
-            runCatching {
-                val name = timestampName()
-                when (format) {
-                    TextExportFormat.PDF ->
-                        ScanExporter.exportTextPdf(context, text, content.isMarkdown, name)
-                    TextExportFormat.WORD ->
-                        ScanExporter.exportTextWord(context, text, content.isMarkdown, name)
-                    TextExportFormat.MARKDOWN ->
-                        ScanExporter.exportTextMarkdown(context, text, name)
-                    TextExportFormat.CSV ->
-                        ScanExporter.exportTextCsv(context, rows, name)
-                    TextExportFormat.JSON ->
-                        ScanExporter.exportTextJson(context, text, content.blocks, name)
-                }
-            }.fold(
-                onSuccess = { uri ->
-                    toast(context, "Saved to Downloads/Scanly")
-                    ScanExporter.shareDocument(context, uri, format.mimeType)
-                },
-                onFailure = {
-                    toast(context, "Couldn't save ${format.name}")
-                }
-            )
-        }
+        pending = PendingExport(content, format, rows, FilenameSuggester.suggest(text))
     }
+}
+
+private suspend fun write(context: Context, export: PendingExport, name: String) {
+    val content = export.content
+    val text = content.text
+    val format = export.format
+
+    runCatching {
+        when (format) {
+            TextExportFormat.PDF ->
+                ScanExporter.exportTextPdf(context, text, content.isMarkdown, name)
+            TextExportFormat.WORD ->
+                ScanExporter.exportTextWord(context, text, content.isMarkdown, name)
+            TextExportFormat.MARKDOWN ->
+                ScanExporter.exportTextMarkdown(context, text, name)
+            TextExportFormat.CSV ->
+                ScanExporter.exportTextCsv(context, export.rows, name)
+            TextExportFormat.JSON ->
+                ScanExporter.exportTextJson(context, text, content.blocks, name)
+        }
+    }.fold(
+        onSuccess = { uri ->
+            toast(context, "Saved to Downloads/Scanly")
+            ScanExporter.shareDocument(context, uri, format.mimeType)
+        },
+        onFailure = {
+            toast(context, "Couldn't save ${format.name}")
+        }
+    )
 }
 
 private fun toast(context: Context, message: String) =
     Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-
-private fun timestampName(): String =
-    "Text_" + SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(System.currentTimeMillis())

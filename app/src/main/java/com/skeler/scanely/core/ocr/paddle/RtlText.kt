@@ -50,6 +50,23 @@ object RtlText {
         return rtl > ltr
     }
 
+    /**
+     * Share of a string's directional characters that are right-to-left. Digits and neutrals are
+     * not counted (as in [isRtlDominant]), so a Latin-with-numbers header does not read as an RTL
+     * page and a bilingual ID card stays well below a full Arabic page.
+     */
+    fun rtlFraction(s: String): Float {
+        var rtl = 0
+        var strong = 0
+        for (c in s) {
+            when {
+                isRtl(c) -> { rtl++; strong++ }
+                Character.getDirectionality(c) == Character.DIRECTIONALITY_LEFT_TO_RIGHT -> strong++
+            }
+        }
+        return if (strong == 0) 0f else rtl.toFloat() / strong
+    }
+
     private fun isArabicChar(c: Char): Boolean = c.code in ARABIC_BLOCK_START..ARABIC_BLOCK_END
 
     /**

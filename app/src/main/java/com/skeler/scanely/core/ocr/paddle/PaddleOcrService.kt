@@ -33,6 +33,17 @@ private const val FLIP_MARGIN = 1.15f
 // there is nothing to base a decision on, so the page is left as it is.
 private const val ORIENTATION_MIN_SCORE = 3f
 
+// At or above this confident-character density (per detected line) the page is a genuine Latin
+// read the universal pack has nothing better to offer, so the other bundled packs are skipped.
+// A real Latin page runs 40+; an Arabic page misread on the universal pack stays under 10.
+private const val DENSE_CHARS_PER_LINE = 25
+
+// A candidate read only displaces the primary when this much of its directional text is RTL. The
+// universal model can misread an Arabic scan as confident Latin or CJK that a line count cannot
+// tell from real text; a page's worth of RTL is the one thing a real Latin page cannot fake. A
+// bilingual ID card sits near 0.5, a genuine Arabic page at 0.75+.
+private const val MIN_RTL_FRACTION = 0.6f
+
 /** Offline PP-OCR pipeline: orient -> dewarp -> detect -> deskew lines -> recognize. */
 @Singleton
 class PaddleOcrService @Inject constructor(
@@ -101,9 +112,7 @@ class PaddleOcrService @Inject constructor(
             }
 
             var recognized = engine.recognizeWithLatin(crops, pack)
-            if (looksLikeWrongScript(recognized, crops.size)) {
-                recognized = retryOtherBundledPacks(crops, pack, recognized)
-            }
+            recognized = preferBundledScript(crops, pack, recognized)
             crops.forEach { it.recycle() }
             crops = emptyList()
 
@@ -249,36 +258,29 @@ class PaddleOcrService @Inject constructor(
     }
 
     /**
-     * A recognition model can only emit the glyphs in its own dictionary: the universal
-     * model has no Arabic, the Arabic model no CJK. Scan an Arabic page on the default pack
-     * and detection finds every line while recognition returns near-nothing — so a page that
-     * detected well but recognized badly is a script mismatch, not an unreadable page.
+     * The chosen pack can misread a whole page in the wrong alphabet: the universal model turns an
+     * Arabic scan into confident Latin or CJK nonsense that a line count cannot tell from a real
+     * Latin page. So unless the primary is already a dense Latin read, the other bundled packs get
+     * a turn, and the strongest right-to-left read wins — recovering the Arabic page while a real
+     * Latin page keeps its own read, since no alternative clears the RTL bar. Both bundled packs
+     * are on-device, so this costs a second pass, never a download.
      */
-    private fun looksLikeWrongScript(lines: List<RecLine>, detected: Int): Boolean =
-        lines.count { it.confidence >= MIN_CONFIDENCE && it.text.isNotBlank() } * 2 < detected
-
-    /** Both fallbacks are bundled, so a wrong-script page costs a second pass, never a download. */
-    private fun retryOtherBundledPacks(
+    private fun preferBundledScript(
         crops: List<Bitmap>,
         used: ScriptPack,
-        first: List<RecLine>
+        primary: List<RecLine>
     ): List<RecLine> {
-        var best = first
-        var bestScore = recognizedChars(first)
+        if (crops.isEmpty() || isDenseLatinRead(primary, crops.size)) return primary
+        var best = primary
         for (pack in ScriptPack.entries.filter { it.isBundled && it != used }) {
-            val lines = engine.recognizeWithLatin(crops, pack)
-            val score = recognizedChars(lines)
-            if (score > bestScore) {
-                best = lines
-                bestScore = score
-                Log.d(TAG, "Script fallback: ${used.id} -> ${pack.id} ($score chars)")
+            val candidate = engine.recognizeWithLatin(crops, pack)
+            if (isBetterScriptRead(best, candidate)) {
+                best = candidate
+                Log.d(TAG, "Script switch: ${used.id} -> ${pack.id}")
             }
         }
         return best
     }
-
-    private fun recognizedChars(lines: List<RecLine>): Int =
-        lines.sumOf { if (it.confidence >= MIN_CONFIDENCE) it.text.trim().length else 0 }
 
     /**
      * The PP-StructureV3 subset that fits on a phone: layout regions from PP-DocLayout-S,
@@ -404,3 +406,20 @@ class PaddleOcrService @Inject constructor(
         return sb.toString()
     }
 }
+
+/** Confident characters in a read: a garbled or wrong-script line is both shorter and less certain. */
+internal fun recognizedChars(lines: List<RecLine>): Int =
+    lines.sumOf { if (it.confidence >= MIN_CONFIDENCE) it.text.trim().length else 0 }
+
+/** A dense confident read is a genuine Latin page; the universal pack has nothing better to offer. */
+internal fun isDenseLatinRead(primary: List<RecLine>, detectedLines: Int): Boolean =
+    recognizedChars(primary) >= DENSE_CHARS_PER_LINE * detectedLines
+
+/**
+ * Whether [candidate] should replace [current]: it must recover more confident text *and* be
+ * substantially right-to-left. The extra-text test alone would flip a bilingual card onto the
+ * Arabic pack; the RTL test is the guard a real Latin page can never clear.
+ */
+internal fun isBetterScriptRead(current: List<RecLine>, candidate: List<RecLine>): Boolean =
+    recognizedChars(candidate) > recognizedChars(current) &&
+        RtlText.rtlFraction(candidate.joinToString("") { it.text }) >= MIN_RTL_FRACTION

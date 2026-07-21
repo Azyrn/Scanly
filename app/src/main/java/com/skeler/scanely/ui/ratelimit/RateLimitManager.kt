@@ -49,9 +49,10 @@ class RateLimitManager @Inject constructor(
 
     // One failed write must not cancel later persistence.
     private val persistenceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val managerScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
-    fun restoreState(scope: CoroutineScope) {
-        scope.launch {
+    fun restoreState() {
+        managerScope.launch {
             try {
                 val savedTimestamp =
                     settingsDataStore.longFlow(SettingsKeys.LAST_AI_REQUEST_TIMESTAMP).first()
@@ -63,10 +64,11 @@ class RateLimitManager @Inject constructor(
                     savedTimestamp > 0 && elapsed < RATE_LIMIT_MS -> {
                         cooldownStartTimestamp = savedTimestamp
                         val remaining = ((RATE_LIMIT_MS - elapsed) / 1000L).toInt().coerceAtLeast(1)
-                        runCooldown(scope, remaining)
+                        runCooldown(remaining)
                         Log.d(TAG, "Restored cooldown: ${remaining}s remaining")
                     }
                     savedTimestamp > 0 -> {
+                        _rateLimitState.value = RateLimitState()
                         persistState(0L, 0)
                         Log.d(TAG, "Cooldown expired, state reset")
                     }
@@ -81,15 +83,15 @@ class RateLimitManager @Inject constructor(
         }
     }
 
-    fun startCooldown(scope: CoroutineScope) {
+    fun startCooldown() {
         cooldownStartTimestamp = System.currentTimeMillis()
         persistState(cooldownStartTimestamp, MAX_REQUESTS_BEFORE_COOLDOWN)
-        runCooldown(scope, RATE_LIMIT_SECONDS)
+        runCooldown(RATE_LIMIT_SECONDS)
     }
 
-    private fun runCooldown(scope: CoroutineScope, startRemaining: Int) {
+    private fun runCooldown(startRemaining: Int) {
         cooldownJob?.cancel()
-        cooldownJob = scope.launch(Dispatchers.Main) {
+        cooldownJob = managerScope.launch {
             var remaining = startRemaining
 
             _rateLimitState.value = RateLimitState(
@@ -124,18 +126,19 @@ class RateLimitManager @Inject constructor(
         }
     }
 
-    fun triggerWithRateLimit(scope: CoroutineScope, onAllowed: () -> Unit): Boolean {
-        if (_rateLimitState.value.remainingSeconds > 0) {
-            _showRateLimitSheet.value = true
-            return false
-        }
-
+    fun triggerWithRateLimit(onAllowed: () -> Unit): Boolean {
         if (cooldownStartTimestamp > 0 &&
             System.currentTimeMillis() - cooldownStartTimestamp >= RATE_LIMIT_MS
         ) {
+            cooldownJob?.cancel()
             cooldownStartTimestamp = 0L
-            _rateLimitState.value = RateLimitState(requestCount = 0)
+            _rateLimitState.value = RateLimitState()
             persistState(0L, 0)
+        }
+
+        if (_rateLimitState.value.remainingSeconds > 0) {
+            _showRateLimitSheet.value = true
+            return false
         }
 
         val newCount = _rateLimitState.value.requestCount + 1
@@ -145,7 +148,7 @@ class RateLimitManager @Inject constructor(
         _rateLimitState.value = _rateLimitState.value.copy(requestCount = newCount)
         if (newCount >= MAX_REQUESTS_BEFORE_COOLDOWN) {
             _showRateLimitSheet.value = true
-            startCooldown(scope)
+            startCooldown()
         } else {
             persistState(0L, newCount)
         }
@@ -168,10 +171,6 @@ class RateLimitManager @Inject constructor(
             requestCount = MAX_REQUESTS_BEFORE_COOLDOWN - 1
         )
         persistState(0L, MAX_REQUESTS_BEFORE_COOLDOWN - 1)
-    }
-
-    fun cancelCooldown() {
-        cooldownJob?.cancel()
     }
 
     private fun persistState(timestamp: Long, count: Int) {

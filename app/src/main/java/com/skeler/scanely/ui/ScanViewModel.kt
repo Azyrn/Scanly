@@ -81,7 +81,7 @@ class ScanViewModel @Inject constructor(
     val isRewardedAdAvailable: StateFlow<Boolean> = rewardedAdManager.isAdAvailable
 
     init {
-        rateLimitManager.restoreState(viewModelScope)
+        rateLimitManager.restoreState()
         rewardedAdManager.preload()
     }
 
@@ -101,7 +101,7 @@ class ScanViewModel @Inject constructor(
             onAllowed()
             return true
         }
-        return rateLimitManager.triggerWithRateLimit(viewModelScope, onAllowed)
+        return rateLimitManager.triggerWithRateLimit(onAllowed)
     }
 
     fun onNewScanSelected() {
@@ -131,10 +131,5 @@ class ScanViewModel @Inject constructor(
     fun clearState() {
         historyItemId = null
         stateHolder.reset()
-    }
-
-    override fun onCleared() {
-        super.onCleared()
-        rateLimitManager.cancelCooldown()
     }
 }

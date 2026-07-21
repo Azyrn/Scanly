@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -46,13 +45,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import coil.compose.AsyncImage
 import com.skeler.scanely.BuildConfig
 import com.skeler.scanely.R
 import com.skeler.scanely.core.barcode.BarcodeEngine
@@ -61,10 +58,11 @@ import com.skeler.scanely.navigation.LocalNavController
 import com.skeler.scanely.navigation.Routes
 import com.skeler.scanely.settings.data.SettingsKeys
 import com.skeler.scanely.settings.presentation.viewmodel.SettingsViewModel
-import com.skeler.scanely.ui.components.SettingsGroup
-import com.skeler.scanely.ui.components.SettingsNavTile
-import com.skeler.scanely.ui.components.SettingsSectionHeader
-import com.skeler.scanely.ui.components.SettingsTileDivider
+import com.skeler.scanely.ui.components.SettingsItem
+import com.skeler.scanely.ui.components.SettingsListSection
+
+private const val SOURCE_URL = "https://github.com/Azyrn/Scanly"
+private const val TELEGRAM_URL = "https://telegram.me/ScanlyOCR"
 
 @Composable
 fun SettingsScreen(
@@ -82,11 +80,18 @@ fun SettingsScreen(
         .collectAsState(initial = TextOcrEngine.DEFAULT.id)
     val textEngine = TextOcrEngine.fromId(textEngineId)
 
+    val contributors = remember {
+        listOf(
+            Contributor("Azyrn", "Azyrn", "Developer"),
+            Contributor("DP-Hridayan", "DP-Hridayan", "Contributor")
+        )
+    }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
-                title = { Text("Settings", fontWeight = FontWeight.Bold) },
+                title = { Text("Settings", fontWeight = FontWeight.SemiBold) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
@@ -102,125 +107,91 @@ fun SettingsScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding),
-            contentPadding = PaddingValues(bottom = 48.dp)
+                .padding(innerPadding)
+                .padding(horizontal = 16.dp),
+            contentPadding = PaddingValues(top = 8.dp, bottom = 40.dp),
+            verticalArrangement = Arrangement.spacedBy(28.dp)
         ) {
             item {
-                SettingsSectionHeader(
-                    text = "Customize",
-                    modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 8.dp)
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                SettingsGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
-                    SettingsNavTile(
-                        title = "Look & Feel",
-                        subtitle = "Color palette, dark theme, pure black",
-                        icon = Icons.Rounded.FormatPaint,
-                        onClick = { navController.navigate(Routes.LOOK_AND_FEEL) }
-                    )
-                    SettingsTileDivider()
-                    SettingsNavTile(
-                        title = "AI Providers",
-                        subtitle = "API keys for Gemini & OpenRouter",
-                        icon = Icons.Rounded.Hub,
-                        onClick = { navController.navigate(Routes.AI_PROVIDERS) }
-                    )
-                    SettingsTileDivider()
-                    SettingsNavTile(
-                        title = "Text Recognition",
-                        subtitle = "${textEngine.displayName} · scripts & preprocessing",
-                        icon = Icons.Rounded.TextFields,
-                        onClick = { navController.navigate(Routes.TEXT_RECOGNITION) }
-                    )
-                    SettingsTileDivider()
-                    SettingsNavTile(
-                        title = "Barcode Scanner Engine",
-                        subtitle = barcodeEngine.displayName,
-                        icon = Icons.Rounded.QrCodeScanner,
-                        onClick = { showEngineDialog = true }
-                    )
-                }
-            }
-
-            item { Spacer(modifier = Modifier.height(32.dp)) }
-
-            item {
-                SettingsSectionHeader(
-                    text = "About",
-                    modifier = Modifier.padding(horizontal = 24.dp)
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                SettingsGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
-                    SettingsNavTile(
-                        title = "Source code",
-                        subtitle = "github.com/Azyrn/Scanly",
-                        iconPainter = painterResource(id = R.drawable.ic_github),
-                        trailingIcon = Icons.AutoMirrored.Rounded.OpenInNew,
-                        onClick = { uriHandler.openUri("https://github.com/Azyrn/Scanly") }
-                    )
-                    SettingsTileDivider()
-                    SettingsNavTile(
-                        title = "Telegram",
-                        subtitle = "Report bugs or request features",
-                        iconPainter = painterResource(id = R.drawable.ic_telegram),
-                        trailingIcon = Icons.AutoMirrored.Rounded.OpenInNew,
-                        onClick = { uriHandler.openUri("https://telegram.me/ScanlyOCR") }
-                    )
-                }
-            }
-
-            item { Spacer(modifier = Modifier.height(32.dp)) }
-
-            item {
-                val contributors = listOf(
-                    Contributor("Azyrn", "Azyrn", "Developer"),
-                    Contributor("DP-Hridayan", "DP-Hridayan", "Contributor")
-                )
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    SettingsSectionHeader(text = "Contributors")
-                    Box(
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
-                            .padding(horizontal = 10.dp, vertical = 4.dp)
-                    ) {
-                        Text(
-                            text = contributors.size.toString(),
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
+                SettingsListSection(
+                    title = "Customize",
+                    items = listOf(
+                        SettingsItem(
+                            title = "Look & Feel",
+                            subtitle = "Color palette, dark theme, pure black",
+                            icon = Icons.Rounded.FormatPaint,
+                            onClick = { navController.navigate(Routes.LOOK_AND_FEEL) }
+                        ),
+                        SettingsItem(
+                            title = "AI Providers",
+                            subtitle = "API keys for Gemini & OpenRouter",
+                            icon = Icons.Rounded.Hub,
+                            onClick = { navController.navigate(Routes.AI_PROVIDERS) }
+                        ),
+                        SettingsItem(
+                            title = "Text Recognition",
+                            subtitle = "${textEngine.displayName} · scripts & preprocessing",
+                            icon = Icons.Rounded.TextFields,
+                            onClick = { navController.navigate(Routes.TEXT_RECOGNITION) }
+                        ),
+                        SettingsItem(
+                            title = "Barcode Scanner Engine",
+                            subtitle = barcodeEngine.displayName,
+                            icon = Icons.Rounded.QrCodeScanner,
+                            onClick = { showEngineDialog = true }
                         )
-                    }
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-                SettingsGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
-                    contributors.forEachIndexed { index, contributor ->
-                        if (index > 0) SettingsTileDivider()
-                        ContributorTile(contributor)
-                    }
-                }
+                    )
+                )
             }
 
             item {
-                Column(
+                SettingsListSection(
+                    title = "About",
+                    items = listOf(
+                        SettingsItem(
+                            title = "Source code",
+                            subtitle = "github.com/Azyrn/Scanly",
+                            iconRes = R.drawable.ic_github,
+                            trailingIcon = Icons.AutoMirrored.Rounded.OpenInNew,
+                            onClick = { uriHandler.openUri(SOURCE_URL) }
+                        ),
+                        SettingsItem(
+                            title = "Telegram",
+                            subtitle = "Report bugs or request features",
+                            iconRes = R.drawable.ic_telegram,
+                            trailingIcon = Icons.AutoMirrored.Rounded.OpenInNew,
+                            onClick = { uriHandler.openUri(TELEGRAM_URL) }
+                        )
+                    )
+                )
+            }
+
+            item {
+                SettingsListSection(
+                    title = "Contributors",
+                    items = contributors.map { contributor ->
+                        SettingsItem(
+                            title = contributor.displayName,
+                            subtitle = "@${contributor.username} · ${contributor.role}",
+                            avatarUrl = contributor.avatarUrl,
+                            trailingIcon = Icons.AutoMirrored.Rounded.OpenInNew,
+                            onClick = { uriHandler.openUri(contributor.githubUrl) }
+                        )
+                    },
+                    trailing = { CountBadge(contributors.size) }
+                )
+            }
+
+            item {
+                Text(
+                    text = "Scanly ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    textAlign = TextAlign.Center,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 40.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "Scanly ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                    )
-                }
+                        .padding(top = 12.dp)
+                )
             }
         }
     }
@@ -233,6 +204,23 @@ fun SettingsScreen(
                 showEngineDialog = false
             },
             onDismiss = { showEngineDialog = false }
+        )
+    }
+}
+
+@Composable
+private fun CountBadge(count: Int) {
+    Box(
+        modifier = Modifier
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+            .padding(horizontal = 10.dp, vertical = 3.dp)
+    ) {
+        Text(
+            text = count.toString(),
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.primary
         )
     }
 }
@@ -287,53 +275,6 @@ private fun BarcodeEngineDialog(
             TextButton(onClick = onDismiss) { Text("Done") }
         }
     )
-}
-
-@Composable
-private fun ContributorTile(contributor: Contributor) {
-    val uriHandler = LocalUriHandler.current
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { uriHandler.openUri(contributor.githubUrl) }
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        AsyncImage(
-            model = contributor.avatarUrl,
-            contentDescription = null,
-            modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceContainerHighest),
-            contentScale = ContentScale.Crop
-        )
-
-        Spacer(modifier = Modifier.width(16.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = contributor.displayName,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Text(
-                text = "@${contributor.username} · ${contributor.role}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-
-        Spacer(modifier = Modifier.width(12.dp))
-
-        Icon(
-            imageVector = Icons.AutoMirrored.Rounded.OpenInNew,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
-            modifier = Modifier.size(18.dp)
-        )
-    }
 }
 
 data class Contributor(

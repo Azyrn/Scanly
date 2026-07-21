@@ -4,14 +4,11 @@ package com.skeler.scanely.settings.presentation.screen
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -44,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.skeler.scanely.core.ocr.TextOcrEngine
@@ -52,10 +50,13 @@ import com.skeler.scanely.core.ocr.paddle.ScriptPack
 import com.skeler.scanely.navigation.LocalNavController
 import com.skeler.scanely.settings.data.SettingsKeys
 import com.skeler.scanely.settings.presentation.viewmodel.TextRecognitionViewModel
+import com.skeler.scanely.ui.components.ConnectedGroup
+import com.skeler.scanely.ui.components.ConnectedTile
+import com.skeler.scanely.ui.components.GroupPosition
 import com.skeler.scanely.ui.components.SettingSwitchTile
-import com.skeler.scanely.ui.components.SettingsGroup
 import com.skeler.scanely.ui.components.SettingsSectionHeader
-import com.skeler.scanely.ui.components.SettingsTileDivider
+import com.skeler.scanely.ui.components.TileText
+import com.skeler.scanely.ui.components.groupPositionOf
 
 @Composable
 fun TextRecognitionScreen(
@@ -101,17 +102,13 @@ fun TextRecognitionScreen(
             contentPadding = PaddingValues(bottom = 48.dp)
         ) {
             item {
-                SettingsSectionHeader(
-                    text = "Engine",
-                    modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 8.dp)
-                )
-                Spacer(Modifier.height(12.dp))
-                SettingsGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
+                SectionHeader("Engine", topSpacing = 8.dp)
+                ConnectedGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
                     TextOcrEngine.entries.forEachIndexed { index, option ->
-                        if (index > 0) SettingsTileDivider()
                         EngineRow(
                             engine = option,
                             selected = option == engine,
+                            position = groupPositionOf(index, TextOcrEngine.entries.size),
                             onSelect = { viewModel.setEngine(option) }
                         )
                     }
@@ -121,19 +118,14 @@ fun TextRecognitionScreen(
             item {
                 AnimatedVisibility(visible = engine == TextOcrEngine.PADDLE) {
                     Column {
-                        Spacer(Modifier.height(32.dp))
-                        SettingsSectionHeader(
-                            text = "Script",
-                            modifier = Modifier.padding(horizontal = 24.dp)
-                        )
-                        Spacer(Modifier.height(12.dp))
-                        SettingsGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
+                        SectionHeader("Script")
+                        ConnectedGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
                             ScriptPack.entries.forEachIndexed { index, pack ->
-                                if (index > 0) SettingsTileDivider()
                                 ScriptRow(
                                     pack = pack,
                                     state = packStates[pack] ?: PackState.Missing,
                                     selected = pack == script,
+                                    position = groupPositionOf(index, ScriptPack.entries.size),
                                     onSelect = { viewModel.setScript(pack) },
                                     onDownload = { viewModel.download(pack) },
                                     onDelete = { viewModel.delete(pack) }
@@ -141,34 +133,29 @@ fun TextRecognitionScreen(
                             }
                         }
 
-                        Spacer(Modifier.height(32.dp))
-                        SettingsSectionHeader(
-                            text = "Preprocessing",
-                            modifier = Modifier.padding(horizontal = 24.dp)
-                        )
-                        Spacer(Modifier.height(12.dp))
-                        SettingsGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
+                        SectionHeader("Preprocessing")
+                        ConnectedGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
                             SettingSwitchTile(
                                 title = "Auto-rotate page",
                                 subtitle = "Detects sideways and upside-down pages",
                                 icon = Icons.Rounded.ScreenRotation,
                                 checked = docOrientation,
+                                position = GroupPosition.Top,
                                 onCheckedChange = {
                                     viewModel.setToggle(SettingsKeys.PADDLE_DOC_ORIENTATION, it)
                                 }
                             )
-                            SettingsTileDivider()
                             SettingSwitchTile(
                                 title = "Fix flipped lines",
                                 subtitle = "For pages mixing upright and upside-down lines. " +
                                     "Unreliable on Arabic",
                                 icon = Icons.Rounded.Rotate90DegreesCcw,
                                 checked = lineOrientation,
+                                position = GroupPosition.Middle,
                                 onCheckedChange = {
                                     viewModel.setToggle(SettingsKeys.PADDLE_LINE_ORIENTATION, it)
                                 }
                             )
-                            SettingsTileDivider()
                             SettingSwitchTile(
                                 title = "Flatten curved pages",
                                 subtitle = when (val state = uvdoc) {
@@ -181,27 +168,23 @@ fun TextRecognitionScreen(
                                 icon = Icons.Rounded.Crop,
                                 enabled = uvdoc !is PackState.Downloading,
                                 checked = dewarp,
+                                position = GroupPosition.Bottom,
                                 onCheckedChange = { viewModel.setDewarp(it) }
                             )
                         }
 
-                        Spacer(Modifier.height(32.dp))
-                        SettingsSectionHeader(
-                            text = "Document structure",
-                            modifier = Modifier.padding(horizontal = 24.dp)
-                        )
-                        Spacer(Modifier.height(12.dp))
-                        SettingsGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
+                        SectionHeader("Document structure")
+                        ConnectedGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
                             SettingSwitchTile(
                                 title = "Detect layout",
                                 subtitle = "Headings, paragraphs and reading order in the Markdown view",
                                 icon = Icons.Rounded.Article,
                                 checked = structure,
+                                position = GroupPosition.Top,
                                 onCheckedChange = {
                                     viewModel.setToggle(SettingsKeys.PADDLE_STRUCTURE, it)
                                 }
                             )
-                            SettingsTileDivider()
                             SettingSwitchTile(
                                 title = "Recognize tables",
                                 subtitle = when (val state = tableModel) {
@@ -214,6 +197,7 @@ fun TextRecognitionScreen(
                                 icon = Icons.Rounded.TableChart,
                                 enabled = structure && tableModel !is PackState.Downloading,
                                 checked = tableModel is PackState.Installed,
+                                position = GroupPosition.Bottom,
                                 onCheckedChange = { viewModel.setTables(it) }
                             )
                         }
@@ -225,32 +209,31 @@ fun TextRecognitionScreen(
 }
 
 @Composable
+private fun SectionHeader(text: String, topSpacing: Dp = 32.dp) {
+    Spacer(Modifier.height(topSpacing))
+    SettingsSectionHeader(text = text, modifier = Modifier.padding(horizontal = 32.dp))
+    Spacer(Modifier.height(10.dp))
+}
+
+@Composable
 private fun EngineRow(
     engine: TextOcrEngine,
     selected: Boolean,
+    position: GroupPosition,
     onSelect: () -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onSelect)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
+    ConnectedTile(
+        position = position,
+        onClick = onSelect,
+        color = if (selected) {
+            MaterialTheme.colorScheme.secondaryContainer
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerHigh
+        }
     ) {
         RadioButton(selected = selected, onClick = onSelect)
         Spacer(Modifier.width(8.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = engine.displayName,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium
-            )
-            Text(
-                text = engine.description,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+        TileText(title = engine.displayName, subtitle = engine.description)
     }
 }
 
@@ -259,51 +242,44 @@ private fun ScriptRow(
     pack: ScriptPack,
     state: PackState,
     selected: Boolean,
+    position: GroupPosition,
     onSelect: () -> Unit,
     onDownload: () -> Unit,
     onDelete: () -> Unit
 ) {
     val installed = state is PackState.Bundled || state is PackState.Installed
+    val active = selected && installed
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(enabled = installed, onClick = onSelect)
-            .padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
+    ConnectedTile(
+        position = position,
+        onClick = if (installed) onSelect else null,
+        color = if (active) {
+            MaterialTheme.colorScheme.secondaryContainer
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerHigh
+        },
+        contentPadding = PaddingValues(start = 16.dp, end = 8.dp, top = 6.dp, bottom = 6.dp)
     ) {
         RadioButton(
-            selected = selected && installed,
+            selected = active,
             onClick = onSelect,
             enabled = installed
         )
         Spacer(Modifier.width(8.dp))
 
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = pack.displayName,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
-                color = if (installed) {
-                    MaterialTheme.colorScheme.onSurface
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                }
-            )
-            Text(
-                text = when (state) {
-                    is PackState.Failed -> state.message
-                    is PackState.Missing -> "${pack.languages} · ${pack.sizeMb} MB download"
-                    else -> pack.languages
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = if (state is PackState.Failed) {
-                    MaterialTheme.colorScheme.error
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                }
-            )
-        }
+        TileText(
+            title = pack.displayName,
+            subtitle = when (state) {
+                is PackState.Failed -> state.message
+                is PackState.Missing -> "${pack.languages} · ${pack.sizeMb} MB download"
+                else -> pack.languages
+            },
+            subtitleColor = if (state is PackState.Failed) {
+                MaterialTheme.colorScheme.error
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            }
+        )
 
         Spacer(Modifier.width(8.dp))
 

@@ -4,18 +4,22 @@ package com.skeler.scanely.settings.presentation.screen
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -31,6 +35,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.AltRoute
 import androidx.compose.material.icons.rounded.Category
@@ -70,6 +75,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -78,6 +84,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.skeler.scanely.core.ai.AiProvider
@@ -87,8 +94,8 @@ import com.skeler.scanely.settings.data.SettingsKeys
 import com.skeler.scanely.settings.presentation.viewmodel.ProviderVerificationViewModel
 import com.skeler.scanely.settings.presentation.viewmodel.SettingsViewModel
 import com.skeler.scanely.settings.presentation.viewmodel.VerifyState
+import com.skeler.scanely.ui.components.GroupPosition
 import com.skeler.scanely.ui.components.SettingSwitchTile
-import com.skeler.scanely.ui.components.SettingsGroup
 import com.skeler.scanely.ui.components.SettingsSectionHeader
 import com.skeler.scanely.ui.icons.ProviderIcons
 
@@ -189,19 +196,18 @@ fun AiProvidersScreen(
                 val fallbackEnabled by settingsViewModel
                     .getBoolean(SettingsKeys.AI_PROVIDER_FALLBACK)
                     .collectAsState(initial = false)
-                SettingsGroup {
-                    SettingSwitchTile(
-                        title = "Fall back to other providers",
-                        subtitle = "If your selected provider fails, try other " +
-                            "configured providers instead of stopping. Off by default — " +
-                            "your chosen provider is always used exactly.",
-                        icon = Icons.Rounded.AltRoute,
-                        checked = fallbackEnabled,
-                        onCheckedChange = {
-                            settingsViewModel.setBoolean(SettingsKeys.AI_PROVIDER_FALLBACK, it)
-                        }
-                    )
-                }
+                SettingSwitchTile(
+                    title = "Fall back to other providers",
+                    subtitle = "If your selected provider fails, try other " +
+                        "configured providers instead of stopping. Off by default — " +
+                        "your chosen provider is always used exactly.",
+                    icon = Icons.Rounded.AltRoute,
+                    checked = fallbackEnabled,
+                    position = GroupPosition.Solo,
+                    onCheckedChange = {
+                        settingsViewModel.setBoolean(SettingsKeys.AI_PROVIDER_FALLBACK, it)
+                    }
+                )
             }
         }
     }
@@ -376,14 +382,13 @@ private fun ProviderCard(
     val entries by verificationViewModel.states.collectAsState()
     val verifyState = verificationViewModel.resolve(entries[spec.provider], value)
 
-    ProviderContainer(focused = focused) {
-        ProviderHeader(
-            name = spec.name,
-            icon = spec.icon,
-            description = spec.description,
-            verifyState = verifyState
-        )
-
+    ProviderContainer(
+        name = spec.name,
+        icon = spec.icon,
+        description = spec.description,
+        verifyState = verifyState,
+        focused = focused
+    ) {
         OutlinedTextField(
             value = value,
             onValueChange = {
@@ -456,15 +461,14 @@ private fun CloudflareProviderCard(
     val entries by verificationViewModel.states.collectAsState()
     val verifyState = verificationViewModel.resolve(entries[AiProvider.CLOUDFLARE], key)
 
-    ProviderContainer(focused = focused) {
-        ProviderHeader(
-            name = "Cloudflare",
-            icon = ProviderIcons.Cloudflare,
-            description = "Workers AI · vision on Cloudflare's edge. Free tier included; " +
-                "add your own Account ID + token to use your quota.",
-            verifyState = verifyState
-        )
-
+    ProviderContainer(
+        name = "Cloudflare",
+        icon = ProviderIcons.Cloudflare,
+        description = "Workers AI · vision on Cloudflare's edge. Free tier included; " +
+            "add your own Account ID + token to use your quota.",
+        verifyState = verifyState,
+        focused = focused
+    ) {
         // Both halves are needed: with only one, the app falls back to the bundled key.
         val accountMissing = key.isNotBlank() && accountId.isBlank()
 
@@ -562,14 +566,13 @@ private fun CustomProviderCard(
     val entries by verificationViewModel.states.collectAsState()
     val verifyState = verificationViewModel.resolve(entries[AiProvider.CUSTOM], key)
 
-    ProviderContainer(focused = focused) {
-        ProviderHeader(
-            name = "Custom endpoint",
-            icon = Icons.Rounded.Tune,
-            description = "Any OpenAI-compatible chat/completions API.",
-            verifyState = verifyState
-        )
-
+    ProviderContainer(
+        name = "Custom endpoint",
+        icon = Icons.Rounded.Tune,
+        description = "Any OpenAI-compatible chat/completions API.",
+        verifyState = verifyState,
+        focused = focused
+    ) {
         val resolvedUrl = remember(url) { EndpointUrl.normalize(url) }
         val urlInvalid = url.isNotBlank() && resolvedUrl == null
 
@@ -633,32 +636,64 @@ private fun CustomProviderCard(
     }
 }
 
+/**
+ * Provider forms are long; collapsing them keeps the list scannable. Field state is hoisted
+ * into the caller so collapsing never discards what was typed.
+ */
 @Composable
 private fun ProviderContainer(
+    name: String,
+    icon: ImageVector,
+    description: String?,
+    verifyState: VerifyState,
     focused: Boolean,
-    content: @Composable () -> Unit
+    content: @Composable ColumnScope.() -> Unit
 ) {
-    val borderColor by animateColorAsState(
-        targetValue = if (focused) {
-            MaterialTheme.colorScheme.primary
+    var expanded by rememberSaveable(name) { mutableStateOf(false) }
+    val open = expanded || focused
+
+    val shape by animateDpAsState(
+        targetValue = if (open) 28.dp else 22.dp,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy),
+        label = "providerCorner"
+    )
+    val container by animateColorAsState(
+        targetValue = if (open) {
+            MaterialTheme.colorScheme.surfaceContainerHighest
         } else {
-            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f)
+            MaterialTheme.colorScheme.surfaceContainerHigh
         },
         animationSpec = tween(220),
-        label = "cardBorder"
+        label = "providerContainer"
     )
 
     Surface(
+        onClick = { expanded = !expanded },
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(28.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        border = BorderStroke(if (focused) 1.5.dp else 1.dp, borderColor)
+        shape = RoundedCornerShape(shape),
+        color = container
     ) {
-        Column(
-            modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            content = { content() }
-        )
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+            ProviderHeader(
+                name = name,
+                icon = icon,
+                description = description,
+                verifyState = verifyState,
+                expanded = open
+            )
+
+            AnimatedVisibility(
+                visible = open,
+                enter = fadeIn(tween(200)) + expandVertically(tween(240)),
+                exit = fadeOut(tween(140)) + shrinkVertically(tween(200))
+            ) {
+                Column(
+                    modifier = Modifier.padding(top = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    content = content
+                )
+            }
+        }
     }
 }
 
@@ -667,14 +702,15 @@ private fun ProviderHeader(
     name: String,
     icon: ImageVector,
     description: String?,
-    verifyState: VerifyState
+    verifyState: VerifyState,
+    expanded: Boolean
 ) {
     val verified = verifyState is VerifyState.Verified
     val iconContainer by animateColorAsState(
         targetValue = if (verified) {
             MaterialTheme.colorScheme.primaryContainer
         } else {
-            MaterialTheme.colorScheme.surfaceContainerHighest
+            MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)
         },
         animationSpec = tween(220),
         label = "iconContainer"
@@ -682,13 +718,18 @@ private fun ProviderHeader(
     val iconTint = if (verified) {
         MaterialTheme.colorScheme.onPrimaryContainer
     } else {
-        MaterialTheme.colorScheme.onSurfaceVariant
+        MaterialTheme.colorScheme.onSecondaryContainer
     }
+    val chevronRotation by animateFloatAsState(
+        targetValue = if (expanded) 90f else 0f,
+        animationSpec = tween(240),
+        label = "providerChevron"
+    )
 
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(
             modifier = Modifier
-                .size(44.dp)
+                .size(42.dp)
                 .clip(RoundedCornerShape(14.dp))
                 .background(iconContainer),
             contentAlignment = Alignment.Center
@@ -697,7 +738,7 @@ private fun ProviderHeader(
                 imageVector = icon,
                 contentDescription = null,
                 tint = iconTint,
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier.size(22.dp)
             )
         }
 
@@ -706,7 +747,7 @@ private fun ProviderHeader(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = name,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -714,7 +755,9 @@ private fun ProviderHeader(
                 Text(
                     text = description,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = if (expanded) 4 else 2,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
@@ -722,6 +765,16 @@ private fun ProviderHeader(
         Spacer(modifier = Modifier.width(12.dp))
 
         StatusChip(verifyState = verifyState)
+
+        Icon(
+            imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+            modifier = Modifier
+                .padding(start = 8.dp)
+                .size(18.dp)
+                .rotate(chevronRotation)
+        )
     }
 }
 

@@ -48,11 +48,11 @@ import com.skeler.scanely.core.common.LocalSettings
 import com.skeler.scanely.navigation.LocalNavController
 import com.skeler.scanely.settings.data.SettingsKeys
 import com.skeler.scanely.settings.presentation.viewmodel.SettingsViewModel
+import com.skeler.scanely.ui.components.ConnectedGroup
+import com.skeler.scanely.ui.components.GroupPosition
 import com.skeler.scanely.ui.components.PaletteChip
 import com.skeler.scanely.ui.components.SettingSwitchTile
-import com.skeler.scanely.ui.components.SettingsGroup
 import com.skeler.scanely.ui.components.SettingsSectionHeader
-import com.skeler.scanely.ui.components.SettingsTileDivider
 import com.skeler.scanely.ui.components.illustrations.PaletteShowcase
 import com.skeler.scanely.ui.theme.SeedPalettes
 
@@ -141,9 +141,9 @@ fun LookAndFeelScreen(
             item {
                 SettingsSectionHeader(
                     text = "Color palette",
-                    modifier = Modifier.padding(horizontal = 24.dp)
+                    modifier = Modifier.padding(horizontal = 32.dp)
                 )
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(12.dp))
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -181,15 +181,16 @@ fun LookAndFeelScreen(
             item {
                 SettingsSectionHeader(
                     text = "Personalize",
-                    modifier = Modifier.padding(horizontal = 24.dp)
+                    modifier = Modifier.padding(horizontal = 32.dp)
                 )
-                Spacer(modifier = Modifier.height(12.dp))
-                SettingsGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
+                Spacer(modifier = Modifier.height(10.dp))
+                ConnectedGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
                     SettingSwitchTile(
                         title = "Dark theme",
                         subtitle = if (isDark) "On" else "Off",
                         icon = Icons.Rounded.DarkMode,
                         checked = isDark,
+                        position = GroupPosition.Top,
                         onCheckedChange = { checked ->
                             val newMode = if (checked) {
                                 AppCompatDelegate.MODE_NIGHT_YES
@@ -200,13 +201,12 @@ fun LookAndFeelScreen(
                         }
                     )
 
-                    SettingsTileDivider()
-
                     SettingSwitchTile(
                         title = "Pure Black M3",
                         subtitle = "Save battery on OLED displays",
                         icon = Icons.Rounded.Contrast,
                         checked = isOledMode,
+                        position = GroupPosition.Bottom,
                         onCheckedChange = { checked ->
                             settingsViewModel.setBoolean(SettingsKeys.IS_OLED_MODE_ENABLED, checked)
                         }

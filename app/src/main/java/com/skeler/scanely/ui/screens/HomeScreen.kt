@@ -49,8 +49,8 @@ import com.skeler.scanely.ui.components.MAX_AI_FILES
 import com.skeler.scanely.ui.components.MainActionButton
 import com.skeler.scanely.ui.components.RateLimitDisplayState
 import com.skeler.scanely.ui.components.RateLimitSheet
-import com.skeler.scanely.ui.components.rememberGalleryPicker
 import com.skeler.scanely.ui.components.rememberDocumentPicker
+import com.skeler.scanely.ui.components.rememberGalleryPicker
 import com.skeler.scanely.ui.components.rememberMultiGalleryPicker
 import com.skeler.scanely.ui.viewmodel.AiScanViewModel
 import com.skeler.scanely.ui.viewmodel.OcrViewModel

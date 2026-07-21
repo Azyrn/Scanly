@@ -56,34 +56,38 @@ internal class PayloadFactory @Inject constructor(
 
         val texts = mutableListOf<String>()
         val images = mutableListOf<String>()
-        uris.forEach { uri ->
-            when (val mimeType = mimeTypeOf(uri)) {
-                TEXT_MIME_TYPE -> {
-                    val bytes = loadFileBytes(uri) ?: throw PayloadException("Failed to read text file")
-                    texts += bytes.toString(Charsets.UTF_8)
-                }
-
-                PDF_MIME_TYPE -> images += renderPdfToBase64(uri)
-
-                else -> if (mimeType.startsWith("image/")) {
-                    val bitmap = loadBitmapFromUri(uri)
-                        ?: throw PayloadException("Failed to load image")
-                    try {
-                        images += encodeBase64Jpeg(bitmap)
-                    } finally {
-                        bitmap.recycle()
-                    }
-                } else {
-                    throw PayloadException(unsupportedMessage(mimeType))
-                }
-            }
-        }
+        uris.forEach { appendUri(it, texts, images) }
 
         if (texts.isEmpty() && images.isEmpty()) throw PayloadException("Failed to read the selected files")
 
         val fullPrompt = if (texts.isEmpty()) prompt else "$prompt\n\n${texts.joinToString("\n\n")}"
         return Payload(fullPrompt, images.take(MAX_SCAN_PAGES))
     }
+
+    private fun appendUri(uri: Uri, texts: MutableList<String>, images: MutableList<String>) {
+        when (val mimeType = mimeTypeOf(uri)) {
+            TEXT_MIME_TYPE -> {
+                val bytes = loadFileBytes(uri).orPayloadException("Failed to read text file")
+                texts += bytes.toString(Charsets.UTF_8)
+            }
+
+            PDF_MIME_TYPE -> images += renderPdfToBase64(uri)
+
+            else -> if (mimeType.startsWith("image/")) {
+                val bitmap = loadBitmapFromUri(uri).orPayloadException("Failed to load image")
+                try {
+                    images += encodeBase64Jpeg(bitmap)
+                } finally {
+                    bitmap.recycle()
+                }
+            } else {
+                throw PayloadException(unsupportedMessage(mimeType))
+            }
+        }
+    }
+
+    private fun <T> T?.orPayloadException(message: String): T =
+        this ?: throw PayloadException(message)
 
     private fun mimeTypeOf(uri: Uri): String =
         context.contentResolver.getType(uri) ?: "application/octet-stream"

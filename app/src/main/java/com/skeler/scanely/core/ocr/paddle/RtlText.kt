@@ -60,7 +60,10 @@ object RtlText {
         var strong = 0
         for (c in s) {
             when {
-                isRtl(c) -> { rtl++; strong++ }
+                isRtl(c) -> {
+                    rtl++
+                    strong++
+                }
                 Character.getDirectionality(c) == Character.DIRECTIONALITY_LEFT_TO_RIGHT -> strong++
             }
         }
@@ -68,6 +71,11 @@ object RtlText {
     }
 
     private fun isArabicChar(c: Char): Boolean = c.code in ARABIC_BLOCK_START..ARABIC_BLOCK_END
+
+    private fun isWordGap(prev: RecChar, next: RecChar, limit: Float): Boolean =
+        next.x - prev.x > limit &&
+            prev.text.isNotBlank() && next.text.isNotBlank() &&
+            prev.text.all { isArabicChar(it) } && next.text.all { isArabicChar(it) }
 
     /**
      * Rebuilds a line's visual-order text from its CTC characters, restoring the word spaces the
@@ -88,13 +96,7 @@ object RtlText {
         val sb = StringBuilder()
         for (i in ordered.indices) {
             val c = ordered[i]
-            if (i > 0) {
-                val prev = ordered[i - 1]
-                val split = c.x - prev.x > limit &&
-                    prev.text.isNotBlank() && c.text.isNotBlank() &&
-                    prev.text.all { isArabicChar(it) } && c.text.all { isArabicChar(it) }
-                if (split) sb.append(' ')
-            }
+            if (i > 0 && isWordGap(ordered[i - 1], c, limit)) sb.append(' ')
             sb.append(c.text)
         }
         return sb.toString().replace(Regex(" {2,}"), " ")

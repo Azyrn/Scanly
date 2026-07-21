@@ -1,11 +1,11 @@
 package com.skeler.scanely.ui.components
 
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.DriveFileRenameOutline
 import androidx.compose.material3.AlertDialog

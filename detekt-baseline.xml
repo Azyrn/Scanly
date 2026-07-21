@@ -19,7 +19,7 @@
     <ID>CyclomaticComplexMethod:DocumentStructure.kt$DocumentStructure$private fun render( region: LayoutRegion, lines: List&lt;PositionedLine&gt;, tableOf: (LayoutRegion) -&gt; TableStructure? ): String?</ID>
     <ID>CyclomaticComplexMethod:DocumentStructure.kt$DocumentStructure$private fun tableMarkdown( table: TableStructure, lines: List&lt;PositionedLine&gt; ): String?</ID>
     <ID>CyclomaticComplexMethod:FoodProduct.kt$fun ProductDto.toDomain(): FoodProduct?</ID>
-    <ID>CyclomaticComplexMethod:GenerativeAiService.kt$GenerativeAiService$fun processImageEvents(uri: Uri, mode: AiMode, provider: AiProvider): Flow&lt;AiEvent&gt;</ID>
+    <ID>CyclomaticComplexMethod:GenerativeAiService.kt$GenerativeAiService$fun processImageEvents(uris: List&lt;Uri&gt;, mode: AiMode, provider: AiProvider): Flow&lt;AiEvent&gt;</ID>
     <ID>CyclomaticComplexMethod:Geometry.kt$Geometry$fun convexHull(pts: FloatArray): FloatArray</ID>
     <ID>CyclomaticComplexMethod:Geometry.kt$Geometry$fun minAreaRect(pts: FloatArray): RotatedRect</ID>
     <ID>CyclomaticComplexMethod:HistoryScreen.kt$private fun LazyListState.shouldFabExpand( lastScrollOffset: Int, onScrollOffsetChanged: (Int) -&gt; Unit ): Boolean</ID>
@@ -37,14 +37,14 @@
     <ID>CyclomaticComplexMethod:PaddleModelStore.kt$PaddleModelStore.Companion$fun parseYamlDict(yml: String): List&lt;String&gt;</ID>
     <ID>CyclomaticComplexMethod:PaddleOcrService.kt$PaddleOcrService$suspend fun recognize(bitmap: Bitmap): OcrResult</ID>
     <ID>CyclomaticComplexMethod:PaddleOcrService.kt$PaddleOcrService$suspend fun recognizeFromPdf(pdfUri: Uri, pageIndex: Int? = null): OcrResult</ID>
-    <ID>CyclomaticComplexMethod:PayloadFactory.kt$PayloadFactory$fun create(uri: Uri, mode: AiMode): Payload</ID>
+    <ID>CyclomaticComplexMethod:PayloadFactory.kt$PayloadFactory$fun create( uris: List&lt;Uri&gt;, mode: AiMode, includePdfSource: Boolean = false, renderPages: Boolean = true ): Payload</ID>
     <ID>CyclomaticComplexMethod:ProviderClient.kt$ProviderClient$private fun parseStreamPiece(kind: ProviderKind, payload: String): String?</ID>
     <ID>CyclomaticComplexMethod:ProviderClient.kt$ProviderClient$private suspend fun consumeSse(body: ResponseBody, onData: suspend (String) -&gt; Unit)</ID>
-    <ID>CyclomaticComplexMethod:ProviderClient.kt$ProviderClient$suspend fun once( config: ProviderConfig, systemInstruction: String?, prompt: String, images: List&lt;String&gt; ): String</ID>
+    <ID>CyclomaticComplexMethod:ProviderClient.kt$ProviderClient$suspend fun once( config: ProviderConfig, systemInstruction: String?, prompt: String, images: List&lt;String&gt;, pdfBase64: String? = null ): String</ID>
     <ID>CyclomaticComplexMethod:ProviderClient.kt$ProviderClient$suspend fun stream( config: ProviderConfig, systemInstruction: String?, prompt: String, images: List&lt;String&gt;, streamedAnything: BooleanArray, emit: suspend (AiEvent) -&gt; Unit ): String</ID>
     <ID>CyclomaticComplexMethod:ProviderConfig.kt$ProviderConfigResolver$fun bundledKeyProviders(): Flow&lt;Set&lt;AiProvider&gt;&gt;</ID>
     <ID>CyclomaticComplexMethod:ProviderConfig.kt$ProviderConfigResolver$suspend fun resolve(provider: AiProvider): ProviderConfig?</ID>
-    <ID>CyclomaticComplexMethod:ProviderExecutor.kt$ProviderExecutor$suspend fun run( name: String, config: ProviderConfig, systemInstruction: String?, prompt: String, images: List&lt;String&gt;, allowStreaming: Boolean, emit: suspend (AiEvent) -&gt; Unit ): ProviderOutcome</ID>
+    <ID>CyclomaticComplexMethod:ProviderExecutor.kt$ProviderExecutor$suspend fun run( name: String, config: ProviderConfig, systemInstruction: String?, prompt: String, images: List&lt;String&gt;, pdfBase64: String? = null, allowStreaming: Boolean, emit: suspend (AiEvent) -&gt; Unit ): ProviderOutcome</ID>
     <ID>CyclomaticComplexMethod:ProviderVerificationViewModel.kt$ProviderVerificationViewModel$fun verify(provider: AiProvider, key: String, customUrl: String? = null)</ID>
     <ID>CyclomaticComplexMethod:RetryUtils.kt$fun Exception.isRetryable(): Boolean</ID>
     <ID>CyclomaticComplexMethod:RtlText.kt$RtlText$fun visualToLogical(s: String): String</ID>
@@ -65,7 +65,7 @@
     <ID>LongMethod:ColorSchemes.kt$private fun lightSeedScheme(p: TonalPalettes): ColorScheme</ID>
     <ID>LongMethod:DbPostProcessor.kt$DbPostProcessor$fun extract(prob: FloatArray, w: Int, h: Int, scaleX: Float, scaleY: Float): List&lt;Quad&gt;</ID>
     <ID>LongMethod:DocumentFilters.kt$DocumentFilters$private fun binarize(source: Bitmap): Bitmap</ID>
-    <ID>LongMethod:GenerativeAiService.kt$GenerativeAiService$fun processImageEvents(uri: Uri, mode: AiMode, provider: AiProvider): Flow&lt;AiEvent&gt;</ID>
+    <ID>LongMethod:GenerativeAiService.kt$GenerativeAiService$fun processImageEvents(uris: List&lt;Uri&gt;, mode: AiMode, provider: AiProvider): Flow&lt;AiEvent&gt;</ID>
     <ID>LongMethod:Geometry.kt$Geometry$fun minAreaRect(pts: FloatArray): RotatedRect</ID>
     <ID>LongMethod:Geometry.kt$Geometry$fun orderQuad(q: Quad): Quad</ID>
     <ID>LongMethod:Geometry.kt$Geometry$fun unclip(q: Quad, ratio: Float): FloatArray</ID>
@@ -75,11 +75,10 @@
     <ID>LongMethod:MlKitOcrService.kt$MlKitOcrService$suspend fun recognizeFromBitmap(bitmap: Bitmap): OcrResult</ID>
     <ID>LongMethod:MlKitOcrService.kt$MlKitOcrService$suspend fun recognizeFromPdf(pdfUri: Uri, pageIndex: Int? = null): OcrResult</ID>
     <ID>LongMethod:PaddleOcrService.kt$PaddleOcrService$suspend fun recognize(bitmap: Bitmap): OcrResult</ID>
-    <ID>LongMethod:PayloadFactory.kt$PayloadFactory$fun create(uri: Uri, mode: AiMode): Payload</ID>
-    <ID>LongMethod:ProviderClient.kt$ProviderClient$suspend fun once( config: ProviderConfig, systemInstruction: String?, prompt: String, images: List&lt;String&gt; ): String</ID>
+    <ID>LongMethod:ProviderClient.kt$ProviderClient$suspend fun once( config: ProviderConfig, systemInstruction: String?, prompt: String, images: List&lt;String&gt;, pdfBase64: String? = null ): String</ID>
     <ID>LongMethod:ProviderClient.kt$ProviderClient$suspend fun stream( config: ProviderConfig, systemInstruction: String?, prompt: String, images: List&lt;String&gt;, streamedAnything: BooleanArray, emit: suspend (AiEvent) -&gt; Unit ): String</ID>
     <ID>LongMethod:ProviderConfig.kt$ProviderConfigResolver$suspend fun resolve(provider: AiProvider): ProviderConfig?</ID>
-    <ID>LongMethod:ProviderExecutor.kt$ProviderExecutor$suspend fun run( name: String, config: ProviderConfig, systemInstruction: String?, prompt: String, images: List&lt;String&gt;, allowStreaming: Boolean, emit: suspend (AiEvent) -&gt; Unit ): ProviderOutcome</ID>
+    <ID>LongMethod:ProviderExecutor.kt$ProviderExecutor$suspend fun run( name: String, config: ProviderConfig, systemInstruction: String?, prompt: String, images: List&lt;String&gt;, pdfBase64: String? = null, allowStreaming: Boolean, emit: suspend (AiEvent) -&gt; Unit ): ProviderOutcome</ID>
     <ID>LongMethod:ScanExporter.kt$ScanExporter$internal fun buildJson(text: String, blocks: List&lt;TextBlockData&gt;): String</ID>
     <ID>LongMethod:ScanExporter.kt$ScanExporter$internal fun wordMarkdownDocument(blocks: List&lt;MdBlock&gt;): String</ID>
     <ID>LongMethod:ScanExporter.kt$ScanExporter$private fun buildTextPdfDocument(text: String): PdfDocument</ID>
@@ -148,6 +147,7 @@
     <ID>MatchingDeclarationName:GamifiedAiFab.kt$RateLimitDisplayState</ID>
     <ID>MatchingDeclarationName:ResultsComponents.kt$ExtractedTextState</ID>
     <ID>MatchingDeclarationName:RetryUtils.kt$RetryConfig</ID>
+    <ID>MatchingDeclarationName:SettingsListGroup.kt$SettingsItem</ID>
     <ID>MatchingDeclarationName:_DrawableVectors.kt$DynamicColorImageVectors</ID>
     <ID>MaxLineLength:NoSearchResult.kt$"M164 100H336A14 14 0 0 1 350 114V206A14 14 0 0 1 336 220H164A14 14 0 0 1 150 206V114A14 14 0 0 1 164 100Z"</ID>
     <ID>MaxLineLength:ScanExporter.kt$ScanExporter$"&lt;Relationship Id=\"rId${index + 1}\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/image\" Target=\"media/image${index + 1}.jpg\"/&gt;"</ID>
@@ -168,8 +168,8 @@
     <ID>NoSemicolons:ScanReviewScreen.kt$;</ID>
     <ID>ReturnCount:ImageOps.kt$ImageOps$private fun axisAlignedCrop(src: Bitmap, q: Quad, w: Int, h: Int): Bitmap?</ID>
     <ID>ReturnCount:KeyVerifier.kt$KeyVerifier$suspend fun verify( provider: AiProvider, key: String, customUrl: String? = null ): VerificationResult</ID>
-    <ID>ReturnCount:ProviderExecutor.kt$ProviderExecutor$suspend fun run( name: String, config: ProviderConfig, systemInstruction: String?, prompt: String, images: List&lt;String&gt;, allowStreaming: Boolean, emit: suspend (AiEvent) -&gt; Unit ): ProviderOutcome</ID>
-    <ID>ThrowsCount:PayloadFactory.kt$PayloadFactory$fun create(uri: Uri, mode: AiMode): Payload</ID>
+    <ID>ReturnCount:ProviderExecutor.kt$ProviderExecutor$suspend fun run( name: String, config: ProviderConfig, systemInstruction: String?, prompt: String, images: List&lt;String&gt;, pdfBase64: String? = null, allowStreaming: Boolean, emit: suspend (AiEvent) -&gt; Unit ): ProviderOutcome</ID>
+    <ID>ThrowsCount:PayloadFactory.kt$PayloadFactory$fun create( uris: List&lt;Uri&gt;, mode: AiMode, includePdfSource: Boolean = false, renderPages: Boolean = true ): Payload</ID>
     <ID>ThrowsCount:ProviderClient.kt$ProviderClient$suspend fun stream( config: ProviderConfig, systemInstruction: String?, prompt: String, images: List&lt;String&gt;, streamedAnything: BooleanArray, emit: suspend (AiEvent) -&gt; Unit ): String</ID>
     <ID>ThrowsCount:ScanExporter.kt$ScanExporter$private fun exportToDownloads( context: Context, displayName: String, mimeType: String, write: (OutputStream) -&gt; Unit ): Uri</ID>
     <ID>TooGenericExceptionCaught:MarkdownPdf.kt$MarkdownPdf$t: Throwable</ID>

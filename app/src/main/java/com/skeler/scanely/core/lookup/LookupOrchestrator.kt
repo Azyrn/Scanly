@@ -7,6 +7,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withTimeout
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.coroutines.cancellation.CancellationException
 
 private const val TAG = "LookupOrchestrator"
 private const val ENGINE_TIMEOUT_MS = 10_000L
@@ -56,8 +57,12 @@ class LookupOrchestrator @Inject constructor(
             }
         }
 
-        if (errors.isNotEmpty()) {
-            LookupResult.NotFound("Searched ${supportingEngines.size} sources. Errors: ${errors.joinToString("; ")}")
+        if (errors.size == supportingEngines.size) {
+            Log.w(TAG, "All product sources failed: ${errors.joinToString("; ")}")
+            LookupResult.Error(
+                "Searched ${supportingEngines.size} sources",
+                Exception("Couldn't reach any product source. Check your connection.")
+            )
         } else {
             LookupResult.NotFound("Searched ${supportingEngines.size} sources")
         }
@@ -73,6 +78,8 @@ class LookupOrchestrator @Inject constructor(
         } catch (e: TimeoutCancellationException) {
             Log.e(TAG, "${engine.name} timed out after ${ENGINE_TIMEOUT_MS}ms")
             LookupResult.Error(engine.name, Exception("Request timed out"))
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "${engine.name} failed after retries: ${e.message}")
             LookupResult.Error(engine.name, e)

@@ -1,6 +1,7 @@
 package com.skeler.scanely.core.lookup
 
 import kotlinx.coroutines.delay
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.min
 
 data class RetryConfig(
@@ -20,6 +21,8 @@ suspend fun <T> withRetry(
     repeat(config.maxAttempts) { attempt ->
         try {
             return block()
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             if (!shouldRetry(e) || attempt == config.maxAttempts - 1) {
                 throw e

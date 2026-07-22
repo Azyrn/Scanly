@@ -1,5 +1,42 @@
 # Changelog
 
+## [3.3.2] - 2026-07-22 (versionCode 20)
+### Added
+- **Export filenames suggested from the text**: exports are named after what the page actually says
+  instead of always being `Scanned Document`, and the name stays editable before saving. Works
+  offline, for both OCR and AI results
+- **Arabic word spacing**: the Arabic model emits a space at only some word boundaries, so clean
+  paragraphs came back with words merged. Spaces are now rebuilt from the gaps between recognized
+  letters
+
+### Fixed
+- **Arabic pages read as gibberish**: a photographed Arabic page could be read as *confident* Latin
+  or CJK nonsense, and the old retry only triggered when most lines failed outright — so a
+  confidently-wrong page was never retried. Verified on 28 real documents: 6 broken pages recovered,
+  21 byte-identical
+- **Sideways and upside-down pages**: the first pack to clear the score floor decided the flip, so a
+  pack scoring its own nonsense could turn a page over before the pack that actually reads that
+  script got a vote. Every pack votes now
+- **Doubled letters in mixed Arabic/Latin text**: "Repost" no longer comes back as "RRepost"
+- **Location barcodes**: a `geo:` barcode opened a browser error page instead of a map
+- **Permanent AI cooldown**: leaving the screen mid-cooldown froze the countdown forever, and the
+  rate-limit sheet kept appearing until the app was force-stopped
+- **Product lookup when offline**: every source failing now reads as an error instead of claiming the
+  barcode is in no database
+- **Scan history saves** moved off the main thread — they stalled the results screen and crashed
+  outright on a full disk
+- **Launcher icon**: showed a plain white tile instead of the pink gradient
+
+### Changed
+- **Settings rebuilt on M3 Expressive groups**: connected rows 2dp apart, large radii on the group
+  ends and small ones at the joins, with a spring corner morph while pressed. Settings, Look & Feel
+  and Text Recognition now share one primitive. AI Providers collapses each provider to a row that
+  expands into its form on tap
+- **Denser script picker**: single-line subtitles, an aligned right edge, and a much quieter
+  selection tint — the list was reading as a stack of tall, heavy cards
+- **Kotlin 2.4.10**, up from 2.3.21
+- **CodeQL** now scans for vulnerabilities on its own workflow, separate from the Quality Gate
+
 ## [3.3.1] - 2026-07-16 (versionCode 19)
 ### Added
 - **Longer PDF scans**: AI Scan now reads up to 20 pages of a PDF, up from 3

@@ -1,0 +1,4 @@
+• AI Scan can now read up to 20 pages from a PDF.
+• Multiple images now use one request where supported, reducing free-tier quota use.
+• Added provider-specific page limits and clearer truncation messages.
+• Fixed missing-product handling for Open Food Facts.

@@ -1,3 +1,0 @@
-• Improved Arabic recognition, right-to-left spacing, and mixed Arabic/Latin text.
-• Fixed sideways and upside-down page handling.
-• Kept model downloads running when leaving Settings.

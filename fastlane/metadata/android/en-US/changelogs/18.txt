@@ -1,0 +1,3 @@
+• Added barcode pinch-to-zoom and tap-to-focus, WYSIWYE exports, and new launcher branding.
+• Fixed scan-history recovery, custom AI endpoints, Arabic orientation, model downloads, and unnecessary AI camera permission requests.
+• Migrated Open Food Facts to API v3.

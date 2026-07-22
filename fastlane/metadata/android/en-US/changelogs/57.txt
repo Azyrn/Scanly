@@ -1,3 +1,0 @@
-• Encrypted personal AI provider keys with Android Keystore.
-• Added a redesigned Material 3 interface with configurable palettes, dark mode, and a pure-black OLED theme.
-• Refreshed launcher and splash branding.

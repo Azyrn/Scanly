@@ -1,3 +1,0 @@
-• Added rendered Markdown results with headings, lists, emphasis, and tables.
-• Added Word, Markdown, JSON, PDF, and CSV exports.
-• Made copy, edit, print, and export follow the visible result.

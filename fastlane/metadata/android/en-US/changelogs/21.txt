@@ -1,0 +1,3 @@
+• Added scan summaries in Short, Medium, and Detailed lengths.
+• Summaries keep the document language, numbers, and dates intact.
+• Each summary is cached for instant switching, and copy, export, print, and edit follow the selected view.

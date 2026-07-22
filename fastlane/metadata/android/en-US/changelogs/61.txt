@@ -1,3 +1,0 @@
-• Added longer PDF scans and multi-image AI requests.
-• Reduced provider quota usage by sending one request per scan where supported.
-• Added clearer provider-specific page limits and errors.

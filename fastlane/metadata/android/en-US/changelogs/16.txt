@@ -1,0 +1,3 @@
+• Added real provider logos to the AI Providers screen.
+• Personal API keys are now encrypted with AES-256-GCM backed by Android Keystore.
+• Excluded provider keys from Android backup and device transfer.

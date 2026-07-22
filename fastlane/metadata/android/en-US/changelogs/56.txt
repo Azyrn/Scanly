@@ -1,3 +1,0 @@
-• Added smart QR and barcode actions for links, Wi-Fi, contacts, calls, messages, and calendar events.
-• Added product lookup for foods, cosmetics, medicines, pet food, and books.
-• Improved lookup errors and offline handling.

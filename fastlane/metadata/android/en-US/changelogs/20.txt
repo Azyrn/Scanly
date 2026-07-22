@@ -1,0 +1,4 @@
+• Added editable export filenames suggested from document text.
+• Improved Arabic recognition, spacing, mixed-script text, and page orientation.
+• Fixed location barcodes, AI cooldowns, offline product lookup, scan-history saves, and launcher rendering.
+• Redesigned Settings and the script picker with Material 3 Expressive components.

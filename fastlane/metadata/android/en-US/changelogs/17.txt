@@ -1,0 +1,4 @@
+• Added fully offline PaddleOCR with layout and table recognition.
+• Added rendered Markdown results and Word, Markdown, JSON, PDF, and CSV exports.
+• Added ZXing barcode scanning and content-aware actions.
+• Improved Arabic OCR, printing, parsing, startup, and packaging.

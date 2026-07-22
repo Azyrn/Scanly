@@ -1,3 +1,0 @@
-• Added private, fully offline OCR powered by PaddleOCR.
-• Added page orientation, structured layout, and table detection.
-• Added built-in universal and Arabic recognition models.

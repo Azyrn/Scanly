@@ -207,18 +207,6 @@ jobs:
             cp "${MATCHES[0]}" "release-artifacts/Scanly-$VERSION-$ABI.apk"
           done
 
-          MAPPING="app/build/outputs/mapping/release/mapping.txt"
-          if [[ -f "$MAPPING" ]]; then
-            cp "$MAPPING" "release-artifacts/mapping-$VERSION.txt"
-          fi
-
-          (
-            cd release-artifacts
-            find . -maxdepth 1 -type f ! -name SHA256SUMS.txt -print0 |
-              sort -z |
-              xargs -0 sha256sum > SHA256SUMS.txt
-          )
-
       - name: Extract changelog notes
         id: notes
         env:

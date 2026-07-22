@@ -41,6 +41,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -184,7 +185,8 @@ fun TileIcon(
 fun RowScope.TileText(
     title: String,
     subtitle: String?,
-    subtitleColor: Color = MaterialTheme.colorScheme.onSurfaceVariant
+    subtitleColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    subtitleMaxLines: Int = Int.MAX_VALUE
 ) {
     Column(modifier = Modifier.weight(1f)) {
         Text(
@@ -197,7 +199,9 @@ fun RowScope.TileText(
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodySmall,
-                color = subtitleColor
+                color = subtitleColor,
+                maxLines = subtitleMaxLines,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }

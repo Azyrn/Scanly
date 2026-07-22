@@ -26,7 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
-private val GroupEndRadius = 26.dp
+private val GroupEndRadius = 20.dp
 private val GroupJoinRadius = 6.dp
 
 enum class GroupPosition { Solo, Top, Middle, Bottom }

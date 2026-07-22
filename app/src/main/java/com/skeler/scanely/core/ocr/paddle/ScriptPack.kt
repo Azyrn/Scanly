@@ -17,7 +17,7 @@ enum class ScriptPack(
     UNIVERSAL(
         id = "universal",
         displayName = "Universal (PP-OCRv6)",
-        languages = "English, Chinese, Japanese + 46 Latin-script languages",
+        languages = "English, Chinese, Japanese + 46 more",
         repo = null,
         bundledModel = "ocr/rec_v6_small.onnx",
         bundledDict = "ocr/dict_v6.txt"

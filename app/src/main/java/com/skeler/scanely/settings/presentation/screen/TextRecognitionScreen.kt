@@ -3,7 +3,6 @@
 package com.skeler.scanely.settings.presentation.screen
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -14,7 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Article
@@ -39,7 +37,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -209,10 +207,10 @@ fun TextRecognitionScreen(
 }
 
 @Composable
-private fun SectionHeader(text: String, topSpacing: Dp = 32.dp) {
+private fun SectionHeader(text: String, topSpacing: Dp = 24.dp) {
     Spacer(Modifier.height(topSpacing))
     SettingsSectionHeader(text = text, modifier = Modifier.padding(horizontal = 32.dp))
-    Spacer(Modifier.height(10.dp))
+    Spacer(Modifier.height(8.dp))
 }
 
 @Composable
@@ -225,15 +223,16 @@ private fun EngineRow(
     ConnectedTile(
         position = position,
         onClick = onSelect,
-        color = if (selected) {
-            MaterialTheme.colorScheme.secondaryContainer
-        } else {
-            MaterialTheme.colorScheme.surfaceContainerHigh
-        }
+        color = choiceTileColor(selected),
+        contentPadding = ChoiceRowPadding
     ) {
         RadioButton(selected = selected, onClick = onSelect)
-        Spacer(Modifier.width(8.dp))
-        TileText(title = engine.displayName, subtitle = engine.description)
+        Spacer(Modifier.width(4.dp))
+        TileText(
+            title = engine.displayName,
+            subtitle = engine.description,
+            subtitleMaxLines = 1
+        )
     }
 }
 
@@ -253,73 +252,74 @@ private fun ScriptRow(
     ConnectedTile(
         position = position,
         onClick = if (installed) onSelect else null,
-        color = if (active) {
-            MaterialTheme.colorScheme.secondaryContainer
-        } else {
-            MaterialTheme.colorScheme.surfaceContainerHigh
-        },
-        contentPadding = PaddingValues(start = 16.dp, end = 8.dp, top = 6.dp, bottom = 6.dp)
+        color = choiceTileColor(active),
+        contentPadding = ChoiceRowPadding
     ) {
         RadioButton(
             selected = active,
             onClick = onSelect,
             enabled = installed
         )
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(4.dp))
 
         TileText(
             title = pack.displayName,
             subtitle = when (state) {
                 is PackState.Failed -> state.message
-                is PackState.Missing -> "${pack.languages} · ${pack.sizeMb} MB download"
+                is PackState.Missing -> "${pack.languages} · ${pack.sizeMb} MB"
                 else -> pack.languages
             },
             subtitleColor = if (state is PackState.Failed) {
                 MaterialTheme.colorScheme.error
             } else {
                 MaterialTheme.colorScheme.onSurfaceVariant
-            }
+            },
+            subtitleMaxLines = 1
         )
 
         Spacer(Modifier.width(8.dp))
 
-        when (state) {
-            is PackState.Downloading -> Box(
-                modifier = Modifier.size(40.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator(
+        Box(modifier = Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+            when (state) {
+                is PackState.Downloading -> CircularProgressIndicator(
                     progress = { state.progress },
-                    modifier = Modifier.size(22.dp),
+                    modifier = Modifier.size(20.dp),
                     strokeWidth = 2.dp
                 )
-            }
-            is PackState.Installed -> IconButton(onClick = onDelete) {
-                Icon(
-                    imageVector = Icons.Rounded.Delete,
-                    contentDescription = "Delete ${pack.displayName}",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            is PackState.Missing, is PackState.Failed -> IconButton(onClick = onDownload) {
-                Icon(
-                    imageVector = Icons.Rounded.Download,
-                    contentDescription = "Download ${pack.displayName}",
-                    tint = MaterialTheme.colorScheme.primary
-                )
-            }
-            PackState.Bundled -> Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
-            ) {
-                Text(
-                    text = "Built in",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                is PackState.Installed -> IconButton(
+                    onClick = onDelete,
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Delete,
+                        contentDescription = "Delete ${pack.displayName}",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                is PackState.Missing, is PackState.Failed -> IconButton(
+                    onClick = onDownload,
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Download,
+                        contentDescription = "Download ${pack.displayName}",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                PackState.Bundled -> Unit
             }
         }
     }
+}
+
+private val ChoiceRowPadding =
+    PaddingValues(start = 12.dp, end = 8.dp, top = 2.dp, bottom = 2.dp)
+
+@Composable
+private fun choiceTileColor(selected: Boolean): Color = if (selected) {
+    MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.55f)
+} else {
+    MaterialTheme.colorScheme.surfaceContainer
 }

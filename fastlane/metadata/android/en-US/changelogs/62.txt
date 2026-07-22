@@ -1,0 +1,3 @@
+• Added short, medium, and detailed scan summaries.
+• Added editable export filenames suggested from document text.
+• Fixed Arabic recognition, location barcodes, AI cooldowns, offline product lookup, and scan-history saves.

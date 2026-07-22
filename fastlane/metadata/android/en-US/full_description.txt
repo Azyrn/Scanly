@@ -1,0 +1,29 @@
+<p>Scanly is a private, offline-first document and barcode scanner for Android. Turn photos and PDFs into structured, editable text, scan QR codes and product barcodes, and export useful files from one modern app.</p>
+
+<p><b>Private offline OCR</b></p>
+<ul>
+<li>Recognize printed documents entirely on your device with PaddleOCR.</li>
+<li>Detect page orientation, reading order, paragraphs, headings, and tables.</li>
+<li>Use built-in universal and Arabic recognition, with downloadable packs for Korean, Cyrillic, Devanagari, Thai, Greek, Tamil, and Telugu.</li>
+<li>Keep offline scans, exports, and scan history on your device.</li>
+</ul>
+
+<p><b>Documents and results</b></p>
+<ul>
+<li>Scan with the camera or import images and PDF documents.</li>
+<li>Review rendered Markdown or plain text, then edit, copy, translate, summarize, or print it.</li>
+<li>Export to PDF, Word, Markdown, CSV, or JSON with an editable filename suggested from the content.</li>
+<li>Handle right-to-left Arabic text and mixed-script documents.</li>
+</ul>
+
+<p><b>QR codes and barcodes</b></p>
+<ul>
+<li>Scan QR, EAN, UPC, ISBN, and other common formats.</li>
+<li>Open links, join Wi-Fi networks, call numbers, send messages, save contacts, and add calendar events.</li>
+<li>Look up supported foods, cosmetics, pet food, medicines, and books through public databases.</li>
+</ul>
+
+<p><b>Optional AI scanning</b></p>
+<p>For handwriting, forms, receipts, and complex layouts, you can choose an external AI provider or a custom OpenAI-compatible endpoint. Personal API keys are encrypted with Android Keystore. AI features send only the material you explicitly choose directly to the selected provider; offline OCR does not require an account, API key, or network connection.</p>
+
+<p>Scanly is built with Jetpack Compose and Material 3, with dynamic colors, dark mode, and an OLED-friendly pure-black theme.</p>

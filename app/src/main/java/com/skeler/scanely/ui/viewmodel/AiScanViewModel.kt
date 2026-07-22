@@ -47,6 +47,8 @@ data class AiScanState(
     val isTranslating: Boolean = false,
     val summaryCache: Map<SummaryLength, String> = emptyMap(),
     val currentSummary: SummaryLength? = null,
+    /** Survives [AiScanViewModel.showOriginal] so the Summary chip can toggle straight back. */
+    val lastSummary: SummaryLength? = null,
     val isSummarizing: Boolean = false,
     val lastImageUri: Uri? = null,
     val totalFiles: Int = 0,
@@ -284,6 +286,7 @@ class AiScanViewModel @Inject constructor(
                         isSummarizing = false,
                         summaryCache = updatedCache,
                         currentSummary = length,
+                        lastSummary = length,
                         currentLanguage = null
                     )
                 }
@@ -302,6 +305,7 @@ class AiScanViewModel @Inject constructor(
         if (_aiState.value.summaryCache.containsKey(length)) {
             _aiState.value = _aiState.value.copy(
                 currentSummary = length,
+                lastSummary = length,
                 currentLanguage = null
             )
         }

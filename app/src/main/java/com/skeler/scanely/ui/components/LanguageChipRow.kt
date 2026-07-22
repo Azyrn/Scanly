@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.PostAdd
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.DropdownMenu
@@ -38,7 +39,6 @@ fun LanguageChipRow(
     onSelectMarkdown: () -> Unit = {},
     currentSummary: SummaryLength? = null,
     cachedSummaries: List<SummaryLength> = emptyList(),
-    onSelectCachedSummary: (SummaryLength) -> Unit = {},
     showSummaryMenu: Boolean = false,
     onShowSummaryMenu: () -> Unit = {},
     onDismissSummaryMenu: () -> Unit = {},
@@ -72,14 +72,6 @@ fun LanguageChipRow(
             )
         }
 
-        cachedSummaries.forEach { length ->
-            FilterChip(
-                selected = currentSummary == length && !markdownSelected,
-                onClick = { onSelectCachedSummary(length) },
-                label = { Text("Summary · ${length.label}") }
-            )
-        }
-
         Box {
             FilterChip(
                 selected = false,
@@ -100,24 +92,35 @@ fun LanguageChipRow(
             }
         }
 
-        if (cachedSummaries.size < SummaryLength.entries.size) {
-            Box {
-                FilterChip(
-                    selected = false,
-                    onClick = onShowSummaryMenu,
-                    label = { Text("Summary") }
-                )
+        Box {
+            FilterChip(
+                selected = currentSummary != null && !markdownSelected,
+                onClick = onShowSummaryMenu,
+                label = { Text(currentSummary?.let { "Summary · ${it.label}" } ?: "Summary") }
+            )
 
-                DropdownMenu(
-                    expanded = showSummaryMenu,
-                    onDismissRequest = onDismissSummaryMenu
-                ) {
-                    SummaryLength.entries.filterNot { it in cachedSummaries }.forEach { length ->
-                        DropdownMenuItem(
-                            text = { Text(length.label) },
-                            onClick = { onSummaryLengthSelected(length) }
-                        )
-                    }
+            // Cached lengths stay listed so a mis-tapped length can be changed; picking one
+            // is a free cache switch, hence the check mark rather than hiding it.
+            DropdownMenu(
+                expanded = showSummaryMenu,
+                onDismissRequest = onDismissSummaryMenu
+            ) {
+                SummaryLength.entries.forEach { length ->
+                    DropdownMenuItem(
+                        text = { Text(length.label) },
+                        trailingIcon = if (length in cachedSummaries) {
+                            {
+                                Icon(
+                                    imageVector = Icons.Rounded.Check,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        } else {
+                            null
+                        },
+                        onClick = { onSummaryLengthSelected(length) }
+                    )
                 }
             }
         }

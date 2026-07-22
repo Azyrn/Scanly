@@ -303,12 +303,20 @@ fun ResultsScreen() {
                                 onSelectMarkdown = { markdownView = true },
                                 currentSummary = currentSummary,
                                 cachedSummaries = aiState.summaryCache.keys.toList(),
-                                onSelectCachedSummary = {
-                                    markdownView = false
-                                    aiViewModel.selectCachedSummary(it)
-                                },
                                 showSummaryMenu = showSummaryMenu,
-                                onShowSummaryMenu = { showSummaryMenu = true },
+                                // First tap returns to the last summary; tapping it again
+                                // opens the list to switch length.
+                                onShowSummaryMenu = {
+                                    val last = aiState.lastSummary
+                                    if (currentSummary == null && last != null &&
+                                        last in aiState.summaryCache
+                                    ) {
+                                        markdownView = false
+                                        aiViewModel.selectCachedSummary(last)
+                                    } else {
+                                        showSummaryMenu = true
+                                    }
+                                },
                                 onDismissSummaryMenu = { showSummaryMenu = false },
                                 onSummaryLengthSelected = { length ->
                                     markdownView = false

@@ -1,5 +1,4 @@
 <div align="center">
-  <img src="design/scanly_logo.svg" alt="Scanly logo" width="112">
 
 # Scanly
 

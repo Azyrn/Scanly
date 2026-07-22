@@ -80,6 +80,21 @@ jobs:
           echo "Tag: $(git describe --tags --exact-match)"
           echo "Commit: $(git rev-parse HEAD)"
 
+      # action-gh-release updates an existing release by tag, so a dry run against a published tag would overwrite it.
+      - name: Guard dry run
+        if: env.DRY_RUN == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if IS_DRAFT="$(gh release view "$TAG" --json isDraft --jq .isDraft 2>/dev/null)"; then
+            if [[ "$IS_DRAFT" != "true" ]]; then
+              printf "Dry run refused for tag '%s': a dry run will not modify a published release; pass a tag that has no published release.\n" "$TAG" >&2
+              exit 1
+            fi
+          fi
+
       - name: Set up JDK 21
         uses: actions/setup-java@v5
         with:
@@ -205,7 +220,7 @@ jobs:
           )
 
       - name: Upload release artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Scanly-${{ steps.tag.outputs.version }}
           path: release-artifacts/

@@ -132,7 +132,7 @@ help:
 	@printf "  $(GREEN)make$(NC) $(BOLD)ci$(NC)               Recent workflow runs\n"
 	@printf "  $(GREEN)make$(NC) $(BOLD)ci-watch$(NC)         Watch the latest branch run\n"
 	@printf "  $(GREEN)make$(NC) $(BOLD)ci-quality$(NC)       Run the quality gate\n"
-	@printf "  $(GREEN)make$(NC) $(BOLD)ci-release-dry$(NC)   Build a draft GitHub Release\n"
+	@printf "  $(GREEN)make$(NC) $(BOLD)ci-release-dry$(NC)   Build a draft GitHub Release $(DIM)(TAG=v3.4.0-rc1)$(NC)\n"
 	@printf "  $(GREEN)make$(NC) $(BOLD)ci-release$(NC)       Publish a public GitHub Release $(DIM)(CONFIRM=yes)$(NC)\n"
 	@printf "  $(GREEN)make$(NC) $(BOLD)ci-log$(NC)           Failed-step log $(DIM)(R=run-id)$(NC)\n"
 	@printf "  $(GREEN)make$(NC) $(BOLD)ci-artifacts$(NC)     Download run artifacts $(DIM)(R=run-id)$(NC)\n\n"
@@ -374,7 +374,9 @@ ci-release-dry: check-gh
 	@if [ -n "$(TAG)" ]; then \
 		gh workflow run release.yml --ref "$(B)" -f dry_run=true -f tag="$(TAG)"; \
 	else \
-		gh workflow run release.yml --ref "$(B)" -f dry_run=true; \
+		printf "$(YELLOW)A blank tag resolves to the latest existing tag, whose release is probably already published.$(NC)\n"; \
+		printf "Usage: $(BOLD)make ci-release-dry TAG=v3.4.0-rc1$(NC)\n"; \
+		exit 1; \
 	fi; \
 	sleep 4; \
 	run_id=$$(gh run list --workflow release.yml --branch "$(B)" --limit 1 --json databaseId --jq '.[0].databaseId'); \

@@ -74,7 +74,7 @@ jobs:
         run: ./gradlew lint --no-daemon
       
       - name: Upload Lint Report
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: lint-report
@@ -100,7 +100,7 @@ jobs:
         run: ./gradlew testDebugUnitTest --no-daemon
       
       - name: Upload Test Results
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: test-results
@@ -132,7 +132,7 @@ jobs:
         run: ./gradlew assembleDebug --no-daemon
       
       - name: Upload Debug APK
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: debug-apk
           path: app/build/outputs/apk/debug/*.apk

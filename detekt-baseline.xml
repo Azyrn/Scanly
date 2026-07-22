@@ -85,7 +85,7 @@
     <ID>LongMethod:ScanExporter.kt$ScanExporter$private fun exportToDownloads( context: Context, displayName: String, mimeType: String, write: (OutputStream) -&gt; Unit ): Uri</ID>
     <ID>LongMethod:TableDecoder.kt$TableDecoder$fun decode( structure: FloatArray, boxes: FloatArray, steps: Int, classes: Int, vocab: List&lt;String&gt;, scale: Float ): TableStructure</ID>
     <ID>LongMethod:UnifiedScanService.kt$UnifiedScanService$private fun mapBarcodeToActions(barcode: Barcode): List&lt;ScanAction&gt;</ID>
-    <ID>LongParameterList:LanguageChipRow.kt$( cachedLanguages: List&lt;String&gt;, currentLanguage: String?, showLanguageMenu: Boolean, onShowLanguageMenu: () -&gt; Unit, onDismissLanguageMenu: () -&gt; Unit, onSelectOriginal: () -&gt; Unit, onSelectCached: (String) -&gt; Unit, allLanguages: List&lt;String&gt;, onNewLanguageSelected: (String) -&gt; Unit, onComposeText: () -&gt; Unit, modifier: Modifier = Modifier, showMarkdown: Boolean = false, markdownSelected: Boolean = false, onSelectMarkdown: () -&gt; Unit = {} )</ID>
+    <ID>LongParameterList:LanguageChipRow.kt$( cachedLanguages: List&lt;String&gt;, currentLanguage: String?, showLanguageMenu: Boolean, onShowLanguageMenu: () -&gt; Unit, onDismissLanguageMenu: () -&gt; Unit, onSelectOriginal: () -&gt; Unit, onSelectCached: (String) -&gt; Unit, allLanguages: List&lt;String&gt;, onNewLanguageSelected: (String) -&gt; Unit, onComposeText: () -&gt; Unit, modifier: Modifier = Modifier, showMarkdown: Boolean = false, markdownSelected: Boolean = false, onSelectMarkdown: () -&gt; Unit = {}, currentSummary: SummaryLength? = null, cachedSummaries: List&lt;SummaryLength&gt; = emptyList(), showSummaryMenu: Boolean = false, onShowSummaryMenu: () -&gt; Unit = {}, onDismissSummaryMenu: () -&gt; Unit = {}, onSummaryLengthSelected: (SummaryLength) -&gt; Unit = {} )</ID>
     <ID>LoopWithTooManyJumpStatements:DbPostProcessor.kt$DbPostProcessor$for</ID>
     <ID>LoopWithTooManyJumpStatements:ImageOps.kt$ImageOps$for</ID>
     <ID>LoopWithTooManyJumpStatements:OpenFDAEngine.kt$OpenFDAEngine$for</ID>
@@ -163,9 +163,7 @@
     <ID>NestedBlockDepth:PaddleModelStore.kt$PaddleModelStore$private fun downloadVerified(repo: String, dest: File, onProgress: (Float) -&gt; Unit)</ID>
     <ID>NestedBlockDepth:PayloadFactory.kt$PayloadFactory$private fun renderPdfToBase64(uri: Uri): List&lt;String&gt;</ID>
     <ID>NestedBlockDepth:TableDecoder.kt$TableDecoder$fun decode( structure: FloatArray, boxes: FloatArray, steps: Int, classes: Int, vocab: List&lt;String&gt;, scale: Float ): TableStructure</ID>
-    <ID>NoSemicolons:PaddleOcrEngine.kt$CtcDecoder$;</ID>
     <ID>NoSemicolons:RtlText.kt$RtlText$;</ID>
-    <ID>NoSemicolons:ScanReviewScreen.kt$;</ID>
     <ID>ReturnCount:ImageOps.kt$ImageOps$private fun axisAlignedCrop(src: Bitmap, q: Quad, w: Int, h: Int): Bitmap?</ID>
     <ID>ReturnCount:KeyVerifier.kt$KeyVerifier$suspend fun verify( provider: AiProvider, key: String, customUrl: String? = null ): VerificationResult</ID>
     <ID>ReturnCount:ProviderExecutor.kt$ProviderExecutor$suspend fun run( name: String, config: ProviderConfig, systemInstruction: String?, prompt: String, images: List&lt;String&gt;, pdfBase64: String? = null, allowStreaming: Boolean, emit: suspend (AiEvent) -&gt; Unit ): ProviderOutcome</ID>
@@ -176,6 +174,7 @@
     <ID>TooGenericExceptionCaught:PaddleOcrService.kt$PaddleOcrService$e: Throwable</ID>
     <ID>TooGenericExceptionCaught:ScanExporter.kt$ScanExporter$t: Throwable</ID>
     <ID>TooManyFunctions:ActionExecutor.kt$ActionExecutor</ID>
+    <ID>TooManyFunctions:AiScanViewModel.kt$AiScanViewModel : ViewModel</ID>
     <ID>TooManyFunctions:BarcodeContentParser.kt$BarcodeContentParser</ID>
     <ID>TooManyFunctions:DocumentScanViewModel.kt$DocumentScanViewModel : ViewModel</ID>
     <ID>TooManyFunctions:DocumentStructure.kt$DocumentStructure</ID>

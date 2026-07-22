@@ -128,6 +128,14 @@ help:
 	@printf "  $(GREEN)make$(NC) $(BOLD)test-device$(NC)  Instrumented tests $(DIM)(T=SomeTest to filter)$(NC)\n"
 	@printf "               $(DIM)leaves the app uninstalled — run 'make refresh' after$(NC)\n"
 	@printf "  $(GREEN)make$(NC) $(BOLD)lint$(NC)         Android lint\n\n"
+	@printf "$(BOLD)CI (GitHub Actions)$(NC)\n"
+	@printf "  $(GREEN)make$(NC) $(BOLD)ci$(NC)               Recent workflow runs\n"
+	@printf "  $(GREEN)make$(NC) $(BOLD)ci-watch$(NC)         Watch the latest branch run\n"
+	@printf "  $(GREEN)make$(NC) $(BOLD)ci-quality$(NC)       Run the quality gate\n"
+	@printf "  $(GREEN)make$(NC) $(BOLD)ci-release-dry$(NC)   Build a draft GitHub Release\n"
+	@printf "  $(GREEN)make$(NC) $(BOLD)ci-release$(NC)       Publish a public GitHub Release $(DIM)(CONFIRM=yes)$(NC)\n"
+	@printf "  $(GREEN)make$(NC) $(BOLD)ci-log$(NC)           Failed-step log $(DIM)(R=run-id)$(NC)\n"
+	@printf "  $(GREEN)make$(NC) $(BOLD)ci-artifacts$(NC)     Download run artifacts $(DIM)(R=run-id)$(NC)\n\n"
 	@printf "$(BOLD)RAM / cache$(NC)\n"
 	@printf "  $(GREEN)make$(NC) $(BOLD)kill$(NC)         Stop Gradle+Kotlin daemons $(DIM)(frees several GB)$(NC)\n"
 	@printf "  $(GREEN)make$(NC) $(BOLD)ram$(NC)          What is eating memory right now\n"
@@ -317,6 +325,99 @@ test-device: check-project check-adb
 .PHONY: lint
 lint: check-project
 	@$(GRADLE) :$(APP_MODULE):lintDebug
+
+# --- CI (GitHub Actions) ---
+
+B ?= $(shell git rev-parse --abbrev-ref HEAD)
+R ?=
+
+RESOLVE_RUN_ID = run_id="$(R)"; \
+	if [ -z "$$run_id" ]; then \
+		run_id=$$(gh run list --branch "$(B)" --limit 1 --json databaseId --jq '.[0].databaseId'); \
+	fi; \
+	if [ -z "$$run_id" ]; then \
+		printf "$(RED)No GitHub Actions run found for $(B).$(NC)\n"; exit 1; \
+	fi;
+
+.PHONY: check-gh
+check-gh:
+	@if ! command -v gh >/dev/null 2>&1; then \
+		printf "$(RED)GitHub CLI (gh) is not installed or not on PATH.$(NC)\n"; exit 1; fi
+	@if ! gh auth status >/dev/null 2>&1; then \
+		printf "$(RED)GitHub CLI is not authenticated — run: gh auth login$(NC)\n"; exit 1; fi
+
+.PHONY: ci
+ci: check-gh
+	@gh run list --limit 10
+
+.PHONY: ci-watch
+ci-watch: check-gh
+	@$(RESOLVE_RUN_ID) \
+	gh run watch "$$run_id" --exit-status
+
+.PHONY: ci-quality
+ci-quality: check-gh
+	@gh workflow run quality.yml --ref "$(B)"; \
+	sleep 4; \
+	run_id=$$(gh run list --workflow quality.yml --branch "$(B)" --limit 1 --json databaseId --jq '.[0].databaseId'); \
+	url=$$(gh run view "$$run_id" --json url --jq .url); \
+	printf "$(GREEN)Run:$(NC) %s\n" "$$url"; \
+	printf "$(CYAN)Watch it: make ci-watch$(NC)\n"
+
+.PHONY: ci-codeql
+ci-codeql: check-gh
+	@printf "$(YELLOW)CodeQL runs on push/PR/schedule only.$(NC)\n"
+	@gh run list --workflow codeql.yml --limit 1
+
+.PHONY: ci-release-dry
+ci-release-dry: check-gh
+	@if [ -n "$(TAG)" ]; then \
+		gh workflow run release.yml --ref "$(B)" -f dry_run=true -f tag="$(TAG)"; \
+	else \
+		gh workflow run release.yml --ref "$(B)" -f dry_run=true; \
+	fi; \
+	sleep 4; \
+	run_id=$$(gh run list --workflow release.yml --branch "$(B)" --limit 1 --json databaseId --jq '.[0].databaseId'); \
+	url=$$(gh run view "$$run_id" --json url --jq .url); \
+	printf "$(GREEN)Run:$(NC) %s\n" "$$url"; \
+	printf "$(CYAN)Watch it: make ci-watch$(NC)\n"
+
+.PHONY: ci-release
+ci-release: check-gh
+	@if [ "$(CONFIRM)" != "yes" ]; then \
+		printf "$(RED)Refusing: this publishes a public GitHub Release. Re-run with CONFIRM=yes.$(NC)\n"; exit 1; fi
+	@if [ -n "$(TAG)" ]; then \
+		gh workflow run release.yml --ref "$(B)" -f dry_run=false -f tag="$(TAG)"; \
+	else \
+		gh workflow run release.yml --ref "$(B)" -f dry_run=false; \
+	fi; \
+	sleep 4; \
+	run_id=$$(gh run list --workflow release.yml --branch "$(B)" --limit 1 --json databaseId --jq '.[0].databaseId'); \
+	url=$$(gh run view "$$run_id" --json url --jq .url); \
+	printf "$(GREEN)Run:$(NC) %s\n" "$$url"; \
+	printf "$(CYAN)Watch it: make ci-watch$(NC)\n"
+
+.PHONY: ci-log
+ci-log: check-gh
+	@$(RESOLVE_RUN_ID) \
+	gh run view "$$run_id" --log-failed
+
+.PHONY: ci-rerun
+ci-rerun: check-gh
+	@$(RESOLVE_RUN_ID) \
+	gh run rerun "$$run_id" --failed
+
+.PHONY: ci-artifacts
+ci-artifacts: check-gh
+	@$(RESOLVE_RUN_ID) \
+	mkdir -p build/ci-artifacts; \
+	gh run download "$$run_id" --dir build/ci-artifacts; \
+	printf "$(GREEN)Artifacts:$(NC) build/ci-artifacts/\n"
+
+.PHONY: ci-open
+ci-open: check-gh
+	@$(RESOLVE_RUN_ID) \
+	gh run view "$$run_id" --web
 
 # --- Logs -----------------------------------------------------------------
 

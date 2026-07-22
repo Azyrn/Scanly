@@ -133,7 +133,7 @@ class GenerativeAiService @Inject internal constructor(
         systemInstruction = null,
         prompt = AiPrompts.translate(text, targetLanguage),
         rateLimitMessage =
-            "${provider.displayName} is rate-limited right now. Try again shortly."
+        "${provider.displayName} is rate-limited right now. Try again shortly."
     )
 
     suspend fun summarizeText(
@@ -145,7 +145,7 @@ class GenerativeAiService @Inject internal constructor(
         systemInstruction = AiPrompts.SUMMARIZE_SYSTEM,
         prompt = AiPrompts.summarize(text, length),
         rateLimitMessage =
-            "${provider.displayName} is rate-limited right now. Try summarizing again shortly."
+        "${provider.displayName} is rate-limited right now. Try summarizing again shortly."
     )
 
     private suspend fun runTextRequest(

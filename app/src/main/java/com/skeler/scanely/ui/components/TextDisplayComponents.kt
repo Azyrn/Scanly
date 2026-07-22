@@ -214,7 +214,10 @@ fun ProcessingContent(
 }
 
 @Composable
-fun TranslatingContent(modifier: Modifier = Modifier) {
+fun TranslatingContent(
+    modifier: Modifier = Modifier,
+    label: String = "Translating..."
+) {
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -225,7 +228,7 @@ fun TranslatingContent(modifier: Modifier = Modifier) {
         LoadingIndicator(modifier = Modifier.size(48.dp))
         Spacer(modifier = Modifier.height(24.dp))
         Text(
-            text = "Translating...",
+            text = label,
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

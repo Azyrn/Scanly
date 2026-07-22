@@ -18,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.skeler.scanely.core.ai.SummaryLength
 
 @Composable
 fun LanguageChipRow(
@@ -34,7 +35,14 @@ fun LanguageChipRow(
     modifier: Modifier = Modifier,
     showMarkdown: Boolean = false,
     markdownSelected: Boolean = false,
-    onSelectMarkdown: () -> Unit = {}
+    onSelectMarkdown: () -> Unit = {},
+    currentSummary: SummaryLength? = null,
+    cachedSummaries: List<SummaryLength> = emptyList(),
+    onSelectCachedSummary: (SummaryLength) -> Unit = {},
+    showSummaryMenu: Boolean = false,
+    onShowSummaryMenu: () -> Unit = {},
+    onDismissSummaryMenu: () -> Unit = {},
+    onSummaryLengthSelected: (SummaryLength) -> Unit = {}
 ) {
     Row(
         modifier = modifier
@@ -43,7 +51,7 @@ fun LanguageChipRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         FilterChip(
-            selected = currentLanguage == null && !markdownSelected,
+            selected = currentLanguage == null && currentSummary == null && !markdownSelected,
             onClick = onSelectOriginal,
             label = { Text("Original") }
         )
@@ -58,9 +66,17 @@ fun LanguageChipRow(
 
         cachedLanguages.forEach { language ->
             FilterChip(
-                selected = currentLanguage == language && !markdownSelected,
+                selected = currentLanguage == language && currentSummary == null && !markdownSelected,
                 onClick = { onSelectCached(language) },
                 label = { Text(language) }
+            )
+        }
+
+        cachedSummaries.forEach { length ->
+            FilterChip(
+                selected = currentSummary == length && !markdownSelected,
+                onClick = { onSelectCachedSummary(length) },
+                label = { Text("Summary · ${length.label}") }
             )
         }
 
@@ -80,6 +96,28 @@ fun LanguageChipRow(
                         text = { Text(language) },
                         onClick = { onNewLanguageSelected(language) }
                     )
+                }
+            }
+        }
+
+        if (cachedSummaries.size < SummaryLength.entries.size) {
+            Box {
+                FilterChip(
+                    selected = false,
+                    onClick = onShowSummaryMenu,
+                    label = { Text("Summary") }
+                )
+
+                DropdownMenu(
+                    expanded = showSummaryMenu,
+                    onDismissRequest = onDismissSummaryMenu
+                ) {
+                    SummaryLength.entries.filterNot { it in cachedSummaries }.forEach { length ->
+                        DropdownMenuItem(
+                            text = { Text(length.label) },
+                            onClick = { onSummaryLengthSelected(length) }
+                        )
+                    }
                 }
             }
         }

@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.3.3] - 2026-07-22 (versionCode 21)
+### Added
+- **Summarize a scan**: a Summary chip next to Translate condenses an AI scan into Short, Medium or
+  Detailed form. Summaries stay in the document's own language, keep numbers and dates exactly as
+  written, and are cached per length — switching between the summary and the full text is instant
+  and costs nothing. Copy, export, print and edit all follow whichever view is on screen
+
 ## [3.3.2] - 2026-07-22 (versionCode 20)
 ### Added
 - **Export filenames suggested from the text**: exports are named after what the page actually says

@@ -67,6 +67,13 @@ OUTPUT
 - Untranslatable or illegible text -> leave it as printed.
 - Output only the translation: no original text, no notes, no commentary."""
 
+    const val SUMMARIZE_SYSTEM =
+        """You summarize transcribed documents in the same language as the input text.
+- Never translate the document or switch its language.
+- Keep every number, date, amount, name and ID exactly as written. Never round, recompute, reorder, reformat or correct them.
+- Output only the summary, with no preamble, closing note or commentary.
+- Use Markdown bullets for summarized points."""
+
     fun forMode(mode: AiMode): String = when (mode) {
         AiMode.EXTRACT_TEXT -> EXTRACT
         AiMode.EXTRACT_PDF_TEXT -> PDF_EXTRACT
@@ -82,4 +89,17 @@ OUTPUT
     fun translate(text: String, targetLanguage: String): String =
         "Translate the following text to $targetLanguage. " +
             "Return only the translated text, nothing else:\n\n$text"
+
+    fun summarize(text: String, length: SummaryLength): String {
+        val lengthInstruction = when (length) {
+            SummaryLength.SHORT ->
+                "Give only the gist in 1–2 concise sentences."
+            SummaryLength.MEDIUM ->
+                "Give a one-line gist, followed by about 3–6 bullet points with the key details."
+            SummaryLength.DETAILED ->
+                "Give a concise gist, then bullet points for each section, followed by a short list of " +
+                    "every date, amount and reference number that appears."
+        }
+        return "Summarize the following transcription. $lengthInstruction\n\n$text"
+    }
 }

@@ -11,6 +11,7 @@ import com.skeler.scanely.core.ai.AiResult
 import com.skeler.scanely.core.ai.AiRunInfo
 import com.skeler.scanely.core.ai.AiStage
 import com.skeler.scanely.core.ai.GenerativeAiService
+import com.skeler.scanely.core.ai.SummaryLength
 import com.skeler.scanely.history.data.HistoryManager
 import com.skeler.scanely.settings.data.SettingsKeys
 import com.skeler.scanely.settings.domain.repository.SettingsRepository
@@ -44,6 +45,9 @@ data class AiScanState(
     val translationCache: Map<String, String> = emptyMap(),
     val currentLanguage: String? = null,
     val isTranslating: Boolean = false,
+    val summaryCache: Map<SummaryLength, String> = emptyMap(),
+    val currentSummary: SummaryLength? = null,
+    val isSummarizing: Boolean = false,
     val lastImageUri: Uri? = null,
     val totalFiles: Int = 0,
     val allUris: List<Uri> = emptyList(),
@@ -180,6 +184,14 @@ class AiScanViewModel @Inject constructor(
 
     fun updateText(newText: String) {
         val state = _aiState.value
+        val summary = state.currentSummary
+        if (summary != null) {
+            // Edit cached summary, not source.
+            _aiState.value = state.copy(
+                summaryCache = state.summaryCache + (summary to newText)
+            )
+            return
+        }
         val language = state.currentLanguage
         if (language != null) {
             // Edit cached translation, not source.
@@ -235,7 +247,8 @@ class AiScanViewModel @Inject constructor(
                     _aiState.value = _aiState.value.copy(
                         isTranslating = false,
                         translationCache = updatedCache,
-                        currentLanguage = targetLanguage
+                        currentLanguage = targetLanguage,
+                        currentSummary = null
                     )
                 }
                 is AiResult.Error -> {
@@ -251,12 +264,54 @@ class AiScanViewModel @Inject constructor(
 
     fun selectCachedLanguage(language: String) {
         if (_aiState.value.translationCache.containsKey(language)) {
-            _aiState.value = _aiState.value.copy(currentLanguage = language)
+            _aiState.value = _aiState.value.copy(
+                currentLanguage = language,
+                currentSummary = null
+            )
+        }
+    }
+
+    fun summarizeResult(length: SummaryLength) {
+        val originalText = _aiState.value.originalText ?: return
+
+        viewModelScope.launch {
+            _aiState.value = _aiState.value.copy(isSummarizing = true)
+
+            when (val result = aiService.summarizeText(originalText, length, _aiState.value.provider)) {
+                is AiResult.Success -> {
+                    val updatedCache = _aiState.value.summaryCache + (length to result.text)
+                    _aiState.value = _aiState.value.copy(
+                        isSummarizing = false,
+                        summaryCache = updatedCache,
+                        currentSummary = length,
+                        currentLanguage = null
+                    )
+                }
+                is AiResult.Error -> {
+                    // Surface failure; silent snap-back looks like a no-op.
+                    _aiState.value = _aiState.value.copy(
+                        isSummarizing = false,
+                        message = "Summary failed. Please try again."
+                    )
+                }
+            }
+        }
+    }
+
+    fun selectCachedSummary(length: SummaryLength) {
+        if (_aiState.value.summaryCache.containsKey(length)) {
+            _aiState.value = _aiState.value.copy(
+                currentSummary = length,
+                currentLanguage = null
+            )
         }
     }
 
     fun showOriginal() {
-        _aiState.value = _aiState.value.copy(currentLanguage = null)
+        _aiState.value = _aiState.value.copy(
+            currentLanguage = null,
+            currentSummary = null
+        )
     }
 
     fun clearResult() {

@@ -128,12 +128,37 @@ class GenerativeAiService @Inject internal constructor(
         text: String,
         targetLanguage: String,
         provider: AiProvider
+    ): AiResult = runTextRequest(
+        provider = provider,
+        systemInstruction = null,
+        prompt = AiPrompts.translate(text, targetLanguage),
+        rateLimitMessage =
+            "${provider.displayName} is rate-limited right now. Try again shortly."
+    )
+
+    suspend fun summarizeText(
+        text: String,
+        length: SummaryLength,
+        provider: AiProvider
+    ): AiResult = runTextRequest(
+        provider = provider,
+        systemInstruction = AiPrompts.SUMMARIZE_SYSTEM,
+        prompt = AiPrompts.summarize(text, length),
+        rateLimitMessage =
+            "${provider.displayName} is rate-limited right now. Try summarizing again shortly."
+    )
+
+    private suspend fun runTextRequest(
+        provider: AiProvider,
+        systemInstruction: String?,
+        prompt: String,
+        rateLimitMessage: String
     ): AiResult = withContext(Dispatchers.IO) {
         if (!networkObserver.isCurrentlyOnline()) {
             return@withContext AiResult.Error(OFFLINE_MESSAGE)
         }
         val resolved = resolver.resolve(provider) ?: return@withContext missingConfigError(provider)
-        // OCR endpoint can't translate; use Mistral chat.
+        // OCR endpoint can't run text-only chat completions; use Mistral chat.
         val config = if (resolved.kind == ProviderKind.MISTRAL_OCR) {
             ProviderConfig.mistralChat(resolved.apiKey)
         } else {
@@ -142,8 +167,8 @@ class GenerativeAiService @Inject internal constructor(
         val outcome = executor.run(
             name = provider.displayName,
             config = config,
-            systemInstruction = null,
-            prompt = AiPrompts.translate(text, targetLanguage),
+            systemInstruction = systemInstruction,
+            prompt = prompt,
             images = emptyList(),
             pdfBase64 = null,
             allowStreaming = false,
@@ -156,7 +181,7 @@ class GenerativeAiService @Inject internal constructor(
                 if (outcome.networkProblem && !networkObserver.isCurrentlyOnline()) {
                     OFFLINE_MESSAGE
                 } else {
-                    "${provider.displayName} is rate-limited right now. Try again shortly."
+                    rateLimitMessage
                 }
             )
         }

@@ -6,6 +6,12 @@ enum class AiMode {
     ICON_TRANSLATE
 }
 
+enum class SummaryLength(val label: String) {
+    SHORT("Short"),
+    MEDIUM("Medium"),
+    DETAILED("Detailed")
+}
+
 sealed class AiResult {
     data class Success(val text: String) : AiResult()
     data class Error(val message: String) : AiResult()

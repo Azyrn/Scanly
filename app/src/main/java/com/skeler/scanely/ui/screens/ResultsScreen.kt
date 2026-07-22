@@ -96,6 +96,7 @@ fun ResultsScreen() {
 
     val isProcessing = aiState.isProcessing || ocrState.isProcessing
     val isTranslating = aiState.isTranslating
+    val isSummarizing = aiState.isSummarizing
 
     val historyText = scanState.historyText
     val aiResultText = when (val result = aiState.result) {
@@ -109,10 +110,14 @@ fun ResultsScreen() {
     }
     val primaryResultText = historyText ?: aiResultText ?: ocrResultText
     val isAiResult = aiResultText != null
+    val hasAiText = aiState.result is AiResult.Success
 
     val cachedLanguages = aiState.translationCache.keys.toList()
     val currentLanguage = aiState.currentLanguage
-    val displayText = currentLanguage?.let { aiState.translationCache[it] } ?: primaryResultText
+    val currentSummary = aiState.currentSummary
+    val displayText = currentSummary?.let { aiState.summaryCache[it] }
+        ?: currentLanguage?.let { aiState.translationCache[it] }
+        ?: primaryResultText
 
     // The AI answers in Markdown: "Original" reads it as plain text, "Markdown" renders it.
     var markdownView by remember { mutableStateOf(false) }
@@ -121,7 +126,10 @@ fun ResultsScreen() {
     val paddleResult = (ocrState.result as? OcrResult.Success)
         ?.takeIf { it.source == OcrSource.PADDLE }
         ?.takeIf { it.blocks.isNotEmpty() || it.markdown != null }
-        ?.takeIf { historyText == null && aiResultText == null && currentLanguage == null }
+        ?.takeIf {
+            historyText == null && aiResultText == null &&
+                currentLanguage == null && currentSummary == null
+        }
     val structuredMarkdown = paddleResult?.markdown?.takeIf { it.isNotBlank() }
     // Only provenance-known AI text is treated as Markdown; sniffing plain OCR text corrupts it.
     val textIsMarkdown = remember(displayText, isAiResult) {
@@ -144,6 +152,7 @@ fun ResultsScreen() {
     val isOnline by scanViewModel.isOnline.collectAsState()
 
     var showLanguageMenu by remember { mutableStateOf(false) }
+    var showSummaryMenu by remember { mutableStateOf(false) }
     val languages = TranslationLanguages.ALL
 
     var navigatingUp by remember { mutableStateOf(false) }
@@ -151,7 +160,7 @@ fun ResultsScreen() {
     val textState = rememberExtractedTextState(displayText.orEmpty())
     val onSaveExtracted: (String) -> Unit = { edited ->
         when {
-            currentLanguage != null -> aiViewModel.updateText(edited)
+            currentSummary != null || currentLanguage != null -> aiViewModel.updateText(edited)
             historyText != null -> scanViewModel.updateHistoryText(edited)
             isAiResult -> aiViewModel.updateText(edited)
             // Editing the offline engine's Markdown view feeds Markdown back, not plain text.
@@ -191,7 +200,7 @@ fun ResultsScreen() {
         )
     }
 
-    val showRescan = displayText != null && !isProcessing && !isTranslating &&
+    val showRescan = displayText != null && !isProcessing && !isTranslating && !isSummarizing &&
         isAiResult && aiState.lastImageUri != null
 
     Box(
@@ -245,6 +254,9 @@ fun ResultsScreen() {
                     isTranslating -> {
                         TranslatingContent()
                     }
+                    isSummarizing -> {
+                        TranslatingContent(label = "Summarizing...")
+                    }
                     displayText != null -> {
                         val runInfo = aiState.runInfo
                         val credential: (@Composable () -> Unit)? =
@@ -262,7 +274,7 @@ fun ResultsScreen() {
                                 null
                             }
 
-                        if (isAiResult && isOnline) {
+                        if (hasAiText && isOnline) {
                             LanguageChipRow(
                                 cachedLanguages = cachedLanguages,
                                 currentLanguage = currentLanguage,
@@ -288,7 +300,27 @@ fun ResultsScreen() {
                                 onComposeText = { navController.navigate(Routes.TEXT_COMPOSE) },
                                 showMarkdown = hasMarkdown,
                                 markdownSelected = markdownMode,
-                                onSelectMarkdown = { markdownView = true }
+                                onSelectMarkdown = { markdownView = true },
+                                currentSummary = currentSummary,
+                                cachedSummaries = aiState.summaryCache.keys.toList(),
+                                onSelectCachedSummary = {
+                                    markdownView = false
+                                    aiViewModel.selectCachedSummary(it)
+                                },
+                                showSummaryMenu = showSummaryMenu,
+                                onShowSummaryMenu = { showSummaryMenu = true },
+                                onDismissSummaryMenu = { showSummaryMenu = false },
+                                onSummaryLengthSelected = { length ->
+                                    markdownView = false
+                                    showSummaryMenu = false
+                                    if (length in aiState.summaryCache) {
+                                        aiViewModel.selectCachedSummary(length)
+                                    } else {
+                                        scanViewModel.triggerAiWithRateLimit(aiState.provider) {
+                                            aiViewModel.summarizeResult(length)
+                                        }
+                                    }
+                                }
                             )
                             Spacer(modifier = Modifier.height(10.dp))
                         } else if (hasMarkdown) {

@@ -158,8 +158,8 @@ jobs:
           GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx5g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8"
         run: |
           set -euo pipefail
-          # Override the local single-ABI optimization for complete releases.
-          ./gradlew :app:assembleRelease -PreleaseAbi=all --max-workers=4 --stacktrace
+          # Build only the arm64-v8a APK.
+          ./gradlew :app:assembleRelease -PreleaseAbi=arm64-v8a --max-workers=4 --stacktrace
 
       - name: Verify APK signatures
         run: |
@@ -172,7 +172,7 @@ jobs:
           fi
 
           shopt -s nullglob
-          for ABI in universal arm64-v8a armeabi-v7a x86_64; do
+          for ABI in arm64-v8a; do
             MATCHES=("$APK_DIR"/*"$ABI"*.apk)
             if (( ${#MATCHES[@]} != 1 )); then
               echo "Expected exactly one $ABI release APK, found ${#MATCHES[@]}." >&2
@@ -198,7 +198,7 @@ jobs:
           mkdir -p release-artifacts
           shopt -s nullglob
 
-          for ABI in universal arm64-v8a armeabi-v7a x86_64; do
+          for ABI in arm64-v8a; do
             MATCHES=("$APK_DIR"/*"$ABI"*.apk)
             if (( ${#MATCHES[@]} != 1 )); then
               echo "Expected exactly one $ABI release APK, found ${#MATCHES[@]}." >&2
@@ -219,6 +219,27 @@ jobs:
               xargs -0 sha256sum > SHA256SUMS.txt
           )
 
+      - name: Extract changelog notes
+        id: notes
+        env:
+          VERSION: ${{ steps.tag.outputs.version }}
+        run: |
+          set -euo pipefail
+          NOTES="$RUNNER_TEMP/release-notes.md"
+          : > "$NOTES"
+          if [[ -f CHANGELOG.md ]]; then
+            awk -v ver="$VERSION" '
+              $0 ~ ("^## \\[" ver "\\]") { capture = 1; next }
+              capture && /^## \[/ { exit }
+              capture { print }
+            ' CHANGELOG.md > "$NOTES"
+          fi
+          if grep -q '[^[:space:]]' "$NOTES"; then
+            { printf 'found=true\n'; printf 'path=%s\n' "$NOTES"; } >> "$GITHUB_OUTPUT"
+          else
+            printf 'found=false\n' >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Upload release artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -235,4 +256,6 @@ jobs:
           draft: ${{ env.DRY_RUN == 'true' }}
           prerelease: false
           fail_on_unmatched_files: true
-          generate_release_notes: true
+          # Use the curated CHANGELOG section as the release body, and fall back to auto-generated notes only when the version has no section.
+          body_path: ${{ steps.notes.outputs.found == 'true' && steps.notes.outputs.path || '' }}
+          generate_release_notes: ${{ steps.notes.outputs.found != 'true' }}

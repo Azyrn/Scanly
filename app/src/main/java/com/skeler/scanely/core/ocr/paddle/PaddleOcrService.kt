@@ -85,9 +85,7 @@ class PaddleOcrService @Inject constructor(
             var quads = engine.detect(page, DET_LIMIT)
             if (quads.isEmpty()) return@withContext OcrResult.Empty
 
-            var visualLines = groupLines(quads)
-            var scanned = visualLines.flatten()
-            crops = cropLines(page, scanned)
+            crops = cropLines(page, quads)
 
             if (useDocOrientation && isUpsideDown(crops, pack)) {
                 // Turned as a page, never per line: the quads carry the reading order, so a page
@@ -99,9 +97,7 @@ class PaddleOcrService @Inject constructor(
                 derived.add(page)
                 quads = engine.detect(page, DET_LIMIT)
                 if (quads.isEmpty()) return@withContext OcrResult.Empty
-                visualLines = groupLines(quads)
-                scanned = visualLines.flatten()
-                crops = cropLines(page, scanned)
+                crops = cropLines(page, quads)
             }
 
             if (useLineOrientation) {
@@ -118,8 +114,13 @@ class PaddleOcrService @Inject constructor(
 
             // Direction is a property of the text, not of the installed pack: an English
             // table must not reverse just because the Arabic pack is selected.
-            val order = rtlAwareOrder(visualLines, recognized)
-            val ordered = order.map { scanned[it] }
+            val pageRtl = RtlText.isRtlDominant(recognized.joinToString(" ") { it.text })
+            val orderedLines = ReadingOrder.orderedLines(quads, pageRtl)
+            val order = orderedLines.flatMap { line ->
+                val text = line.joinToString("") { recognized[it].text }
+                if (RtlText.isRtlDominant(text)) line.asReversed() else line
+            }
+            val ordered = order.map { quads[it] }
             val lines = order.map { recognized[it] }
 
             val kept = lines.indices.filter {
@@ -341,45 +342,6 @@ class PaddleOcrService @Inject constructor(
         if (width < MIN_TABLE_SIDE || height < MIN_TABLE_SIDE) return null
         val crop = Bitmap.createBitmap(page, left, top, width, height)
         return RegionCrop(crop, left.toFloat(), top.toFloat())
-    }
-
-    /** Group quads into visual lines, top-down, each read left-to-right for now. */
-    private fun groupLines(quads: List<Quad>): List<List<Quad>> {
-        val sorted = quads.sortedBy { it.minY }
-        val lines = mutableListOf<MutableList<Quad>>()
-
-        for (q in sorted) {
-            val centerY = (q.minY + q.maxY) / 2f
-            val height = q.maxY - q.minY
-            val line = lines.lastOrNull()?.takeIf { current ->
-                val ref = current.first()
-                val refCenter = (ref.minY + ref.maxY) / 2f
-                abs(centerY - refCenter) < maxOf(height, ref.maxY - ref.minY) * 0.6f
-            }
-            if (line == null) lines.add(mutableListOf(q)) else line.add(q)
-        }
-
-        return lines.map { line -> line.sortedBy { it.minX } }
-    }
-
-    /**
-     * Flat indices into the scanned quads, with the boxes of any line whose recognized text
-     * is predominantly RTL reversed. Direction has to be decided here, after recognition:
-     * geometry alone cannot tell an Arabic line from an English one.
-     */
-    private fun rtlAwareOrder(
-        visualLines: List<List<Quad>>,
-        recognized: List<RecLine>
-    ): List<Int> {
-        val order = mutableListOf<Int>()
-        var start = 0
-        for (line in visualLines) {
-            val indices = (start until start + line.size).toList()
-            val text = indices.joinToString("") { recognized[it].text }
-            order.addAll(if (RtlText.isRtlDominant(text)) indices.reversed() else indices)
-            start += line.size
-        }
-        return order
     }
 
     private fun groupIntoLines(

@@ -453,6 +453,8 @@ data class RecLine(
 
 object CtcDecoder {
 
+    private const val BLANK_GATE_TAU = 0.15f
+
     /**
      * [fill] is the share of the batch tensor each crop actually occupies (1.0 when unpadded).
      * Character positions are reported as a fraction of the crop, not of the padded batch.
@@ -476,18 +478,28 @@ object CtcDecoder {
             for (t in 0 until steps) {
                 val base = (n * steps + t) * classes
                 val best = argmax(logits, base, classes)
+                val chosen = if (best != 0) {
+                    best
+                } else {
+                    val altBest = argmaxNonBlank(logits, base, classes)
+                    val altProb = if (altBest == 0) {
+                        0f
+                    } else {
+                        confidenceOf(logits, base, classes, altBest, softmaxed)
+                    }
+                    // Keep a separating blank when the alternative repeats the previous class.
+                    if (altProb >= BLANK_GATE_TAU && altBest != prev) altBest else 0
+                }
 
-                // CTC: a repeat of the previous class is the same character held across two
-                // timesteps, and class 0 is the blank that separates two real ones.
-                if (best != 0 && best != prev) {
-                    val text = charset.getOrElse(best) { "" }
-                    val confidence = confidenceOf(logits, base, classes, best, softmaxed)
+                if (chosen != 0 && chosen != prev) {
+                    val text = charset.getOrElse(chosen) { "" }
+                    val confidence = confidenceOf(logits, base, classes, chosen, softmaxed)
                     sb.append(text)
                     val x = ((t + 0.5f) / steps / share).coerceAtMost(1f)
                     chars.add(RecChar(text, x, confidence))
                     confSum += confidence
                 }
-                prev = best
+                prev = chosen
             }
             RecLine(
                 text = sb.toString(),
@@ -502,6 +514,20 @@ object CtcDecoder {
         var best = 0
         var bestScore = logits[base]
         for (c in 1 until classes) {
+            val v = logits[base + c]
+            if (v > bestScore) {
+                bestScore = v
+                best = c
+            }
+        }
+        return best
+    }
+
+    private fun argmaxNonBlank(logits: FloatArray, base: Int, classes: Int): Int {
+        if (classes <= 1) return 0
+        var best = 1
+        var bestScore = logits[base + 1]
+        for (c in 2 until classes) {
             val v = logits[base + c]
             if (v > bestScore) {
                 bestScore = v
